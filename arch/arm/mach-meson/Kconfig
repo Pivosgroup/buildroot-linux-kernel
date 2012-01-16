@@ -49,6 +49,23 @@ config REFC01_2K_PAGE
 
 endchoice
 	  	  
+config MACH_MESON_STV_MBX_M3
+	bool "Support M1 8726(for arm board) platform(machid=2956)"
+	help
+	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
+choice
+	prompt "---Select Nand Flash Type---"
+	depends on MACH_MESON_STV_MBX_M3
+	default STV_MBX_M3_4K_PAGE
+
+config STV_MBX_M3_4K_PAGE
+	bool "4K Page Size of Nand Flash"
+
+config STV_MBX_M3_2K_PAGE
+	bool "2K Page Size of Nand Flash"
+
+endchoice
+
 config MESON_CLOCK_TICK_RATE
     int "Clock Tick Rate"
 	default 25000000
