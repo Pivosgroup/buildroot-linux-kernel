@@ -1,0 +1,15 @@
+obj-$(CONFIG_AM_DEMOD)	+= aml_demod.o
+obj-$(CONFIG_AM_DEMOD)	+= demod_func.o
+obj-$(CONFIG_AM_DEMOD)	+= dvbt_func.o
+obj-$(CONFIG_AM_DEMOD)	+= dvbc_func.o
+obj-$(CONFIG_AM_DEMOD)	+= i2c_func.o
+obj-$(CONFIG_AM_DEMOD)	+= mxl/tuner_func.o
+obj-$(CONFIG_AM_DEMOD)	+= mxl/MxL5007.o
+obj-$(CONFIG_AM_DEMOD)	+= mxl/MxL5007_API.o
+obj-$(CONFIG_AM_DEMOD)	+= mxl/MxL_User_Define.o
+obj-$(CONFIG_AM_DEMOD)	+= nxp/tuner_fj2207.o
+obj-$(CONFIG_AM_DEMOD)	+= nxp/tmbslNT220x.o
+obj-$(CONFIG_AM_DEMOD)	+= nxp/tmbslNT220xInstance.o
+obj-$(CONFIG_AM_DEMOD)	+= nxp/tmddNT220x.o
+obj-$(CONFIG_AM_DEMOD)	+= nxp/tmddNT220xInstance.o
+obj-$(CONFIG_AM_DEMOD)	+= nxp/tmddNT220x_Advanced.o

@@ -1,0 +1,24 @@
+#
+# Video output configuration
+#
+menu "Amlogic video output module"
+
+config AM_TV_OUTPUT
+	tristate "TV output"
+	default y
+	help  
+		tv output module
+		
+config AM_TCON_OUTPUT
+	tristate "LCD output" 
+	help  
+		LCD output module
+
+config AML_TCON_T13
+	tristate "T13 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		T13 LCD panel module
+
+endmenu
+	

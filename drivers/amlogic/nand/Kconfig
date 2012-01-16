@@ -1,0 +1,17 @@
+#
+# Sensor device configuration
+#
+
+menu "AMLOGIC NAND Flash  support"
+
+config AM_NAND
+	bool "Amlogic NAND FLASH SUPPORT"
+	depends on ARCH_MESON || ARCH_MESON2
+	default y
+	select MTD_NAND 
+	select MTD_PARTITIONS
+	select MTD_BLOCK
+	select MTD_CHAR
+	help
+		This is Meson_M1 nand suport
+endmenu

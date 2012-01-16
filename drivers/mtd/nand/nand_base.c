@@ -96,7 +96,8 @@ static struct nand_ecclayout nand_oob_128 = {
 		 .length = 78}}
 };
 
-static int nand_get_device(struct nand_chip *chip, struct mtd_info *mtd,
+//static
+int nand_get_device(struct nand_chip *chip, struct mtd_info *mtd,
 			   int new_state);
 
 static int nand_do_write_oob(struct mtd_info *mtd, loff_t to,
@@ -114,7 +115,8 @@ DEFINE_LED_TRIGGER(nand_led_trigger);
  *
  * Deselect, release chip lock and wake up anyone waiting on the device
  */
-static void nand_release_device(struct mtd_info *mtd)
+//static 
+void nand_release_device(struct mtd_info *mtd)
 {
 	struct nand_chip *chip = mtd->priv;
 
@@ -608,8 +610,10 @@ static void nand_command_lp(struct mtd_info *mtd, unsigned int command,
 		/* Serially input address */
 		if (column != -1) {
 			/* Adjust columns for 16 bit buswidth */
-			if (chip->options & NAND_BUSWIDTH_16)
+			if (chip->options & NAND_BUSWIDTH_16){
 				column >>= 1;
+				BUG();
+			}
 			chip->cmd_ctrl(mtd, column, ctrl);
 			ctrl &= ~NAND_CTRL_CHANGE;
 			chip->cmd_ctrl(mtd, column >> 8, ctrl);
@@ -721,8 +725,8 @@ static void panic_nand_get_device(struct nand_chip *chip,
  *
  * Get the device and lock it for exclusive access
  */
-static int
-nand_get_device(struct nand_chip *chip, struct mtd_info *mtd, int new_state)
+//static 
+	int nand_get_device(struct nand_chip *chip, struct mtd_info *mtd, int new_state)
 {
 	spinlock_t *lock = &chip->controller->lock;
 	wait_queue_head_t *wq = &chip->controller->wq;
@@ -2587,7 +2591,7 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 	struct nand_flash_dev *type = NULL;
 	int i, dev_id, maf_idx;
 	int tmp_id, tmp_manf;
-
+	unsigned third_id;
 	/* Select the device */
 	chip->select_chip(mtd, 0);
 
@@ -2645,6 +2649,7 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 		int extid;
 		/* The 3rd id byte holds MLC / multichip data */
 		chip->cellinfo = chip->read_byte(mtd);
+		third_id=chip->cellinfo;
 		/* The 4th id byte is the important one */
 		extid = chip->read_byte(mtd);
 		/* Calc pagesize */
@@ -2658,6 +2663,36 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 		extid >>= 2;
 		/* Get buswidth information */
 		busw = (extid & 0x01) ? NAND_BUSWIDTH_16 : 0;
+		printk("Get NAND 3rd byte %d  writesize %d  oob size %d busw( 8 is 0)  %d \n", chip->cellinfo,mtd->writesize, 	mtd->oobsize,busw);
+
+		if((dev_id==0x68)||(dev_id==0x88))
+		{												
+			if((chip->ecc.size!=0)&&(chip->ecc.bytes!=0)&&(chip->phys_erase_shift!=0))
+			{
+				mtd->writesize=	chip->ecc.size;
+				mtd->oobsize=	chip->ecc.bytes;
+				mtd->erasesize=1<<(chip->phys_erase_shift);
+				busw=0;
+				printk("FIX NAND writesize %d  oob size %d erase size %d busw( 8 is 0)  %d \n",mtd->writesize, mtd->oobsize,mtd->erasesize,busw);
+			}else{
+			
+				BUG();
+			}
+		}else	if((dev_id==0xd7)&&(third_id==0x94))
+		{
+			if((chip->ecc.size!=0)&&(chip->ecc.bytes!=0)&&(chip->phys_erase_shift!=0))
+			{
+				mtd->writesize=	chip->ecc.size;
+				mtd->oobsize=	chip->ecc.bytes;
+				mtd->erasesize=1<<(chip->phys_erase_shift);
+				busw=0;
+				printk("FIX  24bit writesize %d  oob size %d erase size %d busw( 8 is 0)  %d \n",mtd->writesize, mtd->oobsize,mtd->erasesize,busw);
+			}	
+		}
+		
+		if(mtd->writesize!=chip->ecc.size)
+			BUG();
+
 
 	} else {
 		/*

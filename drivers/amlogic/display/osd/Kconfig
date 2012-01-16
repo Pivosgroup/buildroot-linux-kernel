@@ -1,0 +1,24 @@
+#
+# Frame buffer configuration
+#
+menu "Amlogic osd module"
+
+config FB_AM
+	tristate "Amlogic osd support"
+	depends on FB
+	select FB_CFB_FILLRECT
+	select FB_CFB_COPYAREA
+	select FB_CFB_IMAGEBLIT
+	select AM_CANVAS
+	help
+	  This is the frame buffer device driver.
+
+config FB_OSD2_ENABLE
+	bool "osd2 layer enable"
+	default y
+	depends on  FB_AM
+	help  
+		if enable osd2 then we will have two OSD op layer
+	
+		
+endmenu	

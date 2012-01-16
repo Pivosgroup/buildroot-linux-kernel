@@ -113,3 +113,5 @@ obj-$(CONFIG_VLYNQ)		+= vlynq/
 obj-$(CONFIG_STAGING)		+= staging/
 obj-y				+= platform/
 obj-y				+= ieee802154/
+obj-$(CONFIG_ARCH_MESON)	+= amlogic/
+obj-$(CONFIG_ARCH_MESON2)       += amlogic/

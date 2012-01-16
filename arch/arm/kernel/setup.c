@@ -66,7 +66,7 @@ __setup("fpe=", fpe_setup);
 
 extern void paging_init(struct machine_desc *desc);
 extern void reboot_setup(char *str);
-
+static __initdata struct machine_desc *init_mach_mdesc=NULL;
 unsigned int processor_id;
 EXPORT_SYMBOL(processor_id);
 unsigned int __machine_arch_type;
@@ -388,7 +388,6 @@ static struct machine_desc * __init setup_machine(unsigned int nr)
 static int __init arm_add_memory(unsigned long start, unsigned long size)
 {
 	struct membank *bank = &meminfo.bank[meminfo.nr_banks];
-
 	if (meminfo.nr_banks >= NR_BANKS) {
 		printk(KERN_CRIT "NR_BANKS too low, "
 			"ignoring memory at %#lx\n", start);
@@ -439,8 +438,31 @@ static int __init early_mem(char *p)
 	size  = memparse(p, &endp);
 	if (*endp == '@')
 		start = memparse(endp + 1, NULL);
-
-	arm_add_memory(start, size);
+#ifdef CONFIG_ARCH_MESON
+	{
+		/*64M-128M is reversed for VIDEO MEMORY*/
+		unsigned long vstart,vend;
+		if(	init_mach_mdesc &&
+			init_mach_mdesc->video_start>start &&
+			init_mach_mdesc->video_end>init_mach_mdesc->video_start)
+		{
+			vstart=init_mach_mdesc->video_start;
+			vend=init_mach_mdesc->video_end;
+			arm_add_memory(start, size>(vstart-start)?(vstart-start):size);
+			if(size>(vend-start))
+			{
+				arm_add_memory(vend+1,size-(vend-start+1));
+			}
+		}
+		else
+		{
+			arm_add_memory(start, size);
+		}
+		
+	}
+#else
+		arm_add_memory(start, size);
+#endif
 
 	return 0;
 }
@@ -495,7 +517,9 @@ request_standard_resources(struct meminfo *mi, struct machine_desc *mdesc)
 	if (mdesc->video_start) {
 		video_ram.start = mdesc->video_start;
 		video_ram.end   = mdesc->video_end;
+		#ifndef CONFIG_ARCH_MESON
 		request_resource(&iomem_resource, &video_ram);
+		#endif
 	}
 
 	/*
@@ -671,6 +695,7 @@ void __init setup_arch(char **cmdline_p)
 
 	setup_processor();
 	mdesc = setup_machine(machine_arch_type);
+	init_mach_mdesc=mdesc;
 	machine_name = mdesc->name;
 
 	if (mdesc->soft_reboot)

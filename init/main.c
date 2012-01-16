@@ -808,6 +808,13 @@ static void run_init_process(char *init_filename)
 	kernel_execve(init_filename, argv_init, envp_init);
 }
 
+void build_console(void)
+{
+        #define mknoddev(m,s) (m<<8|s)
+        printk(KERN_WARNING "Build the dev/console in kernel mode.\n");
+        sys_mknod("/dev/console",0660 | S_IFCHR,mknoddev(5,1));
+}
+
 /* This is a non __init function. Force it to be noinline otherwise gcc
  * makes it inline to init() and it becomes part of init.text section
  */
@@ -887,7 +894,14 @@ static int __init kernel_init(void * unused)
 
 	/* Open the /dev/console on the rootfs, this should never fail */
 	if (sys_open((const char __user *) "/dev/console", O_RDWR, 0) < 0)
-		printk(KERN_WARNING "Warning: unable to open an initial console.\n");
+		{
+		       build_console();
+                if (sys_open((const char __user *) "/dev/console", O_RDWR, 0) < 0)
+                                {
+                                printk(KERN_WARNING "Warning: unable to open an initial console.\n");
+                                }
+		//printk(KERN_WARNING "Warning: unable to open an initial console.\n");
+		}
 
 	(void) sys_dup(0);
 	(void) sys_dup(0);

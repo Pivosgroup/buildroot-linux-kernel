@@ -1,0 +1,10 @@
+#
+# Input device configuration
+#
+
+menu "Amlogic Input device support"
+
+source "drivers/amlogic/input/irremote/Kconfig"
+
+endmenu
+

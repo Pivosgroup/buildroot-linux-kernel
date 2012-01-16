@@ -1,0 +1,13 @@
+menu "Meson2 platform type"
+	depends on ARCH_MESON2
+
+config MACH_MESON2_7366M
+	bool "Support M2 7366 (machid=2956)"
+	help
+	  Include support for the AMLOGIC M2 7366M Emulation Baseboard platform.
+
+config MESON_CLOCK_TICK_RATE
+    int "Clock Tick Rate"
+	default 25000000
+
+endmenu

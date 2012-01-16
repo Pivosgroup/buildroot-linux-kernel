@@ -31,6 +31,9 @@ config ARM
 	  Europe.  There is an ARM Linux project with a web page at
 	  <http://www.arm.linux.org.uk/>.
 
+config HOLES_IN_ZONE
+        bool
+
 config HAVE_PWM
 	bool
 
@@ -233,6 +236,34 @@ config ARCH_AAEC2000
 	select HAVE_CLK
 	help
 	  This enables support for systems based on the Agilent AAEC-2000
+
+config ARCH_MESON
+	bool "Amlogic Meson series"
+	depends on MMU
+	select HOLES_IN_ZONE
+	select CPU_V7
+	select FIQ
+	select HAVE_CLK
+	select COMMON_CLKDEV
+	select ARCH_HAS_CPUFREQ
+	select GENERIC_TIME
+	select GENERIC_CLOCKEVENTS
+	help
+	  Amlogic Meson series based systems
+
+config ARCH_MESON2
+        bool "Amlogic Meson2 series"
+        depends on MMU
+        select HOLES_IN_ZONE
+        select CPU_V7
+        select FIQ
+        select HAVE_CLK
+        select COMMON_CLKDEV
+        select ARCH_HAS_CPUFREQ
+        select GENERIC_TIME
+        select GENERIC_CLOCKEVENTS
+        help
+          Amlogic Meson2 series based systems
 
 config ARCH_INTEGRATOR
 	bool "ARM Ltd. Integrator family"
@@ -850,6 +881,10 @@ source "arch/arm/mach-ks8695/Kconfig"
 source "arch/arm/mach-lh7a40x/Kconfig"
 
 source "arch/arm/mach-loki/Kconfig"
+
+source "arch/arm/mach-meson/Kconfig"
+
+source "arch/arm/mach-meson2/Kconfig"
 
 source "arch/arm/mach-msm/Kconfig"
 

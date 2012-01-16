@@ -1,0 +1,56 @@
+menu "Meson platform type"
+	depends on ARCH_MESON
+
+config MACH_MESON_6236M
+	bool "Support M1 6236(MODE:MBOX728) platform(machid=2951)"
+	help
+	  Include support for the AMLOGIC M1 6236M Emulation Baseboard platform.
+
+config MACH_MESON_8626M
+	bool "Support M1 8626(MBOX_8626M1_V1.0) platform(machid=2952)"
+	help
+	  Include support for the AMLOGIC M1 8626M Emulation Baseboard platform.
+
+config MACH_MESON_6236M_SH
+	bool "Support M1 6236(dpf_aml6236-m_innolux8_skt_v1) platform(machid=2953)"
+	help
+	  Include support for the AMLOGIC M1 6236M Emulation Baseboard platform.
+
+config MACH_MESON_8626M_SH
+	bool "Support M1 8626(mbx_aml8626-m_skt_v1) platform(machid=2954)"
+	help
+	  Include support for the AMLOGIC M1 8626M Emulation Baseboard platform.
+
+config MACH_MESON_8226M
+	bool "Support M1 8226(dvbc_8226m1_v1.0) platform(machid=2955)"
+	help
+	  Include support for the AMLOGIC M1 8226M Emulation Baseboard platform.
+
+config MACH_MESON_8726M
+	bool "Support M1 8726(mid_8726m1_v1.0) platform(machid=2956)"
+	help
+	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
+
+config MACH_MESON_8726M_ARM
+	bool "Support M1 8726(for arm board) platform(machid=2956)"
+	help
+	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
+
+choice
+	prompt "---Select Nand Flash Type---"
+	depends on MACH_MESON_8726M_ARM
+	default REFC01_4K_PAGE
+
+config REFC01_4K_PAGE
+	bool "4K Page Size of Nand Flash"
+
+config REFC01_2K_PAGE
+	bool "2K Page Size of Nand Flash"
+
+endchoice
+	  	  
+config MESON_CLOCK_TICK_RATE
+    int "Clock Tick Rate"
+	default 25000000
+
+endmenu

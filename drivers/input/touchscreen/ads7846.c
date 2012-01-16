@@ -728,6 +728,7 @@ static enum hrtimer_restart ads7846_timer(struct hrtimer *handle)
 			enable_irq(ts->spi->irq);
 		}
 		ts->pending = 0;
+		printk(KERN_INFO "ads7846 lift up\n");
 	} else {
 		/* pen is still down, continue with the measurement */
 		ts->msg_idx = 0;
@@ -754,6 +755,7 @@ static irqreturn_t ads7846_irq(int irq, void *handle)
 			 * even after they've been disabled.  We work around
 			 * that here.  (The "generic irq" framework may help...)
 			 */
+			printk(KERN_INFO "ads7846 press down\n");
 			ts->irq_disabled = 1;
 			disable_irq_nosync(ts->spi->irq);
 			ts->pending = 1;
@@ -1178,13 +1180,13 @@ static int __devinit ads7846_probe(struct spi_device *spi)
 			spi->dev.driver->name, ts)) {
 		dev_info(&spi->dev,
 			"trying pin change workaround on irq %d\n", spi->irq);
-		err = request_irq(spi->irq, ads7846_irq,
-				  IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
-				  spi->dev.driver->name, ts);
-		if (err) {
-			dev_dbg(&spi->dev, "irq %d busy?\n", spi->irq);
-			goto err_disable_regulator;
-		}
+//		err = request_irq(spi->irq, ads7846_irq,
+//				  IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
+//				  spi->dev.driver->name, ts);
+//		if (err) {
+//			dev_dbg(&spi->dev, "irq %d busy?\n", spi->irq);
+//			goto err_disable_regulator;
+//		}
 	}
 
 	err = ads784x_hwmon_register(spi, ts);
@@ -1208,7 +1210,7 @@ static int __devinit ads7846_probe(struct spi_device *spi)
 		goto err_remove_attr_group;
 
 	device_init_wakeup(&spi->dev, pdata->wakeup);
-
+	printk(KERN_INFO "ads7846 probe ok\n");	
 	return 0;
 
  err_remove_attr_group:
@@ -1231,6 +1233,7 @@ static int __devinit ads7846_probe(struct spi_device *spi)
 	input_free_device(input_dev);
 	kfree(packet);
 	kfree(ts);
+	printk(KERN_INFO "ads7846 probe error\n");	
 	return err;
 }
 

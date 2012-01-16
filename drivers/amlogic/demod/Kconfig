@@ -1,0 +1,8 @@
+menu "AMLOGIC DEMOD Support"
+
+config AM_DEMOD
+	bool "Amlogic Demod Support"
+	default n
+	help
+		m1 internal Demod DVB-T/C suport
+endmenu

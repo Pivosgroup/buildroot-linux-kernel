@@ -346,8 +346,10 @@ params:		ldr	r0, =params_phys
  *  r4, r5, r6, r7, r8
  */
 		.align	5
-cache_on:	mov	r3, #8			@ cache_on function
-		b	call_cache_fn
+cache_on:
+		b __armv7_mmu_cache_on
+		;mov	r3, #8			@ cache_on function
+		;b	call_cache_fn
 
 /*
  * Initialize the highest priority protection region, PR7

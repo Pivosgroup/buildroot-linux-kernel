@@ -252,6 +252,22 @@ config USB_PXA25X_SMALL
 	default y if USB_ETH
 	default y if USB_G_SERIAL
 
+config USB_GADGET_DWC_OTG
+	boolean "Amlogic DWC OTG controller"
+	depends on USB_DWC_OTG_HCD
+	help
+	  The Amlogic DWC OTG is the HS/FS USB controller.
+
+		Say "y" to link the driver statically, or "m" to build a
+	   dynamically linked module called "dwc_otg_pcd" and force all
+	   gadget drivers to also be dynamically linked.
+	  	
+config USB_DWC_OTG
+	tristate
+	depends on USB_GADGET_DWC_OTG
+	default USB_GADGET
+	select USB_GADGET_SELECTED	
+
 config USB_GADGET_R8A66597
 	boolean "Renesas R8A66597 USB Peripheral Controller"
 	select USB_GADGET_DUALSPEED
