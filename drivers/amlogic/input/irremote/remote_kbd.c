@@ -72,20 +72,21 @@ typedef  struct {
 	unsigned int  bit;
 }pin_config_t;
 static  pin_config_t  pin_config[]={
-#if defined(CONFIG_MACH_MESON_8626M)	
 		{
 			.platform_name="8626",
 			.pin_mux=1,
 			.bit=(1<<31),
 		},
-#endif
-#if  defined(CONFIG_MACH_MESON_6236M)	
 		{
 			.platform_name="6236",
-			.pin_mux=1,
+			.pin_mux=5,
 			.bit=(1<<31),
 		},
-#endif
+		{
+			.platform_name="8726",
+			.pin_mux=5,
+			.bit=(1<<31),
+		},
 } ;
 
 static __u16 key_map[256];
@@ -169,10 +170,10 @@ void kp_send_key(struct input_dev *dev, unsigned int scancode, unsigned int type
                 input_dbg("release ircode = 0x%02x, scancode = 0x%04x\n", scancode, key_map[scancode]);
                 break;
             case 1 :
-                input_dbg("press ircode = 0x%02x, scancode = 0x%04x\n", scancode, key_map[scancode]);
+                input_dbg("press   ircode = 0x%02x, scancode = 0x%04x\n", scancode, key_map[scancode]);
                 break;
             case 2 :
-                input_dbg("repeat ircode = 0x%02x, scancode = 0x%04x\n", scancode, key_map[scancode]);
+                input_dbg("repeat  ircode = 0x%02x, scancode = 0x%04x\n", scancode, key_map[scancode]);
                 break;
             }
         }
@@ -213,7 +214,7 @@ static inline int kp_hw_reprot_key(struct kp *kp_data )
         last_custom_code=scan_code&0xffff;
         if(kp_data->custom_code != last_custom_code )
         {
-               input_dbg("Wrong custom code is 0x%08x\n", scan_code);
+               input_dbg("Wrong custom code is 0x%08x should be 0x%08x\n", scan_code, kp_data->custom_code);
             return -1;
         }
         if(kp_data->timer.expires > jiffies){
@@ -332,7 +333,10 @@ static int    hardware_init(struct platform_device *pdev)
 			break;
 		}
 	}
-	if(NULL==config)  return -1;
+	if(NULL==config){
+		printk("can not get pin_config for remote keybrd.\n");
+		return -1;
+	}
 	set_mio_mux(config->pin_mux,config->bit); 	
     //step 1 :set reg IR_DEC_CONTROL
     	control_value = 3<<28|(0xFA0 << 12) |0x13;
@@ -681,7 +685,7 @@ static int __init kp_probe(struct platform_device *pdev)
     printk("physical address:0x%x\n",(unsigned int )virt_to_phys(remote_log_buf));
     return 0;
 err3:
-     free_irq(NEC_REMOTE_IRQ_NO,kp_interrupt);
+    //free_irq(NEC_REMOTE_IRQ_NO,kp_interrupt);
     input_unregister_device(kp->input);
     input_dev = NULL;
 err2:
