@@ -47,8 +47,12 @@
 #include <linux/amlog.h>
 #include <mach/power_gate.h>
 
-static disp_module_info_t *info;
+
+
+static    disp_module_info_t    *info;
+
 SET_TV_CLASS_ATTR(vdac_setting,parse_vdac_setting)
+
 
 /*****************************
 *	default settings :
@@ -63,19 +67,9 @@ SET_TV_CLASS_ATTR(vdac_setting,parse_vdac_setting)
 
 static const tvmode_t vmode_tvmode_tab[] =
 {
-	TVMODE_480I,
-	TVMODE_480CVBS,
-	TVMODE_480P,
-	TVMODE_576I,
-	TVMODE_576CVBS,
-	TVMODE_576P,
-	TVMODE_720P,
-	TVMODE_720P_50HZ,
-	TVMODE_1080I,
-	TVMODE_1080I_50HZ,
-	TVMODE_1080P,
-	TVMODE_1080P_50HZ,
+	TVMODE_480I, TVMODE_480CVBS,TVMODE_480P, TVMODE_576I,TVMODE_576CVBS, TVMODE_576P, TVMODE_720P, TVMODE_1080I, TVMODE_1080P
 };
+
 
 static const vinfo_t tv_info[] = 
 {
@@ -90,7 +84,7 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 60,
         .sync_duration_den = 1,
     },
-    { /* VMODE_480CVBS*/
+     { /* VMODE_480CVBS*/
 		.name              = "480cvbs",
 		.mode              = VMODE_480CVBS,
         .width             = 720,
@@ -123,7 +117,7 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 50,
         .sync_duration_den = 1,
     },
-    { /* VMODE_576CVBS */
+    { /* VMODE_576I */
 		.name              = "576cvbs",
 		.mode              = VMODE_576CVBS,
         .width             = 720,
@@ -156,17 +150,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 60,
         .sync_duration_den = 1,
     },
-    { /* VMODE_720P_50hz */
-		.name              = "720p50hz",
-		.mode              = VMODE_720P_50HZ,
-        .width             = 1280,
-        .height            = 720,
-        .field_height      = 720,
-        .aspect_ratio_num  = 16,
-        .aspect_ratio_den  = 9,
-        .sync_duration_num = 50,
-        .sync_duration_den = 1,
-    },
     { /* VMODE_1080I */
 		.name              = "1080i",
 		.mode              = VMODE_1080I,
@@ -176,17 +159,6 @@ static const vinfo_t tv_info[] =
         .aspect_ratio_num  = 16,
         .aspect_ratio_den  = 9,
         .sync_duration_num = 60,
-        .sync_duration_den = 1,
-    },
-    { /* VMODE_1080I_50HZ */
-		.name              = "1080i50hz",
-		.mode              = VMODE_1080I_50HZ,
-        .width             = 1920,
-        .height            = 1080,
-        .field_height      = 540,
-        .aspect_ratio_num  = 16,
-        .aspect_ratio_den  = 9,
-        .sync_duration_num = 50,
         .sync_duration_den = 1,
     },
     { /* VMODE_1080P */
@@ -200,45 +172,29 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 60,
         .sync_duration_den = 1,
     },
-    { /* VMODE_1080P_50HZ */
-		.name              = "1080p50hz",
-		.mode              = VMODE_1080P_50HZ,
-        .width             = 1920,
-        .height            = 1080,
-        .field_height      = 1080,
-        .aspect_ratio_num  = 16,
-        .aspect_ratio_den  = 9,
-        .sync_duration_num = 50,
-        .sync_duration_den = 1,
-    },
 };
 
 static const struct file_operations am_tv_fops = {
-	.open    = NULL,  
-	.read    = NULL,
-	.write   = NULL, 
-	.ioctl   = NULL,
-	.release = NULL, 	
-	.poll    = NULL,
+	.open	= NULL,  
+	.read	= NULL,//am_tv_read, 
+	.write	= NULL, 
+	.ioctl	= NULL,//am_tv_ioctl, 
+	.release	= NULL, 	
+	.poll		= NULL,
 };
 
 static const vinfo_t *get_valid_vinfo(char  *mode)
 {
-	const vinfo_t * vinfo = NULL;
 	int  i,count=ARRAY_SIZE(tv_info);
-	int mode_name_len=0;
 	
 	for(i=0;i<count;i++)
 	{
 		if(strncmp(tv_info[i].name,mode,strlen(tv_info[i].name))==0)
 		{
-			if((vinfo==NULL)||(strlen(tv_info[i].name)>mode_name_len)){
-			    vinfo = &tv_info[i];
-			    mode_name_len = strlen(tv_info[i].name);
-			}
+			return &tv_info[i];
 		}
 	}
-	return vinfo;
+	return NULL;
 }
 
 static const vinfo_t *tv_get_current_info(void)
@@ -248,11 +204,13 @@ static const vinfo_t *tv_get_current_info(void)
 
 static int tv_set_current_vmode(vmode_t mod)
 {
-	if (mod > VMODE_1080P_50HZ)
+	if ((mod&VMODE_MODE_BIT_MASK)> VMODE_1080P )
 		return -EINVAL;
 
-	tvoutc_setmode(vmode_tvmode_tab[mod]);
 	info->vinfo = &tv_info[mod];
+	if(mod&VMODE_LOGO_BIT_MASK)  return 0;
+
+	tvoutc_setmode(vmode_tvmode_tab[mod]);
 	change_vdac_setting(get_current_vdac_setting(),mod);
 	return 0;
 }
@@ -269,7 +227,7 @@ static vmode_t tv_validate_vmode(char *mode)
 static int tv_vmode_is_supported(vmode_t mode)
 {
 	int  i,count=ARRAY_SIZE(tv_info);
-	
+	mode&=VMODE_MODE_BIT_MASK;
 	for(i=0;i<count;i++)
 	{
 		if(tv_info[i].mode==mode)
@@ -279,7 +237,11 @@ static int tv_vmode_is_supported(vmode_t mode)
 	}
 	return false;
 }
-
+static int tv_module_disable(vmode_t cur_vmod)
+{
+	video_dac_disable();
+	return 0;
+}
 #ifdef  CONFIG_PM
 static int tv_suspend(void)
 {
@@ -289,7 +251,9 @@ static int tv_suspend(void)
 static int tv_resume(void)
 {
 	video_dac_enable(0xff);
+#ifndef CONFIG_SUSPEND
 	tv_set_current_vmode(info->vinfo->mode);
+#endif
 	return 0;
 }
 #endif 
@@ -300,6 +264,7 @@ static vout_server_t tv_server={
 		.set_vmode=tv_set_current_vmode,
 		.validate_vmode=tv_validate_vmode,
 		.vmode_is_supported=tv_vmode_is_supported,
+		.disable = tv_module_disable,
 #ifdef  CONFIG_PM  
 		.vout_suspend=tv_suspend,
 		.vout_resume=tv_resume,
@@ -426,7 +391,7 @@ static __exit void tv_exit_module(void)
 }
 
 
-subsys_initcall(tv_init_module);
+arch_initcall(tv_init_module);
 module_exit(tv_exit_module);
 
 MODULE_DESCRIPTION("display configure  module");

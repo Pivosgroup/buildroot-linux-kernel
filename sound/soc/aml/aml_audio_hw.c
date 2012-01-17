@@ -24,8 +24,8 @@ static unsigned dac_reset_flag = 0;
 int  audio_in_buf_ready = 0;
 int audio_out_buf_ready = 0;
 
-//extern int in_error_flag;
-//extern int in_error;
+extern int in_error_flag;
+extern int in_error;
 
 /*
                                 fIn * (M)          
@@ -136,8 +136,8 @@ void audio_in_i2s_set_buf(u32 addr, u32 size)
 				  );															
     audio_in_buf_ready = 1;
 
-//    in_error_flag = 0;
-//    in_error = 0;
+    in_error_flag = 0;
+    in_error = 0;
 }
 void audio_in_spdif_set_buf(u32 addr, u32 size)
 {
@@ -161,9 +161,9 @@ reset_again:
 		}else{
 				WRITE_MPEG_REG_BITS(AUDIN_I2SIN_CTRL, 0, I2SIN_EN, 1);
 		}
-        //in_error_flag = 0;
-        //in_error = 0;
-        //audio_in_enabled(flag);
+        in_error_flag = 0;
+        in_error = 0;
+        audio_in_enabled(flag);
 }
 
 int if_audio_in_i2s_enable()
@@ -397,7 +397,7 @@ void audio_enable_ouput(int flag)
         }
         audio_i2s_mute();
     }
-    //audio_out_enabled(flag);
+    audio_out_enabled(flag);
 }
 
 int if_audio_out_enable()

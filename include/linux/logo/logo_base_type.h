@@ -43,6 +43,7 @@ struct logo_input_para{
 	logo_display_mode_t dis_mode; 
 	vmode_t vout_mode;
 	int	progress;
+	int	loaded;
 };
 typedef struct logo_input_para logo_input_para_t ;
 typedef  struct {

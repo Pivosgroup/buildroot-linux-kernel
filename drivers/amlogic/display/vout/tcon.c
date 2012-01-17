@@ -29,8 +29,12 @@
 #include <linux/vout/vinfo.h>
 #include <linux/vout/vout_notify.h>
 #include <linux/kernel.h>
-
+#include <linux/interrupt.h>
+#include <linux/logo/logo.h>
 #include <mach/am_regs.h>
+#include <asm/fiq.h>
+
+#define FIQ_VSYNC
 
 #define BL_MAX_LEVEL 0x100
 #define PANEL_NAME	"panel"
@@ -141,10 +145,10 @@ static inline void _init_tvenc(tcon_conf_t *pConf)
     WRITE_MPEG_REG(ENCP_VIDEO_FILT_CTRL,    0x1000);
     WRITE_MPEG_REG(VENC_DVI_SETTING,        0x11);
   
-    WRITE_MPEG_REG(HHI_AUD_PLL_CNTL, pConf->pll_ctrl);
+    WRITE_MPEG_REG(HHI_VID_PLL_CNTL, pConf->pll_ctrl);
     WRITE_MPEG_REG(HHI_VID_CLK_CNTL, pConf->clk_ctrl);
     WRITE_MPEG_REG(HHI_VID_CLK_DIV, (pConf->clk_ctrl)&0xf);
-    WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL, READ_MPEG_REG(HHI_MPEG_CLK_CNTL)|(1<<11));  //[11]=1:aud clk mux to cph 
+    WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL, READ_MPEG_REG(HHI_MPEG_CLK_CNTL)|(0<<11));  //[11]=1:aud clk mux to cph 
 
     WRITE_MPEG_REG(ENCP_VIDEO_MODE,         0x0040);
     WRITE_MPEG_REG(ENCP_VIDEO_MODE_ADV,     0x418);
@@ -179,14 +183,14 @@ static inline void _init_tvenc(tcon_conf_t *pConf)
     WRITE_MPEG_REG(VENC_VIDEO_PROG_MODE,    0x100);
     WRITE_MPEG_REG(ENCP_VIDEO_EN, 1);
 
-    WRITE_MPEG_REG(VPP_POSTBLEND_VD1_H_START_END,		pConf->width);
+//    WRITE_MPEG_REG(VPP_POSTBLEND_VD1_H_START_END,		pConf->width);
 }
 
 static inline void _enable_vsync_interrupt(void)
 {
     if (READ_MPEG_REG(ENCP_VIDEO_EN) & 1) {
         WRITE_MPEG_REG(VENC_INTCTRL, 0x200);
-
+#if 0
         while ((READ_MPEG_REG(VENC_INTFLAG) & 0x200) == 0) {
             u32 line1, line2;
 
@@ -219,21 +223,27 @@ static inline void _enable_vsync_interrupt(void)
             READ_MPEG_REG(VENC_INTFLAG);
             READ_MPEG_REG(VENC_INTFLAG);
         }
+#endif
     }
     else{
         WRITE_MPEG_REG(VENC_INTCTRL, 0x2);
     }
 }
-
 static void _enable_backlight(u32 brightness_level)
 {
-	u32 l = brightness_level;
-	
-	if (l > BL_MAX_LEVEL)
-		l = BL_MAX_LEVEL;
-		
-    WRITE_MPEG_REG(LCD_PWM0_LO_ADDR, BL_MAX_LEVEL - l);
-    WRITE_MPEG_REG(LCD_PWM0_HI_ADDR, l);
+    pDev->conf.backlight_on?pDev->conf.backlight_on():0;
+}
+static void _disable_backlight(void)
+{
+    pDev->conf.backlight_off?pDev->conf.backlight_off():0;
+}
+static void _lcd_module_enable(void)
+{
+    BUG_ON(pDev==NULL);
+    pDev->conf.power_on?pDev->conf.power_on():0;
+    _init_tvenc(&pDev->conf);
+    	_init_tcon(&pDev->conf);
+    	_enable_vsync_interrupt();
 }
 
 static const vinfo_t *lcd_get_current_info(void)
@@ -244,8 +254,13 @@ static const vinfo_t *lcd_get_current_info(void)
 static int lcd_set_current_vmode(vmode_t mode)
 {
 	if (mode != VMODE_LCD)
-		return -EINVAL;
-	WRITE_MPEG_REG(VPP_POSTBLEND_H_SIZE, pDev->lcd_info.width);
+        return -EINVAL;
+    WRITE_MPEG_REG(VPP_POSTBLEND_H_SIZE, pDev->lcd_info.width);
+    _lcd_module_enable();
+    if (VMODE_INIT_NULL == pDev->lcd_info.mode)
+        pDev->lcd_info.mode = VMODE_LCD;
+    else
+        _enable_backlight(BL_MAX_LEVEL);
 	return 0;
 }
 
@@ -258,25 +273,33 @@ static vmode_t lcd_validate_vmode(char *mode)
 }
 static int lcd_vmode_is_supported(vmode_t mode)
 {
-	if(mode == VMODE_LCD)
+	mode&=VMODE_MODE_BIT_MASK;
+	if(mode == VMODE_LCD )
 	return true;
 	return false;
+}
+static int lcd_module_disable(vmode_t cur_vmod)
+{
+	BUG_ON(pDev==NULL);
+    _disable_backlight();
+	pDev->conf.power_off?pDev->conf.power_off():0;
+	return 0;
 }
 #ifdef  CONFIG_PM
 static int lcd_suspend(void)
 {
 	BUG_ON(pDev==NULL);
+    printk("lcd_suspend \n");
+    _disable_backlight();
 	pDev->conf.power_off?pDev->conf.power_off():0;
+
 	return 0;
 }
 static int lcd_resume(void)
 {
-	BUG_ON(pDev==NULL);
-	pDev->conf.power_on?pDev->conf.power_on():0;
-	_init_tvenc(&pDev->conf);
-    	_init_tcon(&pDev->conf);
-       	_enable_backlight(BL_MAX_LEVEL);
-    	_enable_vsync_interrupt();
+	printk("lcd_resume\n");
+	_lcd_module_enable();
+    _enable_backlight(BL_MAX_LEVEL);
 	return 0;
 }
 #endif
@@ -287,6 +310,7 @@ static vout_server_t lcd_vout_server={
 		.set_vmode = lcd_set_current_vmode,
 		.validate_vmode = lcd_validate_vmode,
 		.vmode_is_supported=lcd_vmode_is_supported,
+		.disable=lcd_module_disable,
 #ifdef  CONFIG_PM  
 		.vout_suspend=lcd_suspend,
 		.vout_resume=lcd_resume,
@@ -297,7 +321,7 @@ static vout_server_t lcd_vout_server={
 static void _init_vout(tcon_dev_t *pDev)
 {
 	pDev->lcd_info.name = PANEL_NAME;
-	pDev->lcd_info.mode = VMODE_LCD;
+    pDev->lcd_info.mode = VMODE_INIT_NULL;
 	pDev->lcd_info.width = pDev->conf.width;
 	pDev->lcd_info.height = pDev->conf.height;
 	pDev->lcd_info.field_height = pDev->conf.height;
@@ -311,11 +335,13 @@ static void _init_vout(tcon_dev_t *pDev)
 
 static void _tcon_init(tcon_conf_t *pConf)
 {
-    _init_tvenc(pConf);
-    _init_tcon(pConf);
-    _init_vout(pDev);
-    _enable_backlight(BL_MAX_LEVEL);
-    _enable_vsync_interrupt();
+	logo_object_t  *init_logo_obj=NULL;
+
+	
+	_init_vout(pDev);
+	init_logo_obj = get_current_logo_obj();	
+	if(NULL==init_logo_obj ||!init_logo_obj->para.loaded)
+    	_lcd_module_enable();
 }
 
 static int tcon_probe(struct platform_device *pdev)

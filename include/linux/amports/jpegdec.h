@@ -28,6 +28,7 @@
 #define JPEGDEC_IOC_DECCONFIG	_IOW(JPEGDEC_IOC_MAGIC, 0x01, unsigned int)
 #define JPEGDEC_IOC_INFO		_IOW(JPEGDEC_IOC_MAGIC, 0x02, unsigned int)
 #define JPEGDEC_IOC_STAT		_IOW(JPEGDEC_IOC_MAGIC, 0x03, unsigned int)
+#define JPEGDEC_G_MEM_INFO		_IOW(JPEGDEC_IOC_MAGIC, 0x04, unsigned int)
 
 #define JPEGDEC_OPT_THUMBNAIL_ONLY		0x01
 #define JPEGDEC_OPT_THUMBNAIL_PREFERED	0x02
@@ -79,6 +80,14 @@ typedef struct {
 	unsigned comp_num;
 	unsigned type;
 } jpegdec_info_t;
+
+typedef struct {
+	jpegdec_angle_t	angle;
+	unsigned	dec_w;
+	unsigned	dec_h;
+	unsigned canv_addr;
+	unsigned canv_len;
+}  jpegdec_mem_info_t;
 
 #endif /* JPEGDEC_H */
 

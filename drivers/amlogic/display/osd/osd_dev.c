@@ -114,7 +114,37 @@ int osddev_setcolreg(unsigned regno, u16 red, u16 green, u16 blue,
 }
 void osddev_init(void)
 {
-	osd_init_hw();
+	osd_init_hw(0);
+}
+u32	osddev_get_osd_order(u32 index)
+{
+	return osd_get_osd_order_hw(index);
+}
+void osddev_change_osd_order(u32 index,u32 order)
+{
+	osd_change_osd_order_hw(index,order);
+}
+void osddev_free_scale_enable(u32 index ,u32 enable)
+{
+	//at present we only support osd1 & osd2 have the same random scale mode.
+	osd_free_scale_enable_hw(index,enable);
+	
+}
+void osddev_free_scale_width(u32 index ,u32 width)
+{
+	//at present we only support osd1 & osd2 have the same random scale mode.
+	osd_free_scale_width_hw(index,width);
+	
+}
+void osddev_free_scale_height(u32 index ,u32 height)
+{
+	//at present we only support osd1 & osd2 have the same random scale mode.
+	osd_free_scale_height_hw(index,height);
+	
+}
+void osddev_enable_3d_mode(u32 index ,u32 enable)
+{
+	osd_enable_3d_mode_hw(index,enable);
 }
 void osddev_set_2x_scale(u32 index,u16 h_scale_enable,u16 v_scale_enable)
 {
@@ -129,6 +159,16 @@ void osddev_pan_display(struct fb_var_screeninfo *var,struct fb_info *fbi)
 {
     osd_pan_display_hw(var->xoffset, var->yoffset,fbi->node);
 }
+
+#if defined(CONFIG_FB_OSD2_CURSOR)
+void osddev_cursor(struct myfb_dev *fbdev, s16 x, s16 y, s16 xstart, s16 ystart, u32 osd_w, u32 osd_h)
+{
+    fbdev_lock(fbdev);
+    osd_cursor_hw(x, y, xstart, ystart, osd_w, osd_h, fbdev->fb_info->node);
+    fbdev_unlock(fbdev);
+}
+#endif
+
 void  osddev_set_colorkey(u32 index,u32 bpp,u32 colorkey )
 {
 	osd_set_colorkey_hw( index, bpp, colorkey );

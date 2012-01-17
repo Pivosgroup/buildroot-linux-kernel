@@ -36,7 +36,7 @@
 #include <linux/amports/timestamp.h>
 #include <linux/amports/tsync.h>
 
-
+extern void tsync_pcr_recover(void);extern void tsync_pcr_recover(void);
 
 MODULE_DESCRIPTION("AMLOGIC APOLLO Audio dsp driver");
 MODULE_LICENSE("GPL");
@@ -81,18 +81,14 @@ static void audiodsp_prevent_sleep(void)
 {
     struct audiodsp_priv* priv = audiodsp_privdata();
     printk("audiodsp prevent sleep\n");
-#ifdef CONFIG_PM
     wake_lock(&priv->wakelock);
-#endif
 }
 
 static void audiodsp_allow_sleep(void)
 {
     struct audiodsp_priv *priv=audiodsp_privdata();
     printk("audiodsp allow sleep\n");
-#ifdef CONFIG_PM
     wake_unlock(&priv->wakelock);
-#endif
 }
 
 int audiodsp_start(void)
@@ -129,7 +125,9 @@ int audiodsp_start(void)
 	   (pmcode->fmt == MCODEC_FMT_PCM)  ||
 	   (pmcode->fmt == MCODEC_FMT_WMAPRO)||
 	   (pmcode->fmt == MCODEC_FMT_ALAC)||
-	  (pmcode->fmt == MCODEC_FMT_AC3))
+	  (pmcode->fmt == MCODEC_FMT_AC3) ||
+	  (pmcode->fmt == MCODEC_FMT_FLAC))
+
 	{
 		DSP_PRNT("dsp send audio info\n");
     		for(i = 0; i< 2000;i++){
@@ -143,7 +141,14 @@ int audiodsp_start(void)
 		    audio_info = get_audio_info();
 		DSP_PRNT("kernel sent info first 4 byte[0x%x],[0x%x],[0x%x],[0x%x]\n\t",audio_info->extradata[0],\
 			audio_info->extradata[1],audio_info->extradata[2],audio_info->extradata[3]);
+		DSP_WD(DSP_GET_EXTRA_INFO_FINISH, 0);
+		while(1){
 		    dsp_mailbox_send(priv, 1, M2B_IRQ4_AUDIO_INFO, 0, (const char*)audio_info, sizeof(struct audio_info));
+		    msleep(100);
+
+		    if(DSP_RD(DSP_GET_EXTRA_INFO_FINISH) == 0x12345678)
+		        break;
+		}
     }
 #endif
      }
@@ -168,7 +173,9 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 	unsigned long pts;
 	int ret=0;
 	unsigned long *val=(unsigned long *)args;
-	
+#ifdef ENABLE_WAIT_FORMAT
+	static wait_format_times=0;
+#endif	
 	switch(cmd)
 		{
 		case AUDIODSP_SET_FMT:
@@ -193,6 +200,94 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 			priv->decoded_nb_frames = 0;
 			priv->format_wait_count = 0;
 			break;
+#ifdef ENABLE_WAIT_FORMAT
+		case AUDIODSP_DECODE_START:			
+			if(priv->dsp_is_started)
+				{
+				dsp_codec_start(priv);
+				wait_format_times=0;
+				}
+			else
+				{
+				DSP_PRNT("Audio dsp have not started\n");
+				}			
+			break;
+		case AUDIODSP_WAIT_FORMAT:
+			if(priv->dsp_is_started)
+				{
+				struct audio_info *audio_format;
+				int ch = 0;
+				audio_format = get_audio_info();
+				
+				wait_format_times++;
+				
+				if(wait_format_times>100){
+					int audio_info = DSP_RD(DSP_AUDIO_FORMAT_INFO);
+					if(audio_info){
+						priv->frame_format.channel_num = audio_info&0xf;
+						if(priv->frame_format.channel_num)
+							priv->frame_format.valid |= CHANNEL_VALID;
+						priv->frame_format.data_width= (audio_info>>4)&0x3f;
+						if(priv->frame_format.data_width)
+							priv->frame_format.valid |= DATA_WIDTH_VALID;
+						priv->frame_format.sample_rate = (audio_info>>10);
+						if(priv->frame_format.sample_rate)
+							priv->frame_format.valid |= SAMPLE_RATE_VALID;
+						DSP_PRNT("warning::got info from mailbox failed,read from regiser\n");
+						ret = -EAGAIN;
+					}else{
+						DSP_PRNT("dsp have not set the codec stream's format details,valid=%x\n",
+						priv->frame_format.valid);		
+						priv->format_wait_count++;
+						if(priv->format_wait_count > 5){						
+							if(audio_format->channels&&audio_format->sample_rate){
+								priv->frame_format.channel_num = audio_format->channels>2?2:audio_format->channels;
+								priv->frame_format.sample_rate = audio_format->sample_rate;
+								priv->frame_format.data_width = 16;
+								priv->frame_format.valid = CHANNEL_VALID|DATA_WIDTH_VALID|SAMPLE_RATE_VALID;
+								DSP_PRNT("we have not got format details from dsp,so use the info got from the header parsed instead\n");
+								ret = 0;
+							}else{
+								ret = -1;
+							}
+						}else{
+							ret=-1;
+						}
+					}
+				}else if(priv->frame_format.valid == (CHANNEL_VALID|DATA_WIDTH_VALID|SAMPLE_RATE_VALID)){
+					       DSP_PRNT("audio info from header: sr %d,ch %d\n",audio_format->sample_rate,audio_format->channels);
+						if(audio_format->channels > 0 ){
+							if(audio_format->channels > 2)
+								ch = 2;
+							else
+								ch = audio_format->channels;
+							if(ch != priv->frame_format.channel_num){
+								DSP_PRNT(" ch num info from dsp and header not match,[dsp %d ch],[header %d ch]", \
+									priv->frame_format.channel_num,ch);
+								priv->frame_format.channel_num = ch;
+							}	
+							
+						}
+						if(audio_format->sample_rate&&audio_format->sample_rate != priv->frame_format.sample_rate){
+								DSP_PRNT(" sr num info from dsp and header not match,[dsp %d ],[header %d ]", \
+									priv->frame_format.sample_rate,audio_format->sample_rate);
+							priv->frame_format.sample_rate  = audio_format->sample_rate;
+						}
+						DSP_PRNT("applied audio sr %d,ch num %d\n",priv->frame_format.sample_rate,priv->frame_format.channel_num);
+						
+						/*Reset the PLL. Added by GK*/
+						tsync_pcr_recover();
+				}
+				else{
+					ret = -EAGAIN;
+				}
+				}
+			else
+				{
+				DSP_PRNT("Audio dsp have not started\n");
+				}			
+			break;
+#else /*!defined(ENABLE_WAIT_FORMAT)*/
 		case AUDIODSP_DECODE_START:			
 			if(priv->dsp_is_started)
 				{
@@ -265,13 +360,15 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 						}
 						DSP_PRNT("applied audio sr %d,ch num %d\n",priv->frame_format.sample_rate,priv->frame_format.channel_num);
 				}
-				
+				/*Reset the PLL. Added by GK*/
+				tsync_pcr_recover();
 				}
 			else
 				{
 				DSP_PRNT("Audio dsp have not started\n");
 				}			
 			break;
+#endif /*ENABLE_WAIT_FORMAT*/
 		case AUDIODSP_DECODE_STOP:
 			if(priv->dsp_is_started)
 				{
@@ -424,8 +521,8 @@ ssize_t audiodsp_read(struct file * file, char __user * ubuf, size_t size,
 
 
 
-	#define MIN_READ	4	// 2 channel * 2 bytes per sample
-	#define PCM_DATA_MIN	4
+	#define MIN_READ	2	// 1 channel * 2 bytes per sample
+	#define PCM_DATA_MIN	2
 	#define PCM_DATA_ALGIN(x) (x & (~(PCM_DATA_MIN-1)))
 	#define MAX_WAIT		HZ/10
 	
@@ -712,9 +809,7 @@ int audiodsp_probe(void )
 		}
 	audiodsp_init_mailbox(priv);
 	init_audiodsp_monitor(priv);
-#ifdef CONFIG_PM
 	wake_lock_init(&priv->wakelock,WAKE_LOCK_SUSPEND, "audiodsp");
-#endif
 #ifdef CONFIG_AM_STREAMING	
 	set_adec_func(audiodsp_get_status);
 #endif

@@ -43,6 +43,7 @@ obj-$(CONFIG_CARDREADER) += cardreader/
 obj-$(CONFIG_MALI) += mali/
 
 obj-$(CONFIG_AML_AUDIO_DSP) += audiodsp/
+obj-$(CONFIG_AML_AUDIO_DSP_LOG) += audiodsplog/
 
 obj-$(CONFIG_AML_RTC)+= rtc/
 
@@ -51,7 +52,7 @@ obj-y += tvin/
 obj-$(CONFIG_EFUSE)+=efuse/
 
 #####Sound system is later init in kernel default..######################
-obj-y += sound/
+obj-$(CONFIG_AMAUDIO) += amaudio/
 
 obj-y += hdmi/
 

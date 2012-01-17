@@ -525,7 +525,7 @@ static void free_pts_list(pts_table_t *pTable)
 	unsigned long *p=pTable->pages_list;
 	void *onepage=(void  *)p[0];
 	while(onepage!=NULL){
-		__free_page(onepage);
+		free_page(onepage);
 		p++;
 		onepage=(void  *)p[0];
 	}

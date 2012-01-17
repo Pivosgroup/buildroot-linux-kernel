@@ -42,8 +42,6 @@ void cm_set_top(struct cm_top_s *p);
 void cm_set_demo(struct cm_demo_s *p);
 
 void cm_set_regs(struct cm_regs_s *p);
-void cm_set_regmap(struct cm_regmap_s *p);
-
 
 #endif
 

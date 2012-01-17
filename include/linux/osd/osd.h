@@ -97,6 +97,7 @@ typedef struct osd_ctl_s {
     u32  index;
 } osd_ctl_t;
 #define  INVALID_BPP_ITEM    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+
 static const  color_bit_define_t   default_color_format_array[]={
 	INVALID_BPP_ITEM,
 	INVALID_BPP_ITEM,

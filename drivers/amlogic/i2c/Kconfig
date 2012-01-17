@@ -1,6 +1,8 @@
-
-choice
-        prompt "AMLOGIC I2C Hardware Bus support"
+menuconfig AMLOGIC_I2C
+        bool "AMLOGIC I2C CONFIG"
+if AMLOGIC_I2C
+choice	
+	prompt "AMLOGIC I2C Hardware Bus support"
         default I2C_SW_AML
 
 config I2C_APOLLO
@@ -30,3 +32,5 @@ config I2C_SW_AML
 	help
           Amlogic software I2C Driver, normal gpio simulate I2C, bit algo
 endchoice
+
+endif

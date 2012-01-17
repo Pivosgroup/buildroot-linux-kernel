@@ -96,11 +96,9 @@
 #define AMSTREAM_IOC_VE_CCOR   _IOW(AMSTREAM_IOC_MAGIC, 0x23, struct ve_ccor_s  )
 #define AMSTREAM_IOC_VE_BENH   _IOW(AMSTREAM_IOC_MAGIC, 0x24, struct ve_benh_s  )
 #define AMSTREAM_IOC_VE_DEMO   _IOW(AMSTREAM_IOC_MAGIC, 0x25, struct ve_demo_s  )
-#define AMSTREAM_IOC_VE_DEBUG    _IOWR(AMSTREAM_IOC_MAGIC, 0x26, unsigned long long)
-#define AMSTREAM_IOC_VE_REGMAP   _IOW(AMSTREAM_IOC_MAGIC, 0x27, struct ve_regmap_s)
-#if defined(CONFIG_ARCH_MESON2)
-#define AMSTREAM_IOC_VE_VDO_MEAS _IOW(AMSTREAM_IOC_MAGIC, 0x28, struct vdo_meas_s )
-#endif
+#define AMSTREAM_IOC_VE_VDO_MEAS _IOW(AMSTREAM_IOC_MAGIC, 0x27, struct vdo_meas_s )
+#define AMSTREAM_IOC_VE_DEBUG    _IOWR(AMSTREAM_IOC_MAGIC, 0x28, unsigned long long)
+#define AMSTREAM_IOC_VE_REGMAP   _IOW(AMSTREAM_IOC_MAGIC, 0x29, struct ve_regmap_s)
 
 // VPP.CM IOCTL command list
 #define AMSTREAM_IOC_CM_REGION _IOW(AMSTREAM_IOC_MAGIC, 0x30, struct cm_region_s)
@@ -117,6 +115,8 @@
 
 #define TRICK_STAT_DONE     0x01
 #define TRICK_STAT_WAIT     0x00
+
+#define AUDIO_EXTRA_DATA_SIZE   (2048)
 
 enum VIDEO_DEC_TYPE
 {
@@ -184,7 +184,7 @@ struct audio_info {
     int codec_id;
     int block_align;
     int extradata_size;
-    char extradata[2048];
+    char extradata[AUDIO_EXTRA_DATA_SIZE];
 };
 
 struct dec_sysinfo {
@@ -209,6 +209,7 @@ struct tsdemux_ops {
     int (*set_vid)(int vpid);
     int (*set_aid)(int apid);
     int (*set_sid)(int spid);
+    int (*set_skipbyte)(int skipbyte);
 };
 
 void tsdemux_set_ops(struct tsdemux_ops *ops);

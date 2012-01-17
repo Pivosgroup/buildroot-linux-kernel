@@ -24,22 +24,22 @@
 
 #ifndef VINFO_H
 #define VINFO_H
-
+//the MSB is represent vmode set by logo
+#define	VMODE_LOGO_BIT_MASK	0x8000	
+#define	VMODE_MODE_BIT_MASK	0xff		
 typedef enum {
-    VMODE_480I       = 0,
-    VMODE_480CVBS    = 1,		
-    VMODE_480P       = 2,
-    VMODE_576I       = 3,
-    VMODE_576CVBS    = 4,
-    VMODE_576P       = 5,
-    VMODE_720P       = 6,
-    VMODE_720P_50HZ  = 7,
-    VMODE_1080I      = 8,
-    VMODE_1080I_50HZ = 9,
-    VMODE_1080P      = 10,
-    VMODE_1080P_50HZ = 11,
-    VMODE_LCD        = 12,
-    VMODE_MAX        = 13   
+    VMODE_480I  = 0,
+    VMODE_480CVBS,		
+    VMODE_480P  ,
+    VMODE_576I   ,
+    VMODE_576CVBS   ,
+    VMODE_576P  ,
+    VMODE_720P  ,
+    VMODE_1080I ,
+    VMODE_1080P ,
+    VMODE_LCD	,
+    VMODE_MAX,
+    VMODE_INIT_NULL,
 } vmode_t;
 
 typedef struct {

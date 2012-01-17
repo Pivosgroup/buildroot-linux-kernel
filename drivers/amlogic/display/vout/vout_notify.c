@@ -57,13 +57,11 @@ const vinfo_t *get_current_vinfo(void)
 	const vinfo_t *info=NULL;
 
 	mutex_lock(&vout_mutex);
-
 	if(vout_module.curr_vout_server)
 	{
 		BUG_ON(vout_module.curr_vout_server->op.get_vinfo == NULL);
 		info = vout_module.curr_vout_server->op.get_vinfo();
 	}
-
 	mutex_unlock(&vout_mutex);
 
 	return info;
@@ -94,19 +92,14 @@ EXPORT_SYMBOL(get_current_vmode);
 int vout_suspend(void)
 {
 	int ret=0 ;
-	vout_server_t  *p_server;
+	vout_server_t  *p_server = vout_module.curr_vout_server;
 
 	mutex_lock(&vout_mutex);
-	list_for_each_entry(p_server, &vout_module.vout_server_list, list)
+	if (p_server)
 	{
-		if(p_server->op.vout_suspend )
+		if(p_server->op.vout_suspend)
 		{
-			ret= p_server->op.vout_suspend() ;
-			if(ret)//if error occured when suspend ,then stop it
-			{
-				
-				break; 
-			}
+			ret = p_server->op.vout_suspend() ;
 		}
 	}
 	
@@ -116,12 +109,12 @@ int vout_suspend(void)
 EXPORT_SYMBOL(vout_suspend);
 int vout_resume(void)
 {
-	vout_server_t  *p_server;
+	vout_server_t  *p_server = vout_module.curr_vout_server;
 
 	mutex_lock(&vout_mutex);
-	list_for_each_entry(p_server, &vout_module.vout_server_list, list)
+	if (p_server)
 	{
-		if(p_server->op.vout_resume )
+		if (p_server->op.vout_resume)
 		{
 			p_server->op.vout_resume() ; //ignore error when resume.
 		}
@@ -147,7 +140,11 @@ int set_current_vmode(vmode_t mode)
 		{
 			vout_module.curr_vout_server=p_server;
 			r=p_server->op.set_vmode(mode);
-			break;
+			//break;  do not exit , should disable other modules
+		}
+		else
+		{
+			p_server->op.disable(mode);
 		}
 	}
 	
@@ -201,6 +198,7 @@ int vout_register_server(vout_server_t*  mem_server)
 		if(p_server->name && mem_server->name && strcmp(p_server->name,mem_server->name)==0)
 		{
 			//vout server already registered.
+			
 			mutex_unlock(&vout_mutex);
 			return -1;
 		}

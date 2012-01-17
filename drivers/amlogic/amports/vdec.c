@@ -33,9 +33,9 @@
 static int inited_vcodec_num = 0;
 
 static struct platform_device *vdec_device = NULL;
-struct am_reg{
-	char *name;
-	int offset;
+struct am_reg {
+    char *name;
+    int offset;
 };
 
 static struct resource amvdec_mem_resource[]  = {
@@ -59,7 +59,9 @@ static const char *vdec_device_name[] = {
     "amvdec_real",
     "amjpegdec",
     "amvdec_vc1",
-    "amvdec_avs"
+    "amvdec_avs",
+    "amvdec_yuv",
+    "amvdec_h264"
 };
 
 /*
@@ -70,7 +72,7 @@ We must call it at the amstream start for register a memory resource
 int vdec_set_resource(struct resource *s, void *param)
 {
     if (inited_vcodec_num != 0) {
-		printk("ERROR:We can't support the change resource at code running\n");
+        printk("ERROR:We can't support the change resource at code running\n");
         return -1;
     }
 
@@ -79,7 +81,7 @@ int vdec_set_resource(struct resource *s, void *param)
     amvdec_mem_resource[0].flags = s->flags;
 
     amvdec_mem_resource[1].start = (resource_size_t)param;
-    
+
     return 0;
 }
 
@@ -138,8 +140,9 @@ error:
 
 s32 vdec_release(vformat_t vf)
 {
-    if (vdec_device)
+    if (vdec_device) {
         platform_device_unregister(vdec_device);
+    }
 
     inited_vcodec_num--;
 
@@ -148,36 +151,34 @@ s32 vdec_release(vformat_t vf)
     return 0;
 }
 
-static struct am_reg am_risc[]=
-{
-	{"MSP",0x300},
-	{"MPSR",0x301 },	
-	{"MCPU_INT_BASE",0x302 },	
-	{"MCPU_INTR_GRP",0x303 },	
-	{"MCPU_INTR_MSK",0x304 },	
-	{"MCPU_INTR_REQ",0x305 },	
-	{"MPC-P",0x306 },	
-	{"MPC-D",0x307 },	
-	{"MPC_E",0x308 },	
-	{"MPC_W",0x309 }
+static struct am_reg am_risc[] = {
+    {"MSP", 0x300},
+    {"MPSR", 0x301 },
+    {"MCPU_INT_BASE", 0x302 },
+    {"MCPU_INTR_GRP", 0x303 },
+    {"MCPU_INTR_MSK", 0x304 },
+    {"MCPU_INTR_REQ", 0x305 },
+    {"MPC-P", 0x306 },
+    {"MPC-D", 0x307 },
+    {"MPC_E", 0x308 },
+    {"MPC_W", 0x309 }
 };
 
 static ssize_t amrisc_regs_show(struct class *class, struct class_attribute *attr, char *buf)
 {
-    char *pbuf=buf;
-	struct am_reg *regs=am_risc;
-	int rsize=sizeof(am_risc)/sizeof(struct am_reg);
-	int i;
-	unsigned  val;
+    char *pbuf = buf;
+    struct am_reg *regs = am_risc;
+    int rsize = sizeof(am_risc) / sizeof(struct am_reg);
+    int i;
+    unsigned  val;
 
-	pbuf+=sprintf(pbuf, "amrisc registers show:\n");
-	for(i=0;i<rsize;i++)
-	{
-		val=READ_MPEG_REG(regs[i].offset);
-    	pbuf+=sprintf(pbuf, "%s(%#x)\t:%#x(%d)\n",
-    				   regs[i].name,regs[i].offset,val,val);
-	}
-	return (pbuf-buf);
+    pbuf += sprintf(pbuf, "amrisc registers show:\n");
+    for (i = 0; i < rsize; i++) {
+        val = READ_MPEG_REG(regs[i].offset);
+        pbuf += sprintf(pbuf, "%s(%#x)\t:%#x(%d)\n",
+                        regs[i].name, regs[i].offset, val, val);
+    }
+    return (pbuf - buf);
 }
 
 
@@ -188,9 +189,9 @@ static struct class_attribute vdec_class_attrs[] = {
 };
 
 static struct class vdec_class = {
-    .name = "vdec",
-    .class_attrs = vdec_class_attrs,
-};
+        .name = "vdec",
+        .class_attrs = vdec_class_attrs,
+    };
 
 s32 vdec_dev_register(void)
 {
@@ -201,12 +202,12 @@ s32 vdec_dev_register(void)
         printk("vdec class create fail.\n");
         return r;
     }
-	return 0;
+    return 0;
 }
 s32 vdec_dev_unregister(void)
 {
-	 class_unregister(&vdec_class);
-	 return 0;
+    class_unregister(&vdec_class);
+    return 0;
 }
 
 

@@ -212,6 +212,8 @@ typedef struct {
     u16 GammaTableB[256];
 	void  (*power_on)(void);
 	void  (*power_off)(void);
+	void (*backlight_on)(void);
+	void (*backlight_off)(void);
 } tcon_conf_t;
 
 #endif /* TCON_H */

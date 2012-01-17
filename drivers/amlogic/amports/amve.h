@@ -41,7 +41,6 @@ void ve_set_ccor(struct ve_ccor_s *p);
 void ve_set_benh(struct ve_benh_s *p);
 void ve_set_demo(struct ve_demo_s *p);
 void ve_set_regs(struct ve_regs_s *p);
-void ve_set_regmap(struct ve_regmap_s *p);
 
 #endif
 

@@ -45,36 +45,36 @@ static spinlock_t lock = SPIN_LOCK_UNLOCKED;
 static canvas_t canvasPool[CANVAS_NUM];
 
 void canvas_config(u32 index, ulong addr, u32 width,
-                   u32 height, u32 wrap, u32 blkmode)
+				  u32 height, u32 wrap, u32 blkmode)
 {
     ulong flags;
     canvas_t *canvasP = &canvasPool[index];
 
-    if (index >= CANVAS_NUM)
-        return;
+	if (index >= CANVAS_NUM)
+		return;
 
     spin_lock_irqsave(&lock, flags);
 
     WRITE_APB_REG(DC_CAV_LUT_DATAL,
-              (((addr + 7) >> 3) & CANVAS_ADDR_LMASK) |
-              ((((width + 7) >> 3) & CANVAS_WIDTH_LMASK) << CANVAS_WIDTH_LBIT));
+					(((addr + 7) >> 3) & CANVAS_ADDR_LMASK) |
+					((((width + 7) >> 3) & CANVAS_WIDTH_LMASK) << CANVAS_WIDTH_LBIT));
 
     WRITE_APB_REG(DC_CAV_LUT_DATAH,
-             ((((width + 7) >> 3) >> CANVAS_WIDTH_LWID) << CANVAS_WIDTH_HBIT) |
-             ((height & CANVAS_HEIGHT_MASK) << CANVAS_HEIGHT_BIT) |
-             ((wrap & CANVAS_XWRAP) ? CANVAS_XWRAP : 0)           |
-             ((wrap & CANVAS_YWRAP) ? CANVAS_YWRAP : 0)           |
-             ((blkmode & CANVAS_BLKMODE_MASK) << CANVAS_BLKMODE_BIT));
+					((((width + 7) >> 3) >> CANVAS_WIDTH_LWID) << CANVAS_WIDTH_HBIT) |
+					((height & CANVAS_HEIGHT_MASK) << CANVAS_HEIGHT_BIT)	|
+					((wrap & CANVAS_XWRAP) ? CANVAS_XWRAP : 0)              |
+					((wrap & CANVAS_YWRAP) ? CANVAS_YWRAP : 0)              |
+					((blkmode & CANVAS_BLKMODE_MASK) << CANVAS_BLKMODE_BIT));
 
     WRITE_APB_REG(DC_CAV_LUT_ADDR, CANVAS_LUT_WR_EN | index);
 
-    READ_APB_REG(DC_CAV_LUT_DATAH);
+	READ_APB_REG(DC_CAV_LUT_DATAH);
 
-    canvasP->addr = addr;
-    canvasP->width = width;
-    canvasP->height = height;
-    canvasP->wrap = wrap;
-    canvasP->blkmode = blkmode;
+	canvasP->addr = addr;
+	canvasP->width = width;
+	canvasP->height = height;
+	canvasP->wrap = wrap;
+	canvasP->blkmode = blkmode;
 
     spin_unlock_irqrestore(&lock, flags);
 }
@@ -175,22 +175,22 @@ EXPORT_SYMBOL(canvas_get_addr);
 #define to_canvas(kobj) container_of(kobj, canvas_t, kobj)
 static ssize_t addr_show(canvas_t *canvas, char *buf)
 {
-    return sprintf(buf, "0x%lx\n", canvas->addr);
+	return sprintf(buf, "0x%lx\n", canvas->addr);
 }
 
 static ssize_t width_show(canvas_t *canvas, char *buf)
 {
-    return sprintf(buf, "%d\n", canvas->width);
+	return sprintf(buf, "%d\n", canvas->width);
 }
 
 static ssize_t height_show(canvas_t *canvas, char *buf)
 {
-    return sprintf(buf, "%d\n", canvas->height);
+	return sprintf(buf, "%d\n", canvas->height);
 }
 
 struct canvas_sysfs_entry {
-    struct attribute attr;
-    ssize_t (*show)(canvas_t *, char *);
+	struct attribute attr;
+	ssize_t (*show)(canvas_t *, char *);
 };
 static struct canvas_sysfs_entry addr_attribute = __ATTR_RO(addr);
 static struct canvas_sysfs_entry width_attribute = __ATTR_RO(width);
@@ -203,67 +203,67 @@ static void canvas_release(struct kobject *kobj)
 static ssize_t canvas_type_show(struct kobject *kobj, struct attribute *attr,
 			     char *buf)
 {
-    canvas_t *canvas = to_canvas(kobj);
-    struct canvas_sysfs_entry *entry;
+	canvas_t *canvas = to_canvas(kobj);
+	struct canvas_sysfs_entry *entry;
 
-    entry = container_of(attr, struct canvas_sysfs_entry, attr);
+	entry = container_of(attr, struct canvas_sysfs_entry, attr);
 
-    if (!entry->show)
-        return -EIO;
+	if (!entry->show)
+		return -EIO;
 
-    return entry->show(canvas, buf);
+	return entry->show(canvas, buf);
 }
 
 static struct sysfs_ops canvas_sysfs_ops = {
-    .show = canvas_type_show,
+	.show = canvas_type_show,
 };
 
 static struct attribute *canvas_attrs[] =
 {
-    &addr_attribute.attr,
-    &width_attribute.attr,
-    &height_attribute.attr,
-    NULL,
+	&addr_attribute.attr,
+	&width_attribute.attr,
+	&height_attribute.attr,
+	NULL,
 };
 
 static struct kobj_type canvas_attr_type = {
-    .release       = canvas_release,
-    .sysfs_ops     = &canvas_sysfs_ops,
-    .default_attrs = canvas_attrs,
+	.release	= canvas_release,
+	.sysfs_ops	= &canvas_sysfs_ops,
+	.default_attrs	= canvas_attrs,
 };
 
 static int __devinit canvas_probe(struct platform_device *pdev)
 {
     int i, r;
-
-    for (i = 0; i < CANVAS_NUM; i++) {
-        r = kobject_init_and_add(&canvasPool[i].kobj, &canvas_attr_type,
-                             &pdev->dev.kobj, "%d", i);
-        if (r) {
-            pr_error("Unable to create canvas objects %d\n", i);
-            goto err;
-        }
-    }
+    
+	for (i = 0; i < CANVAS_NUM; i++) {
+		r = kobject_init_and_add(&canvasPool[i].kobj, &canvas_attr_type,
+				&pdev->dev.kobj, "%d", i);
+		if (r) {
+			pr_error("Unable to create canvas objects %d\n", i);
+			goto err;
+		}
+	}
 
     canvas_dev = pdev;
 
     return 0;
 
 err:
-    for (i--; i>=0; i--)
-        kobject_put(&canvasPool[i].kobj);
+	for (i--; i>=0; i--)
+		kobject_put(&canvasPool[i].kobj);
 
-    pr_error("Canvas driver probe failed\n");
+	pr_error("Canvas driver probe failed\n");
 
-    return r;	
+	return r;	
 }
 
 static int __devexit canvas_remove(struct platform_device *pdev)
 {
     int i;
 
-    for (i=0; i<CANVAS_NUM; i++)
-        kobject_put(&canvasPool[i].kobj);
+	for (i=0; i<CANVAS_NUM; i++)
+		kobject_put(&canvasPool[i].kobj);
 
     return 0;
 }

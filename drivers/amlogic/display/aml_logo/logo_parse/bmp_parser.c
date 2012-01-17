@@ -41,7 +41,7 @@ static  int  setup_parser_output_addr(logo_object_t *plogo)
 	screen_mem_start=plogo->platform_res[plogo->para.output_dev_type].mem_start;
 	screen_size=plogo->dev->vinfo->width*plogo->dev->vinfo->height*(plogo->parser->decoder.bmp.color_depth>>3);
 	//double buffer ,bottom part .
-	plogo->parser->output_addr=(char*)screen_mem_start + screen_size ;
+	plogo->parser->output_addr=(char *)phys_to_virt(screen_mem_start + screen_size) ;
 	plogo->need_transfer=TRUE;
 	amlog_mask_level(LOG_MASK_PARSER,LOG_LEVEL_LOW,"bmp decode output addr:0x%p,%s\n",plogo->parser->output_addr,plogo->need_transfer?"transfer":"no transfer");
 	return 0;
@@ -81,7 +81,7 @@ static int bmp_init(logo_object_t *logo)
 	BITMAPFILEHEADER *header;
 	BITMAPINFOHEADER *bmp_info_header;
 	bmp_header_t		*bmp_header;
-	void  __iomem*	logo_vaddr=phys_to_virt((unsigned int)logo->para.mem_addr);
+	void  __iomem*	logo_vaddr=logo->para.mem_addr;
 
 	header=(BITMAPFILEHEADER*)logo_vaddr;
 	bmp_info_header=(BITMAPINFOHEADER*)(logo_vaddr+sizeof(BITMAPFILEHEADER));

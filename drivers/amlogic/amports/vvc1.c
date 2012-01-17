@@ -76,6 +76,7 @@
 static vframe_t *vvc1_vf_peek(void);
 static vframe_t *vvc1_vf_get(void);
 static void vvc1_vf_put(vframe_t *);
+static int  vvc1_vf_states(vframe_states_t *states);
 
 static const char vvc1_dec_id[] = "vvc1-dev";
 
@@ -83,8 +84,9 @@ static const struct vframe_provider_s vvc1_vf_provider = {
     .peek = vvc1_vf_peek,
     .get = vvc1_vf_get,
     .put = vvc1_vf_put,
+    .vf_states = vvc1_vf_states,
 };
-
+static const struct vframe_receiver_op_s *vf_receiver;
 static struct vframe_s vfpool[VF_POOL_SIZE];
 static u32 vfpool_idx[VF_POOL_SIZE];
 static s32 vfbuf_use[4];
@@ -319,6 +321,8 @@ static void vvc1_isr(void)
             vfbuf_use[buffer_index]++;
 
             INCPTR(fill_ptr);
+            if (vf_receiver)
+    	        vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL, NULL);	            
         } else { // progressive
             vfpool_idx[fill_ptr] = buffer_index;
             vf = &vfpool[fill_ptr];
@@ -357,6 +361,8 @@ static void vvc1_isr(void)
             vfbuf_use[buffer_index]++;
 
             INCPTR(fill_ptr);
+            if (vf_receiver)
+    	        vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL, NULL);	            
         }
 
         total_frame++;
@@ -401,6 +407,29 @@ static vframe_t *vvc1_vf_get(void)
 static void vvc1_vf_put(vframe_t *vf)
 {
     INCPTR(putting_ptr);
+}
+
+static int vvc1_vf_states(vframe_states_t *states)
+{
+    unsigned long flags;
+    int i;
+    spin_lock_irqsave(&lock, flags);
+    states->vf_pool_size = VF_POOL_SIZE;
+
+    i = put_ptr - fill_ptr;
+    if (i < 0) i += VF_POOL_SIZE;
+    states->buf_free_num = i;
+    
+    i = putting_ptr - put_ptr;
+    if (i < 0) i += VF_POOL_SIZE;
+    states->buf_recycle_num = i;
+    
+    i = fill_ptr - get_ptr;
+    if (i < 0) i += VF_POOL_SIZE;
+    states->buf_avail_num = i;
+    
+    spin_unlock_irqrestore(&lock, flags);
+    return 0;
 }
 
 int vvc1_dec_status(struct vdec_status *vstatus)
@@ -522,12 +551,13 @@ static void vvc1_local_init(void)
 {
     int i;
 
-    vvc1_ratio = vvc1_amstream_dec_info.ratio;
+    //vvc1_ratio = vvc1_amstream_dec_info.ratio;
+    vvc1_ratio = 0x100;
 
     avi_flag = (u32)vvc1_amstream_dec_info.param;
 
     fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
-
+    vf_receiver = NULL;
     frame_width = frame_height = frame_dur = frame_prog = 0;
 
     total_frame = 0;
@@ -543,6 +573,23 @@ static void vvc1_local_init(void)
     }
 }
 
+#ifdef CONFIG_POST_PROCESS_MANAGER
+static void vvc1_ppmgr_reset(void)
+{
+    const struct vframe_receiver_op_s *vf_receiver_bak = vf_receiver;
+
+    vf_ppmgr_reset();
+    vvc1_local_init();
+
+    vf_receiver = vf_receiver_bak;
+
+    if ((vf_receiver) && (vf_receiver->event_cb))
+        vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_START, NULL, NULL); 	
+    
+    printk("vvc1dec: vf_ppmgr_reset\n");
+}
+#endif
+
 static void vvc1_put_timer_func(unsigned long arg)
 {
     struct timer_list *timer = (struct timer_list *)arg;
@@ -554,10 +601,14 @@ static void vvc1_put_timer_func(unsigned long arg)
 #if 1
     if (READ_MPEG_REG(VC1_SOS_COUNT) > 10) {
         amvdec_stop();
+#ifdef CONFIG_POST_PROCESS_MANAGER
+        vvc1_ppmgr_reset();
+#else 
         vf_light_unreg_provider();
         vvc1_local_init();
-        vvc1_prot_init();
         vf_reg_provider(&vvc1_vf_provider);
+#endif         
+        vvc1_prot_init();
         amvdec_start();
     }
 #endif
@@ -624,8 +675,13 @@ static s32 vvc1_init(void)
 #endif
 
     stat |= STAT_ISR_REG;
-
-    vf_reg_provider(&vvc1_vf_provider);
+ #ifdef CONFIG_POST_PROCESS_MANAGER
+	vf_receiver = vf_ppmgr_reg_provider(&vvc1_vf_provider);
+	if ((vf_receiver) && (vf_receiver->event_cb))
+	vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_START, NULL, NULL); 	
+ #else 
+ 	vf_reg_provider(&vvc1_vf_provider);
+ #endif 
 
     stat |= STAT_VF_HOOK;
 
@@ -692,8 +748,13 @@ static int amvdec_vc1_remove(struct platform_device *pdev)
         spin_lock_irqsave(&lock, flags);
         fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
         spin_unlock_irqrestore(&lock, flags);
-
-        vf_unreg_provider();
+ #ifdef CONFIG_POST_PROCESS_MANAGER
+	vf_ppmgr_unreg_provider();
+	if ((vf_receiver) && (vf_receiver->event_cb))
+	vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_UNREG, NULL, NULL); 	
+ #else 
+ 	vf_unreg_provider();
+ #endif         
         stat &= ~STAT_VF_HOOK;
     }
 

@@ -23,6 +23,7 @@
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 
+#include <linux/amports/amaudio.h>
 
 #include "aml_pcm.h"
 #include "aml_audio_hw.h"

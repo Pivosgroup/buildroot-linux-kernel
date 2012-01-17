@@ -35,6 +35,7 @@ typedef struct
 	int		 (*set_vmode)(vmode_t);
 	vmode_t  (*validate_vmode)(char *);
 	int		(*vmode_is_supported)(vmode_t);
+	int		(*disable)(vmode_t );
 	int		(*vout_suspend)(void);
 	int		(*vout_resume)(void);
 }vout_op_t ;
@@ -72,6 +73,7 @@ extern int vout_resume(void);
 #define VOUT_EVENT_MODE_CHANGE		0x00010000	
 #define VOUT_EVENT_OSD_BLANK			0x00020000
 #define VOUT_EVENT_OSD_DISP_AXIS			0x00030000
+#define  VOUT_EVENT_OSD_PREBLEND_ENABLE		0x00040000
 
 
 #endif /* VOUT_NOTIFY_H */

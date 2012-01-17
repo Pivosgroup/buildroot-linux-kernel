@@ -5,6 +5,7 @@
 #define  INVALID_INFO   		0xffffffff
 #define  LOGO_DBG_ENABLE	0x10000001
 #define  LOGO_PROGRESS_ENABLE	0x10000002
+#define  LOGO_LOADED		0x10000003
 #define  PLATFORM_DEVICE_OSD		"apollofb"
 #define  PLATFORM_DEVICE_VID		"amstream"
 
@@ -13,7 +14,8 @@
 #define	PARA_THIRD_GROUP_START	15
 #define    PARA_FOURTH_GROUP_START  18
 #define    PARA_FIFTH_GROUP_START  	19
-#define    PARA_END					19		
+#define    PARA_SIXTH_GROUP_START	20
+#define    PARA_END					20		
 
 typedef  struct {
 	char *name;

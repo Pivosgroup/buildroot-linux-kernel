@@ -227,6 +227,22 @@ static int tsdemux_set_sid(int spid)
     return r;
 }
 
+static int tsdemux_set_skip_byte(int skipbyte)
+{
+    unsigned long flags;
+    int r = 0;
+
+    spin_lock_irqsave(&demux_ops_lock, flags);
+    if (demux_ops && demux_ops->set_skipbyte) {
+        r = demux_ops->set_skipbyte(skipbyte);
+    }else{
+        demux_skipbyte = skipbyte;
+    }
+    spin_unlock_irqrestore(&demux_ops_lock, flags);
+
+    return r;
+}
+
 static int tsdemux_config(void)
 {
     unsigned long flags;
@@ -289,20 +305,25 @@ static irqreturn_t tsdemux_isr(int irq, void *dev_id)
 
         WRITE_MPEG_REG(STB_PTS_DTS_STATUS, pdts_status);
 #else
-        u32 pdts_status = id ? READ_MPEG_REG(STB_PTS_DTS_STATUS_2) : READ_MPEG_REG(STB_PTS_DTS_STATUS);
+#define DMX_READ_REG(i,r)\
+	((i)?((i==1)?READ_MPEG_REG(r##_2):READ_MPEG_REG(r##_3)):READ_MPEG_REG(r))
+	
+        u32 pdts_status = DMX_READ_REG(id, STB_PTS_DTS_STATUS);
 
         if (pdts_status & (1 << VIDEO_PTS_READY))
             pts_checkin_wrptr(PTS_TYPE_VIDEO,
-                              id ? READ_MPEG_REG(VIDEO_PDTS_WR_PTR_2) : READ_MPEG_REG(VIDEO_PDTS_WR_PTR),
-                              id ? READ_MPEG_REG(VIDEO_PTS_DEMUX_2) : READ_MPEG_REG(VIDEO_PTS_DEMUX));
+                              DMX_READ_REG(id, VIDEO_PDTS_WR_PTR),
+                              DMX_READ_REG(id, VIDEO_PTS_DEMUX));
 
         if (pdts_status & (1 << AUDIO_PTS_READY))
             pts_checkin_wrptr(PTS_TYPE_AUDIO,
-                              id ? READ_MPEG_REG(AUDIO_PDTS_WR_PTR_2) : READ_MPEG_REG(AUDIO_PDTS_WR_PTR),
-                              id ? READ_MPEG_REG(AUDIO_PTS_DEMUX_2) : READ_MPEG_REG(AUDIO_PTS_DEMUX));
+                              DMX_READ_REG(id, AUDIO_PDTS_WR_PTR),
+                              DMX_READ_REG(id, AUDIO_PTS_DEMUX));
 
-        if (id) {
+        if (id == 1) {
             WRITE_MPEG_REG(STB_PTS_DTS_STATUS_2, pdts_status);
+        } else if (id == 2){
+            WRITE_MPEG_REG(STB_PTS_DTS_STATUS_3, pdts_status);
         } else {
             WRITE_MPEG_REG(STB_PTS_DTS_STATUS, pdts_status);
         }
@@ -541,6 +562,8 @@ err1:
     return -ENOENT;
 }
 
+extern void vf_unreg_provider();
+
 void tsdemux_release(void)
 {
 
@@ -566,6 +589,9 @@ void tsdemux_release(void)
     pts_stop(PTS_TYPE_VIDEO);
     pts_stop(PTS_TYPE_AUDIO);
 
+#ifdef ENABLE_DEMUX_DRIVER
+    vf_unreg_provider();
+#endif
 }
 
 ssize_t tsdemux_write(struct file *file,
@@ -724,6 +750,10 @@ void tsdemux_sub_reset(void)
 
 void tsdemux_set_skipbyte(int skipbyte)
 {
+#ifndef ENABLE_DEMUX_DRIVER
     demux_skipbyte = skipbyte;
+#else
+    tsdemux_set_skip_byte(skipbyte);
+#endif
     return;
 }

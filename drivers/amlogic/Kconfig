@@ -2,7 +2,7 @@
 # Amlogic driver configuration
 #
 menu "Amlogic Device Drivers"
-	depends on ARCH_MESON || ARCH_MESON2
+	depends on ARCH_MESON
 #
 #	Char devices
 #
@@ -13,8 +13,6 @@ source "drivers/amlogic/i2c/Kconfig"
 source "drivers/amlogic/input/Kconfig"
 source "drivers/amlogic/efuse/Kconfig"
 
-
-#
 #	Block devices
 #
 comment "Block devices"
@@ -42,11 +40,12 @@ source "drivers/amlogic/display/Kconfig"
 source "drivers/amlogic/amports/Kconfig"
 source "drivers/amlogic/hdmi/Kconfig"
 source "drivers/amlogic/tvin/Kconfig"
-source "drivers/amlogic/sound/Kconfig"
+source "drivers/amlogic/amaudio/Kconfig"
 source "drivers/amlogic/audiodsp/Kconfig"
 source "drivers/amlogic/cmem/Kconfig"
 source "drivers/amlogic/jpeglogo/Kconfig"
 source "drivers/amlogic/mali/Kconfig"
+source "drivers/amlogic/audiodsplog/Kconfig"
 
 source "drivers/amlogic/dvb/Kconfig"
 

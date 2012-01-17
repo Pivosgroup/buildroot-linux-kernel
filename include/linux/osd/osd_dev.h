@@ -31,6 +31,10 @@
 
 #define  OSD_COUNT 	2 /* we have two osd layer on hardware*/
 
+#define KEYCOLOR_FLAG_TARGET  1
+#define KEYCOLOR_FLAG_ONHOLD  2
+#define KEYCOLOR_FLAG_CURRENT 4
+
 typedef struct myfb_dev {
     struct mutex lock;
 
@@ -41,10 +45,15 @@ typedef struct myfb_dev {
 	void __iomem *fb_mem_vaddr;
 	u32 fb_len;
 	const color_bit_define_t  *color;
-    vmode_t vmode;
+   	 vmode_t vmode;
     	
-    struct osd_ctl_s osd_ctl;
-		
+    	struct osd_ctl_s osd_ctl;
+	u32  order;	
+	u32  scale;	
+	u32  enable_3d;
+	u32  preblend_enable;
+	u32  enable_key_flag;
+	u32  color_key;	
 } myfb_dev_t;
 typedef  struct list_head   list_head_t ;
 
@@ -63,8 +72,13 @@ typedef  struct {
 
 #define fbdev_lock(dev) mutex_lock(&dev->lock);
 #define fbdev_unlock(dev) mutex_unlock(&dev->lock);
-
+extern u32 osddev_get_osd_order(u32 index);
+extern void osddev_change_osd_order(u32 index,u32 order);
+extern void osddev_free_scale_enable(u32 index ,u32 enable);
+extern void osddev_free_scale_width(u32 index ,u32 width);
+extern void osddev_free_scale_height(u32 index ,u32 height);
 extern int osddev_select_mode(struct myfb_dev *fbdev);
+extern void osddev_enable_3d_mode(u32 index ,u32 enable);
 extern void osddev_set_2x_scale(u32 index,u16 h_scale_enable,u16 v_scale_enable);
 extern void osddev_set(struct myfb_dev *fbdev);
 extern void osddev_update_disp_axis(struct myfb_dev *fbdev,int  mode_change) ;
@@ -74,11 +88,16 @@ extern void osddev_init(void) ;
 extern void osddev_enable(int enable,int index);
 
 extern void osddev_pan_display(struct fb_var_screeninfo *var,struct fb_info *fbi);
+
+#if defined (CONFIG_FB_OSD2_CURSOR)
+extern void osddev_cursor(struct myfb_dev *fbdev, s16 x, s16 y, s16 xstart, s16 ystart, u32 osd_w, u32 osd_h);
+#endif
+
 extern  void  osddev_set_colorkey(u32 index,u32 bpp,u32 colorkey );
 extern  void  osddev_srckey_enable(u32  index,u8 enable);
 extern void  osddev_set_gbl_alpha(u32 index,u32 gbl_alpha) ;
 extern u32  osddev_get_gbl_alpha(u32  index);
 extern  void  osddev_suspend(void);
 extern  void  osddev_resume(void);
-#endif /* osdFBDEV_H */
+#endif /* OSDFBDEV_H */
 

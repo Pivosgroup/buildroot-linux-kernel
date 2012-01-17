@@ -18,6 +18,7 @@
 #include <linux/list.h>
 #include  <linux/spinlock.h>
 #include <linux/kthread.h>
+#include <mach/power_gate.h>
 #include "ge2d_log.h"
 #include <linux/amlog.h>
 static  ge2d_manager_t  ge2d_manager;
@@ -271,11 +272,12 @@ static int ge2d_monitor_thread(void *data)
 	{
 		down_timeout(&manager->event.cmd_in_sem,6000);
 		//got new cmd arrived in signal,
+		//CLK_GATE_ON(GE2D);
 		while((manager->current_wq=get_next_work_queue(manager))!=NULL)
 		{
 			ge2d_process_work_queue(manager->current_wq);
 		}
-		
+		//CLK_GATE_OFF(GE2D);
 	}
 	amlog_level(LOG_LEVEL_HIGH,"exit ge2d_monitor_thread\r\n");
 	return 0;
@@ -454,12 +456,12 @@ setup_display_property(src_dst_para_t *src_dst,int index)
 	}
 	else  //for block mode=4,5,7
 	{
-	index=bpp-16 + ((data32>>2)&0xf); //color mode [2..5]
-	index=bpp_type_lut[index];  //get color mode 
-	src_dst->ge2d_color_index=default_ge2d_color_lut[index] ; //get matched ge2d color mode.
+		index=bpp-16 + ((data32>>2)&0xf); //color mode [2..5]
+		index=bpp_type_lut[index];  //get color mode 
+		src_dst->ge2d_color_index=default_ge2d_color_lut[index] ; //get matched ge2d color mode.
 	
-	if(src_dst->xres<=0 || src_dst->yres<=0 || src_dst->ge2d_color_index==0)
-	return -2;
+		if(src_dst->xres<=0 || src_dst->yres<=0 || src_dst->ge2d_color_index==0)
+		return -2;
 	}	
 	
 	return 0;	
@@ -566,6 +568,7 @@ int   ge2d_context_config(ge2d_context_t *context, config_para_t *ge2d_config)
 	return  0;
 	
 }
+
 static int build_ge2d_config_ex(config_planes_t *plane, unsigned format, unsigned *canvas_index, int index,unsigned* r_offset)
 {
     int bpp_value = bpp(format);
@@ -781,6 +784,7 @@ int ge2d_context_config_ex(ge2d_context_t *context, config_para_ex_t *ge2d_confi
     //context->config.src2_dst_data.ddr_burst_size= 3;
     return  0;
 }
+
 /***********************************************************************
 ** interface for init  create & destroy work_queue
 ************************************************************************/

@@ -57,11 +57,11 @@ struct am_uart{
     int         xmit_wr;
     int         xmit_cnt;
 
-       unsigned char *rx_buf;
-       int                  rx_head;
-       int                  rx_tail;
-       int                  rx_cnt;
-       int                  rx_error;
+    unsigned char *rx_buf;
+    int                  rx_head;
+    int                  rx_tail;
+    int                  rx_cnt;
+    int                  rx_error;
        
     struct mutex    info_mutex;
 
@@ -74,6 +74,8 @@ struct am_uart{
 /*  struct termios      callout_termios; */
     wait_queue_head_t   open_wait;
     wait_queue_head_t   close_wait;
+    
+    struct timer_list timer;
 };
 
 typedef volatile struct {

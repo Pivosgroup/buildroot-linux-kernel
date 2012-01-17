@@ -34,7 +34,7 @@ ge2d_open(struct inode *inode, struct file *file)
 	 	amlog_level(LOG_LEVEL_HIGH,"can't create work queue \r\n");
 		return -1;		
 	 }
-	 amlog_level(LOG_LEVEL_LOW,"open one ge2d device\n");
+	 //amlog_level(LOG_LEVEL_LOW,"open one ge2d device\n");
 	 file->private_data=context;
 	 ge2d_device.open_count++;
 	 return 0;
@@ -62,7 +62,7 @@ ge2d_ioctl(struct inode *inode, struct file *filp,
 		copy_from_user(&ge2d_config_ex,argp,sizeof(config_para_ex_t));
 		break;
 		case  GE2D_SET_COEF:
-		case	  GE2D_ANTIFLICKER_ENABLE:	
+		case  GE2D_ANTIFLICKER_ENABLE:	
 		break;
 		default :
 		copy_from_user(&para,argp,sizeof(ge2d_para_t));	
@@ -83,7 +83,7 @@ ge2d_ioctl(struct inode *inode, struct file *filp,
 		case GE2D_ANTIFLICKER_ENABLE:
 		ge2d_antiflicker_enable(context,args);	
 		break;
-    	  	case GE2D_SRCCOLORKEY:
+        case GE2D_SRCCOLORKEY:
 		ge2dgen_src_key(context , ge2d_config.src_key.key_enable,ge2d_config.src_key.key_color, ge2d_config.src_key.key_mask,ge2d_config.src_key.key_mode);  //RGBA MODE		
 		break;
 		case GE2D_FILLRECTANGLE:

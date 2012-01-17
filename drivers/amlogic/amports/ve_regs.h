@@ -302,8 +302,6 @@
 //#define VPP_CTI_CTRL                  0x1d9b
 #define CTI_C444TO422_EN_BIT   30
 #define CTI_C444TO422_EN_WID    1
-//2'b00: no filter, 2'b01: (1, 0, 1),
-//2'b10: (1, 2, 1), 2'b11: (1, 2, 2, 2, 1),
 #define VCTI_FILTER_BIT        28
 #define VCTI_FILTER_WID         2
 #define CTI_C422TO444_EN_BIT   27
@@ -378,16 +376,8 @@
 #define DEMO_HSVS_WID           1
 #define DEMO_BENH_BIT          16
 #define DEMO_BENH_WID           1
-#if defined(CONFIG_ARCH_MESON)
-//1'b0: demo adjust on right, 1'b1: demo adjust on left
 #define VE_DEMO_POS_BIT           15
 #define VE_DEMO_POS_WID            1
-#elif defined(CONFIG_ARCH_MESON2)
-//2'b00: demo adjust on top, 2'b01: demo adjust on bottom,
-//2'b10: demo adjust on left, 2'b11: demo adjust on right
-#define VE_DEMO_POS_BIT        14
-#define VE_DEMO_POS_WID         2
-#endif
 #define CCOR_EN_BIT             4
 #define CCOR_EN_WID             1
 #define BEXT_EN_BIT             3
@@ -399,52 +389,8 @@
 #define BENH_EN_BIT             0
 #define BENH_EN_WID             1
 
-#if defined(CONFIG_ARCH_MESON)
 //#define VPP_VE_DEMO_LEFT_SCREEN_WIDTH 0x1da2
-#elif defined(CONFIG_ARCH_MESON2)
-//#define VPP_VE_DEMO_LEFT_TOP_SCREEN_WIDTH 0x1da2
-#endif
-#define VE_DEMO_WID_BIT         0
-#define VE_DEMO_WID_WID        12
-
-#if defined(CONFIG_ARCH_MESON2)
-//#define VPP_VE_DEMO_CENTER_BAR              0x1da3
-#define VE_CBAR_EN_BIT         31  //center bar enable
-#define VE_CBAR_EN_WID          1
-#define VE_CBAR_WID_BIT        24  //center bar width    (*2)
-#define VE_CBAR_WID_WID         4
-#define VE_CBAR_CR_BIT         16  //center bar Cr       (*4)
-#define VE_CBAR_CR_WID          8
-#define VE_CBAR_CB_BIT          8  //center bar Cb       (*4)
-#define VE_CBAR_CB_WID          8
-#define VE_CBAR_Y_BIT           0  //center bar y        (*4)
-#define VE_CBAR_Y_WID           8
-#endif
-
-#if defined(CONFIG_ARCH_MESON2)
-//#define VPP_VDO_MEAS_CTRL                   0x1da8
-#define VDO_MEAS_RST_BIT       10  //reset bit, high active
-#define VDO_MEAS_RST_WID        1
-#define VDO_MEAS_EDGE_BIT       9  //0: rising edge, 1: falling edge
-#define VDO_MEAS_EDGE_WID       1
-#define VDO_MEAS_ACCUM_CNT_BIT  8  //1: accumulate the counter number, 0: not
-#define VDO_MEAS_ACCUM_CNT_WID  1
-#define VDO_MEAS_VS_SPAN_BIT    0  //how many vsync span need to measure
-#define VDO_MEAS_VS_SPAN_WID    8
-#endif
-
-#if defined(CONFIG_ARCH_MESON2)
-//#define VPP_VDO_MEAS_VS_COUNT_HI            0x1da9  //Read only
-#define VDO_IND_MEAS_CNT_N_BIT 16  //every number of sync_span vsyncs, this counter add 1
-#define VDO_IND_MEAS_CNT_N_WID  4
-#define VDO_MEAS_VS_CNT_HI_BIT  0  //high bit portion of counter
-#define VDO_MEAS_VS_CNT_HI_WID 16
-#endif
-
-#if defined(CONFIG_ARCH_MESON2)
-//#define VPP_VDO_MEAS_VS_COUNT_LO            0x1daa  //Read only
-#define VDO_MEAS_VS_CNT_LO_BIT  0  //low bit portion of counter
-#define VDO_MEAS_VS_CNT_LO_WID 32
-#endif
+#define DEMO_WID_BIT            0
+#define DEMO_WID_WID           12
 
 #endif // _VE_REG_H

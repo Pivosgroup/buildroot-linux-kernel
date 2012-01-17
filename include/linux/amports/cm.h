@@ -41,15 +41,10 @@ typedef enum cm_hue_shape_e {
 } cm_hue_shape_t;
 
 typedef enum cm_demo_pos_e {
-#if defined(CONFIG_ARCH_MESON)
-    CM_DEMO_POS_RIGHT = 0,
-    CM_DEMO_POS_LEFT,
-#elif defined(CONFIG_ARCH_MESON2)
     CM_DEMO_POS_TOP = 0,
     CM_DEMO_POS_BOTTOM,
     CM_DEMO_POS_LEFT,
     CM_DEMO_POS_RIGHT,
-#endif
 } cm_demo_pos_t;
 
 typedef enum cm_sat_sel_e {
@@ -116,7 +111,6 @@ typedef struct cm_top_s {
     enum cm_csc_e       csc_sel;
 } cm_top_t;
 
-#if defined(CONFIG_ARCH_MESON2)
 typedef struct cm_cbar_s {
     unsigned char en;
     unsigned char wid;
@@ -124,26 +118,16 @@ typedef struct cm_cbar_s {
     unsigned char cb;
     unsigned char y;
 } cm_cbar_t;
-#endif
-
 typedef struct cm_demo_s {
     unsigned char       en;
     enum cm_demo_pos_e  pos;
     unsigned char       hlight_adj;
     ushort              wid;
-#if defined(CONFIG_ARCH_MESON2)
     struct cm_cbar_s   cbar;
-#endif
 } cm_demo_t;
 
-#if defined(CONFIG_ARCH_MESON)
-#define CM_REG_NUM 49
-#elif defined(CONFIG_ARCH_MESON2)
-#define CM_REG_NUM 50
-#endif
 typedef struct cm_regmap_s {
-    ulong reg[CM_REG_NUM];
+    ulong reg[50];
 } cm_regmap_t;
-
 
 #endif  // _TVOUT_CM_H

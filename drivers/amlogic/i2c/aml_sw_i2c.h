@@ -13,6 +13,7 @@ struct aml_sw_i2c {
 	struct aml_sw_i2c_pins 	*sw_pins;
 	struct i2c_adapter 		adapter;	
 	struct i2c_algo_bit_data 	algo_data;
+	struct class                       class;
 };
 
 #endif

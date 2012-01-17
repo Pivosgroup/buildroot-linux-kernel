@@ -34,11 +34,11 @@
 
 #ifdef CONFIG_AM_VDEC_MJPEG_LOG
 #define AMLOG
-#define LOG_LEVEL_VAR		amlog_level_vmjpeg
-#define LOG_MASK_VAR		amlog_mask_vmjpeg
-#define LOG_LEVEL_ERROR		0
-#define LOG_LEVEL_INFO		1
-#define LOG_LEVEL_DESC	"0:ERROR, 1:INFO"
+#define LOG_LEVEL_VAR       amlog_level_vmjpeg
+#define LOG_MASK_VAR        amlog_mask_vmjpeg
+#define LOG_LEVEL_ERROR     0
+#define LOG_LEVEL_INFO      1
+#define LOG_LEVEL_DESC  "0:ERROR, 1:INFO"
 #endif
 #include <linux/amlog.h>
 MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
@@ -64,10 +64,10 @@ MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 #define MREG_FRAME_OFFSET   AV_SCRATCH_A
 
 #define PICINFO_BUF_IDX_MASK        0x0007
-#define PICINFO_AVI1				0x0080
+#define PICINFO_AVI1                0x0080
 #define PICINFO_INTERLACE           0x0020
-#define PICINFO_INTERLACE_AVI1_BOT	0x0010
-#define PICINFO_INTERLACE_FIRST		0x0010
+#define PICINFO_INTERLACE_AVI1_BOT  0x0010
+#define PICINFO_INTERLACE_FIRST     0x0010
 
 #define VF_POOL_SIZE        12
 #define PUT_INTERVAL        HZ/100
@@ -86,15 +86,17 @@ static struct dec_sysinfo vmjpeg_amstream_dec_info;
 static vframe_t *vmjpeg_vf_peek(void);
 static vframe_t *vmjpeg_vf_get(void);
 static void vmjpeg_vf_put(vframe_t *);
+static int  vmjpeg_vf_states(vframe_states_t *states);
+
 
 static const char vmjpeg_dec_id[] = "vmjpeg-dev";
-static const struct vframe_provider_s vmjpeg_vf_provider =
-{
+static const struct vframe_provider_s vmjpeg_vf_provider = {
     .peek = vmjpeg_vf_peek,
     .get  = vmjpeg_vf_get,
     .put  = vmjpeg_vf_put,
+    .vf_states = vmjpeg_vf_states,
 };
-
+static const struct vframe_receiver_op_s *vf_receiver;
 static struct vframe_s vfpool[VF_POOL_SIZE];
 static u32 vfpool_idx[VF_POOL_SIZE];
 static s32 vfbuf_use[4];
@@ -103,6 +105,7 @@ static u32 frame_width, frame_height, frame_dur;
 static struct timer_list recycle_timer;
 static u32 stat;
 static u32 buf_start, buf_size;
+static spinlock_t lock = SPIN_LOCK_UNLOCKED;
 
 static inline u32 index2canvas0(u32 index)
 {
@@ -128,8 +131,9 @@ static inline void ptr_atomic_wrap_inc(u32 *ptr)
 
     i++;
 
-    if (i >= VF_POOL_SIZE)
+    if (i >= VF_POOL_SIZE) {
         i = 0;
+    }
 
     *ptr = i;
 }
@@ -174,7 +178,8 @@ static irqreturn_t vmjpeg_isr(int irq, void *dev_id)
             vfbuf_use[index]++;
 
             INCPTR(fill_ptr);
-
+            if (vf_receiver)
+    	        vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL, NULL);	
         } else {
             u32 index = ((reg & PICINFO_BUF_IDX_MASK) - 1) & 3;
 
@@ -184,18 +189,18 @@ static irqreturn_t vmjpeg_isr(int irq, void *dev_id)
             set_frame_info(vf);
 
 #if 0
-			if (reg & PICINFO_AVI1) {
-				/* AVI1 format */
-				if (reg & PICINFO_INTERLACE_AVI1_BOT) {
-					vf->type = VIDTYPE_INTERLACE_BOTTOM | VIDTYPE_INTERLACE_FIRST;
+            if (reg & PICINFO_AVI1) {
+                /* AVI1 format */
+                if (reg & PICINFO_INTERLACE_AVI1_BOT) {
+                    vf->type = VIDTYPE_INTERLACE_BOTTOM | VIDTYPE_INTERLACE_FIRST;
                 } else {
                     vf->type = VIDTYPE_INTERLACE_TOP;
                 }
             } else {
-            	if (reg & PICINFO_INTERLACE_FIRST) {
-                	vf->type = VIDTYPE_INTERLACE_TOP | VIDTYPE_INTERLACE_FIRST;
+                if (reg & PICINFO_INTERLACE_FIRST) {
+                    vf->type = VIDTYPE_INTERLACE_TOP | VIDTYPE_INTERLACE_FIRST;
                 } else {
-        	        vf->type = VIDTYPE_INTERLACE_BOTTOM;
+                    vf->type = VIDTYPE_INTERLACE_BOTTOM;
                 }
             }
 
@@ -203,28 +208,32 @@ static irqreturn_t vmjpeg_isr(int irq, void *dev_id)
             vf->duration >>= 1;
             vf->canvas0Addr = vf->canvas1Addr = index2canvas0(index);
 
-			if ((vf->type & VIDTYPE_INTERLACE_FIRST) && (pts_valid))
-	            vf->pts = pts;
-	        else
-	        	vf->pts = 0;
+            if ((vf->type & VIDTYPE_INTERLACE_FIRST) && (pts_valid)) {
+                vf->pts = pts;
+            } else {
+                vf->pts = 0;
+            }
 
             vfbuf_use[index]++;
 
             INCPTR(fill_ptr);
 #else
-           	/* send whole frame by weaving top & bottom field */
+            /* send whole frame by weaving top & bottom field */
             vf->type = VIDTYPE_PROGRESSIVE;
-			vf->canvas0Addr = index2canvas0(index);
+            vf->canvas0Addr = index2canvas0(index);
             vf->canvas1Addr = index2canvas1(index);
 
-			if (pts_valid)
-	            vf->pts = pts;
-	        else
-	        	vf->pts = 0;
+            if (pts_valid) {
+                vf->pts = pts;
+            } else {
+                vf->pts = 0;
+            }
 
-	        vfbuf_use[index]++;
+            vfbuf_use[index]++;
 
-  	        INCPTR(fill_ptr);
+            INCPTR(fill_ptr);
+            if (vf_receiver)
+    	        vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL, NULL);	            
 #endif
         }
 
@@ -236,8 +245,9 @@ static irqreturn_t vmjpeg_isr(int irq, void *dev_id)
 
 static vframe_t *vmjpeg_vf_peek(void)
 {
-    if (get_ptr == fill_ptr)
+    if (get_ptr == fill_ptr) {
         return NULL;
+    }
 
     return &vfpool[get_ptr];
 }
@@ -246,8 +256,9 @@ static vframe_t *vmjpeg_vf_get(void)
 {
     vframe_t *vf;
 
-    if (get_ptr == fill_ptr)
+    if (get_ptr == fill_ptr) {
         return NULL;
+    }
 
     vf = &vfpool[get_ptr];
 
@@ -259,6 +270,28 @@ static vframe_t *vmjpeg_vf_get(void)
 static void vmjpeg_vf_put(vframe_t *vf)
 {
     INCPTR(putting_ptr);
+}
+static int  vmjpeg_vf_states(vframe_states_t *states)
+{
+    int i;
+    unsigned long flags;
+    spin_lock_irqsave(&lock, flags);
+
+    states->vf_pool_size = VF_POOL_SIZE;
+    i = put_ptr - fill_ptr;
+    if (i < 0) i += VF_POOL_SIZE;
+    states->buf_free_num = i;
+    
+    i = putting_ptr - put_ptr;
+    if (i < 0) i += VF_POOL_SIZE;
+    states->buf_recycle_num = i;
+    
+    i = fill_ptr - get_ptr;
+    if (i < 0) i += VF_POOL_SIZE;
+    states->buf_avail_num = i;
+
+    spin_unlock_irqrestore(&lock, flags);
+    return 0;
 }
 
 static void vmjpeg_put_timer_func(unsigned long arg)
@@ -284,10 +317,11 @@ int vmjpeg_dec_status(struct vdec_status *vstatus)
 {
     vstatus->width = frame_width;
     vstatus->height = frame_height;
-    if(0!= frame_dur)
-        vstatus->fps = 96000/frame_dur;
-    else
+    if (0 != frame_dur) {
+        vstatus->fps = 96000 / frame_dur;
+    } else {
         vstatus->fps = 96000;
+    }
     vstatus->error_count = 0;
     vstatus->status = stat;
 
@@ -308,8 +342,7 @@ static void vmjpeg_canvas_init(void)
         decbuf_y_size  = 0x80000;
         decbuf_uv_size = 0x20000;
         decbuf_size    = 0x100000;
-    }
-    else {
+    } else {
         /* HD & SD */
         canvas_width   = 1920;
         canvas_height  = 1088;
@@ -329,7 +362,7 @@ static void vmjpeg_canvas_init(void)
                       CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
         canvas_config(3 * i + 2,
                       buf_start + i * decbuf_size + decbuf_y_size + decbuf_uv_size,
-                      canvas_width/2, canvas_height/2,
+                      canvas_width / 2, canvas_height / 2,
                       CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
         canvas_config(3 * i + 0 + 12,
                       buf_start + i * decbuf_size + decbuf_size / 2,
@@ -341,7 +374,7 @@ static void vmjpeg_canvas_init(void)
                       CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
         canvas_config(3 * i + 2 + 12,
                       buf_start + i * decbuf_size + decbuf_y_size + decbuf_uv_size + decbuf_uv_size / 2,
-                      canvas_width/2, canvas_height/2,
+                      canvas_width / 2, canvas_height / 2,
                       CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
     }
 }
@@ -373,7 +406,7 @@ static void init_scaler(void)
     }
 
     /* Y horizontal initial info */
-    WRITE_MPEG_REG(PSCALE_BMEM_ADDR, 37*2);
+    WRITE_MPEG_REG(PSCALE_BMEM_ADDR, 37 * 2);
     /* [35]: buf repeat pix0,
      * [34:29] => buf receive num,
      * [28:16] => buf blk x,
@@ -383,43 +416,43 @@ static void init_scaler(void)
     WRITE_MPEG_REG(PSCALE_BMEM_DAT, 0x60000000);
 
     /* C horizontal initial info */
-    WRITE_MPEG_REG(PSCALE_BMEM_ADDR, 41*2);
+    WRITE_MPEG_REG(PSCALE_BMEM_ADDR, 41 * 2);
     WRITE_MPEG_REG(PSCALE_BMEM_DAT, 0x0008);
     WRITE_MPEG_REG(PSCALE_BMEM_DAT, 0x60000000);
 
     /* Y vertical initial info */
-    WRITE_MPEG_REG(PSCALE_BMEM_ADDR, 39*2);
+    WRITE_MPEG_REG(PSCALE_BMEM_ADDR, 39 * 2);
     WRITE_MPEG_REG(PSCALE_BMEM_DAT, 0x0008);
     WRITE_MPEG_REG(PSCALE_BMEM_DAT, 0x60000000);
 
     /* C vertical initial info */
-    WRITE_MPEG_REG(PSCALE_BMEM_ADDR, 43*2);
+    WRITE_MPEG_REG(PSCALE_BMEM_ADDR, 43 * 2);
     WRITE_MPEG_REG(PSCALE_BMEM_DAT, 0x0008);
     WRITE_MPEG_REG(PSCALE_BMEM_DAT, 0x60000000);
 
     /* Y horizontal phase step */
-    WRITE_MPEG_REG(PSCALE_BMEM_ADDR, 36*2 + 1);
+    WRITE_MPEG_REG(PSCALE_BMEM_ADDR, 36 * 2 + 1);
     /* [19:0] => Y horizontal phase step */
     WRITE_MPEG_REG(PSCALE_BMEM_DAT, 0x10000);
     /* C horizontal phase step */
-    WRITE_MPEG_REG(PSCALE_BMEM_ADDR, 40*2 + 1);
+    WRITE_MPEG_REG(PSCALE_BMEM_ADDR, 40 * 2 + 1);
     /* [19:0] => C horizontal phase step */
     WRITE_MPEG_REG(PSCALE_BMEM_DAT, 0x10000);
 
     /* Y vertical phase step */
-    WRITE_MPEG_REG(PSCALE_BMEM_ADDR, 38*2+1);
+    WRITE_MPEG_REG(PSCALE_BMEM_ADDR, 38 * 2 + 1);
     /* [19:0] => Y vertical phase step */
     WRITE_MPEG_REG(PSCALE_BMEM_DAT, 0x10000);
     /* C vertical phase step */
-    WRITE_MPEG_REG(PSCALE_BMEM_ADDR, 42*2+1);
+    WRITE_MPEG_REG(PSCALE_BMEM_ADDR, 42 * 2 + 1);
     /* [19:0] => C horizontal phase step */
     WRITE_MPEG_REG(PSCALE_BMEM_DAT, 0x10000);
 
     /* reset pscaler */
     WRITE_MPEG_REG(RESET2_REGISTER, RESET_PSCALE);
-	READ_MPEG_REG(RESET2_REGISTER);
-	READ_MPEG_REG(RESET2_REGISTER);
-	READ_MPEG_REG(RESET2_REGISTER);
+    READ_MPEG_REG(RESET2_REGISTER);
+    READ_MPEG_REG(RESET2_REGISTER);
+    READ_MPEG_REG(RESET2_REGISTER);
 
     WRITE_MPEG_REG(PSCALE_RST, 0x7);
     WRITE_MPEG_REG(PSCALE_RST, 0x0);
@@ -456,7 +489,7 @@ static void vmjpeg_prot_init(void)
 static void vmjpeg_local_init(void)
 {
     int i;
-
+    vf_receiver = NULL;
     fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
 
     frame_width = vmjpeg_amstream_dec_info.width;
@@ -465,8 +498,9 @@ static void vmjpeg_local_init(void)
 
     amlog_level(LOG_LEVEL_INFO, "mjpegdec: w(%d), h(%d), dur(%d)\n", frame_width, frame_height, frame_dur);
 
-    for (i = 0; i < 4; i++)
+    for (i = 0; i < 4; i++) {
         vfbuf_use[i] = 0;
+    }
 }
 
 static s32 vmjpeg_init(void)
@@ -504,7 +538,13 @@ static s32 vmjpeg_init(void)
 
     stat |= STAT_ISR_REG;
 
-    vf_reg_provider(&vmjpeg_vf_provider);
+ #ifdef CONFIG_POST_PROCESS_MANAGER
+	vf_receiver = vf_ppmgr_reg_provider(&vmjpeg_vf_provider);
+	if ((vf_receiver) && (vf_receiver->event_cb))
+	vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_START, NULL, NULL); 	
+ #else 
+ 	vf_reg_provider(&vmjpeg_vf_provider);
+ #endif 
 
     stat |= STAT_VF_HOOK;
 
@@ -570,7 +610,13 @@ static int amvdec_mjpeg_remove(struct platform_device *pdev)
     }
 
     if (stat & STAT_VF_HOOK) {
-        vf_unreg_provider();
+ #ifdef CONFIG_POST_PROCESS_MANAGER
+	vf_ppmgr_unreg_provider();
+	if ((vf_receiver) && (vf_receiver->event_cb))
+	vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_UNREG, NULL, NULL); 	
+ #else 
+ 	vf_unreg_provider();
+ #endif         
         stat &= ~STAT_VF_HOOK;
     }
 

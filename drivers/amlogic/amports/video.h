@@ -23,19 +23,24 @@
 #define VIDEO_H
 
 enum {
-    VIDEO_WIDEOPTION_NORMAL       = 0,
-    VIDEO_WIDEOPTION_FULL_STRETCH = 1,
-    VIDEO_WIDEOPTION_4_3          = 2,
-    VIDEO_WIDEOPTION_16_9         = 3,
-    VIDEO_WIDEOPTION_NONLINEAR    = 4,
-    VIDEO_WIDEOPTION_MAX          = 5
+    VIDEO_WIDEOPTION_NORMAL           = 0,
+    VIDEO_WIDEOPTION_FULL_STRETCH     = 1,
+    VIDEO_WIDEOPTION_4_3              = 2,
+    VIDEO_WIDEOPTION_16_9             = 3,
+    VIDEO_WIDEOPTION_NORMAL_NOSCALEUP = 4,
+    VIDEO_WIDEOPTION_MAX              = 5
 };
 
 typedef  struct {
-	s32 x ;
-	s32 y ;
-	s32 w ;
-	s32 h ;
+    s32 x ;
+    s32 y ;
+    s32 w ;
+    s32 h ;
 } disp_rect_t;
+
+#define VIDEO_NOTIFY_TRICK_WAIT   0x01
+#define VIDEO_NOTIFY_PROVIDER_GET 0x02
+#define VIDEO_NOTIFY_PROVIDER_PUT 0x04
+#define VIDEO_NOTIFY_FRAME_WAIT  0x08
 
 #endif /* VIDEO_H */

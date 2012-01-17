@@ -60,6 +60,8 @@ dsp_register.h
 #define DSP_DECODE_OPTION       DSP_REG(21)
 #define DSP_AUDIO_FORMAT_INFO  DSP_REG(22)
 
+#define DSP_GET_EXTRA_INFO_FINISH    DSP_REG(23)
+
 #define MAILBOX1_REG(n)	DSP_REG(40+n)
 #define MAILBOX2_REG(n)	DSP_REG(40+32+n)
 #define DSP_WORK_INFO (AUDIO_DSP_END_ADDR - 128)

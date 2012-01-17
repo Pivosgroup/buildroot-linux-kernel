@@ -3,7 +3,7 @@
 #
 
 # Common support
-obj-y := core.o clock.o common.o
+obj-y := core.o clock.o common.o fiq.o fiq_bridge.o
 obj-m :=
 obj-n :=
 obj-  :=

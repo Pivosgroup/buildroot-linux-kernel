@@ -75,6 +75,7 @@ static void aml_i2c_pinmux_master(struct aml_i2c *i2c)
 static void aml_i2c_dbg(struct aml_i2c *i2c)
 {
 	int i;
+	struct aml_i2c_reg_ctrl* ctrl;
 
 	if(i2c->i2c_debug == 0)
 		return ;
@@ -95,6 +96,21 @@ static void aml_i2c_dbg(struct aml_i2c *i2c)
 								i2c->master_regs->i2c_token_rdata_1);
 	for(i=0; i<AML_I2C_MAX_TOKENS; i++)
 		printk("token_tag[%d]  %d\n", i, i2c->token_tag[i]);
+	
+	ctrl = ((struct aml_i2c_reg_ctrl*)&(i2c->master_regs->i2c_ctrl));
+	printk( "i2c_ctrl:  0x%x\n", i2c->master_regs->i2c_ctrl);
+	printk( "ctrl.rdsda  0x%x\n", ctrl->rdsda);
+	printk( "ctrl.rdscl  0x%x\n", ctrl->rdscl);
+	printk( "ctrl.wrsda  0x%x\n", ctrl->wrsda);
+	printk( "ctrl.wrscl  0x%x\n", ctrl->wrscl);
+	printk( "ctrl.manual_en  0x%x\n", ctrl->manual_en);
+	printk( "ctrl.clk_delay  0x%x\n", ctrl->clk_delay);
+	printk( "ctrl.rd_data_cnt  0x%x\n", ctrl->rd_data_cnt);
+	printk( "ctrl.cur_token  0x%x\n", ctrl->cur_token);
+	printk( "ctrl.error  0x%x\n", ctrl->error);
+	printk( "ctrl.status  0x%x\n", ctrl->status);
+	printk( "ctrl.ack_ignore  0x%x\n", ctrl->ack_ignore);
+	printk( "ctrl.start  0x%x\n", ctrl->start);
 								
 }
 
@@ -135,7 +151,10 @@ static int aml_i2c_check_error(struct aml_i2c *i2c)
 	ctrl = (struct aml_i2c_reg_ctrl*)&(i2c->master_regs->i2c_ctrl);
 	
 	if(ctrl->error)
+	{
+		//printk( "ctrl.cur_token  0x%x\n", ctrl->cur_token);
 		return -EIO;
+	}
 	else
 		return 0;
 }
@@ -192,6 +211,7 @@ static void aml_i2c_fill_data(struct aml_i2c *i2c, unsigned char *buf,
 static void aml_i2c_xfer_prepare(struct aml_i2c *i2c)
 {
 	aml_i2c_pinmux_master(i2c);
+	aml_i2c_set_clk(i2c);
 } 
 
 static void aml_i2c_start_token_xfer(struct aml_i2c *i2c)
@@ -375,11 +395,73 @@ static int aml_i2c_xfer(struct i2c_adapter *i2c_adap, struct i2c_msg *msgs,
 	if (ret == 0)
 		return num;
 	else {
-		printk("[aml_i2c_xfer] error ret = %d\n", ret);
+		printk("[aml_i2c_xfer] error ret = %d \t", ret);
+		printk( "i2c master %s current slave addr is 0x%x\n", 
+						i2c->master_no?"a":"b", i2c->cur_slave_addr);
 		return ret;
 	}
 }
 
+/*General i2c master transfer 100k*/
+static int aml_i2c_xfer_slow(struct i2c_adapter *i2c_adap, struct i2c_msg *msgs, 
+							int num)
+{
+	struct aml_i2c *i2c = &aml_i2c_ddata;
+	struct i2c_msg * p;
+	unsigned int i;
+	unsigned int ret=0;
+	unsigned int last_speed = i2c->master_i2c_speed;
+	
+	spin_lock(&i2c->lock);
+
+	i2c->master_i2c_speed = AML_I2C_SPPED_100K;/* change speed in i2c->lock*/
+	i2c->ops->xfer_prepare(i2c);
+
+	for (i = 0; !ret && i < num; i++) {
+		p = &msgs[i];
+		i2c->msg_flags = p->flags;
+		ret = i2c->ops->do_address(i2c, p->addr, p->buf, p->flags & I2C_M_RD, p->len);
+		if (ret || !p->len)
+			continue;
+		if (p->flags & I2C_M_RD)
+			ret = i2c->ops->read(i2c, p->buf, p->len);
+		else
+			ret = i2c->ops->write(i2c, p->buf, p->len);
+	}
+	
+	i2c->ops->stop(i2c);
+
+	spin_unlock(&i2c->lock);
+
+	AML_I2C_DBG("aml_i2c_xfer_slow");
+	if (p->flags & I2C_M_RD){
+		AML_I2C_DBG("read ");
+	}
+	else {
+		AML_I2C_DBG("write ");
+	}
+	for(i=0;i<p->len;i++)
+		AML_I2C_DBG("%x-",*(p->buf)++);
+	AML_I2C_DBG("\n");
+	
+	i2c->master_i2c_speed = last_speed;
+	/* Return the number of messages processed, or the error code*/
+	if (ret == 0)
+		return num;
+	else {
+		struct aml_i2c_reg_ctrl* ctrl;
+		
+		//printk("i2c master %s current slave addr is 0x%x \t", 
+						//i2c->master_no?"a":"b", i2c->cur_slave_addr);
+
+		ctrl = ((struct aml_i2c_reg_ctrl*)&(i2c->master_regs->i2c_ctrl));
+		//if(ctrl->cur_token == TOKEN_START)
+			//printk("error addr\n");
+		//else
+			//printk("error data\n");
+		return ret;
+	}
+}
 static u32 aml_i2c_func(struct i2c_adapter *i2c_adap)
 {
 	return I2C_FUNC_I2C;
@@ -399,97 +481,31 @@ static struct i2c_adapter aml_i2c_adapter = {
 	.nr = 0,
 };
 
-/***************i2c pio******************/
-
-static void aml_pio_bit_setscl(void *data, int val)
-{
-	//struct aml_i2c *i2c = (struct aml_i2c*)data;
-	//struct aml_i2c_reg_ctrl* ctrl;
-	unsigned int ctrl;
-
-	//ctrl = (struct aml_i2c_reg_ctrl*)&(i2c->master_regs->i2c_ctrl);
-	ctrl = readl(0xc1108500);
-	ctrl = ctrl |(val<<12);
-	writel(ctrl, 0xc1108500);
-	//ctrl->wrscl = val;
-	//ctrl->manual_en = 1;
-}
-
-static void aml_pio_bit_setsda(void *data, int val)
-{
-	struct aml_i2c *i2c = (struct aml_i2c*)data;
-	//struct aml_i2c_reg_ctrl* ctrl;
-	unsigned int ctrl;
-
-	//ctrl = (struct aml_i2c_reg_ctrl*)&(i2c->master_regs->i2c_ctrl);
-	ctrl = readl(0xc1108500);
-	ctrl = ctrl |(val<<13);
-	writel(ctrl, 0xc1108500);
-
-}
-
-/* no use
-static int aml_pio_bit_getscl(void *data)
-{
-	struct aml_i2c *i2c = (struct aml_i2c*)data;
-	struct aml_i2c_reg_ctrl* ctrl;
-
-	ctrl = (struct aml_i2c_reg_ctrl*)&(i2c->master_regs->i2c_ctrl);
-	return ctrl->rdscl;
-}	
-*/
-
-static int aml_pio_bit_getsda(void *data)
-{
-	struct aml_i2c *i2c = (struct aml_i2c*)data;
-	struct aml_i2c_reg_ctrl* ctrl;
-
-	ctrl = (struct aml_i2c_reg_ctrl*)&(i2c->master_regs->i2c_ctrl);
-	ctrl->manual_en = 1;
-	return ctrl->rdsda;
-}
-
-static u32 aml_i2c_pio_func(struct i2c_adapter *i2c_adap)
-{
-	return I2C_FUNC_I2C;
-}
-
-
-static const struct i2c_algorithm aml_i2c_pio_algorithm = { 
-	.master_xfer = aml_i2c_xfer, 
-	.functionality = aml_i2c_pio_func, 
+static const struct i2c_algorithm aml_i2c_algorithm_slow = { 
+	.master_xfer = aml_i2c_xfer_slow, 
+	.functionality = aml_i2c_func, 
 };
 
-
-struct i2c_algo_bit_data aml_i2c_pio_algorithm_data = {
-	.data			= &aml_i2c_ddata,
-	.setsda			= aml_pio_bit_setsda,
-	.setscl			= aml_pio_bit_setscl,
-	.getscl			= NULL,
-	.getsda			= aml_pio_bit_getsda,
-	.udelay			= 10,
-	.timeout			= 100,
-};
-
-static struct i2c_adapter aml_i2c_pio_adapter = { 
-	.algo_data		= &aml_i2c_pio_algorithm_data,
-	.name			= "aml-pio-i2c",
-	.owner			= THIS_MODULE,
-	.id				= I2C_HW_B_PIO,
-	.class			= I2C_CLASS_HWMON,
-	.nr 				= 0,
+static struct i2c_adapter aml_i2c_adapter_slow = { 
+	.owner = THIS_MODULE, 
+	.name = "aml_i2c_adapter_slow", 
+	.id		= I2C_DRIVERID_AML_SLOW,
+	.class = I2C_CLASS_HWMON, 
+	.algo = &aml_i2c_algorithm_slow,
+	.nr = 1,
 };
 
 /***************i2c class****************/
 
-static ssize_t show_i2c_debug(struct class *class, char *buf)
+static ssize_t show_i2c_debug(struct class *class, 
+			struct class_attribute *attr,	char *buf)
 {
 	struct aml_i2c *i2c = &aml_i2c_ddata;
 	return sprintf(buf, "i2c debug is 0x%x\n", i2c->i2c_debug);
 }
 
-static ssize_t store_i2c_debug(struct class *class, const char *buf, 
-											size_t count)
+static ssize_t store_i2c_debug(struct class *class, 
+			struct class_attribute *attr,	const char *buf, size_t count)
 {
 	unsigned int dbg;
 	ssize_t r;
@@ -503,7 +519,8 @@ static ssize_t store_i2c_debug(struct class *class, const char *buf,
 	return count;
 }
 
-static ssize_t show_i2c_info(struct class *class, char *buf)
+static ssize_t show_i2c_info(struct class *class, 
+			struct class_attribute *attr,	char *buf)
 {
 	struct aml_i2c *i2c = &aml_i2c_ddata;
 	struct aml_i2c_reg_ctrl* ctrl;
@@ -554,9 +571,103 @@ static ssize_t show_i2c_info(struct class *class, char *buf)
 	return 0;
 }
 
+static ssize_t store_register(struct class *class, 
+			struct class_attribute *attr,	const char *buf, size_t count)
+{
+	unsigned int reg, val, ret;
+	int n=1,i;
+	if(buf[0] == 'w'){
+		ret = sscanf(buf, "w %x %x", &reg, &val);
+		//printk("sscanf w reg = %x, val = %x\n",reg, val);
+		printk("write cbus reg 0x%x value %x\n", reg, val);
+		WRITE_CBUS_REG(reg, val);
+	}
+	else{
+		ret =  sscanf(buf, "%x %d", &reg,&n);
+		printk("read %d cbus register from reg: %x \n",n,reg);
+		for(i=0;i<n;i++)
+		{
+			val = READ_CBUS_REG(reg+i);
+			printk("reg 0x%x : 0x%x\n", reg+i, val);
+		}
+	}
+	
+	if (ret != 1 || ret !=2)
+		return -EINVAL;
+
+	return 0;
+}
+
+static unsigned int clock81_reading(void)
+{
+	int val;
+	
+	val = READ_CBUS_REG(0x1070);
+	printk( "1070=%x\n", val);
+	val = READ_CBUS_REG(0x105d);
+	printk( "105d=%x\n", val);
+	return 148;
+}
+
+static ssize_t rw_special_reg(struct class *class, 
+			struct class_attribute *attr,	const char *buf, size_t count)
+{
+	unsigned int id, val, ret;
+	
+	if(buf[0] == 'w'){
+		ret = sscanf(buf, "w %x", &id);
+		switch(id)
+		{
+			case 0:
+				break;
+			default:
+				printk( "'echo h > customize' for help\n");
+				break;
+		}
+		//printk("sscanf w reg = %x, val = %x\n",reg, val);
+		//printk("write cbus reg 0x%x value %x\n", reg, val);
+		//WRITE_CBUS_REG(reg, val);
+	}
+	else if(buf[0] == 'r'){
+		ret =  sscanf(buf, "r %x", &id);
+		switch(id)
+		{
+			case 0:
+				val = clock81_reading();
+				printk("Reading Value=%04d Mhz\n", val);
+				break;
+			default:
+				printk( "'echo h > customize' for help\n");
+				break;
+		}
+		//printk("sscanf r reg = %x\n", reg);
+		//val = READ_CBUS_REG(reg);
+		//printk("read cbus reg 0x%x value %x\n", reg, val);
+	}
+	else if(buf[0] == 'h'){
+		printk( "Customize sys fs help\n");
+		printk( "**********************************************************\n");
+		printk( "This interface for customer special register value getting\n");
+		printk( "echo w id > customize: for write the value to customer specified register\n");
+		printk( "echo r id > customize: for read the value from customer specified register\n");
+		printk( "reading ID: 0--for clock81 reading\n");
+		printk( "writting ID: reserved currently \n");
+		printk( "**********************************************************\n");
+	}
+	else
+		printk( "'echo h > customize' for help\n");
+
+	if (ret != 1 || ret !=2)
+		return -EINVAL;
+		
+	return 0;
+}
+
 static struct class_attribute i2c_class_attrs[] = {
     __ATTR(debug,  S_IRUGO | S_IWUSR, show_i2c_debug,    store_i2c_debug),
     __ATTR(info,       S_IRUGO | S_IWUSR, show_i2c_info,    NULL),
+    __ATTR(cbus_reg,  S_IRUGO | S_IWUSR, NULL,    store_register),
+    __ATTR(customize,  S_IRUGO | S_IWUSR, NULL,    rw_special_reg),
     __ATTR_NULL
 };
 
@@ -591,24 +702,8 @@ static int aml_i2c_probe(struct platform_device *pdev)
 
 	aml_i2c_hw_init(i2c , i2c->use_pio);
 
-	/*pio: bit algo*/
-	if(i2c->use_pio){
-		i2c->adap = &aml_i2c_pio_adapter;
-		
-		/*add to i2c bit algos*/
-		if ((ret = i2c_bit_add_numbered_bus(i2c->adap) != 0)) 
-		{
-			printk(KERN_ERR "\033[0;40;36mERROR: Could not add %s to i2c bit" 
-								"algos\033[0m\r\n", i2c->adap->name);
-			return ret;
-		}
-
-		printk("aml gpio i2c bus initialized\r\n");
-	}
-	else {
-		ret = i2c_add_numbered_adapter(&aml_i2c_adapter);
-		i2c->adap = &aml_i2c_adapter;
-	}
+	ret = i2c_add_numbered_adapter(&aml_i2c_adapter);
+	i2c->adap = &aml_i2c_adapter;
 
 	if (ret < 0) 
 	{
@@ -616,6 +711,17 @@ static int aml_i2c_probe(struct platform_device *pdev)
 			aml_i2c_adapter.name);
 		return -1;
 	}
+	dev_info(&pdev->dev, "add adapter %s\n", aml_i2c_adapter.name);
+	
+	ret = i2c_add_numbered_adapter(&aml_i2c_adapter_slow);
+	i2c->adap = &aml_i2c_adapter_slow;
+	if (ret < 0) 
+	{
+		dev_err(&pdev->dev, "Adapter %s registration failed\n",	 
+			aml_i2c_adapter.name);
+		return -1;
+	}
+	dev_info(&pdev->dev, "add adapter %s\n", aml_i2c_adapter_slow.name);
 	
 	dev_info(&pdev->dev, "aml i2c bus driver.\n");
 	
@@ -654,7 +760,7 @@ static void __exit aml_i2c_exit(void)
 	platform_driver_unregister(&aml_i2c_driver);
 } 
 
-module_init(aml_i2c_init);
+arch_initcall(aml_i2c_init);
 module_exit(aml_i2c_exit);
 
 MODULE_AUTHOR("AMLOGIC");

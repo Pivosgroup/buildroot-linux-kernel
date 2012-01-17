@@ -26,19 +26,16 @@
 #define TVMODE_H
 
 typedef enum {
-    TVMODE_480I       = 0,
-    TVMODE_480CVBS    = 1,
-    TVMODE_480P       = 2,
-    TVMODE_576I       = 3,
-    TVMODE_576CVBS    = 4,
-    TVMODE_576P       = 5,
-    TVMODE_720P       = 6,
-    TVMODE_720P_50HZ  = 7,
-    TVMODE_1080I      = 8,
-    TVMODE_1080I_50HZ = 9,
-    TVMODE_1080P      = 10,
-    TVMODE_1080P_50HZ = 11,
-    TVMODE_MAX        = 12
+    TVMODE_480I  = 0,
+    TVMODE_480CVBS,
+    TVMODE_480P  ,
+    TVMODE_576I  ,
+    TVMODE_576CVBS,
+    TVMODE_576P  ,
+    TVMODE_720P  ,
+    TVMODE_1080I ,
+    TVMODE_1080P ,
+    TVMODE_MAX   
 } tvmode_t;
 
 #endif /* TVMODE_H */

@@ -25,9 +25,9 @@
 extern void rm_set_vasid(u32 vid, u32 aid);
 
 extern ssize_t rmparser_write(struct file *file,
-                       struct stream_buf_s *vbuf,
-                       struct stream_buf_s *abuf,
-                       const char __user *buf, size_t count);
+                              struct stream_buf_s *vbuf,
+                              struct stream_buf_s *abuf,
+                              const char __user *buf, size_t count);
 
 s32 rmparser_init(void);
 

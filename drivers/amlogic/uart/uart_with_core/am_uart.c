@@ -55,7 +55,12 @@
 
 static unsigned int uart_irqs[UART_NR] = { INT_UART,INT_UART_1 };
 static am_uart_t *uart_addr[UART_NR] = { UART_BASEADDR0,UART_BASEADDR1 };
+
+#ifdef CONFIG_AM_UART0_SET_PORT_A
 static int default_index = 0;
+#else
+static int default_index = 1;
+#endif
 static int inited_ports_flag = 0;
 #ifndef outl
 #define outl(v,addr)	__raw_writel(v,(unsigned long)addr)
@@ -72,6 +77,8 @@ DECLARE_MUTEX(tmp_buf_sem);
 #ifndef MIN
 #define MIN(a,b)	((a) < (b) ? (a) : (b))
 #endif
+
+//#define PRINT_DEBUG
 
 struct am_uart_port {
 	struct uart_port	port;
@@ -104,9 +111,6 @@ struct am_uart_port {
 	long			session; /* Session of opening process */
 	long			pgrp; /* pgrp of opening process */
 
-       unsigned char *rx_buf;
-       int                  rx_head;
-       int                  rx_tail;
        int                  rx_cnt;
        int                  rx_error;
        
@@ -157,6 +161,8 @@ static void receive_chars(struct am_uart_port *info, struct pt_regs *regs,
 	am_uart_t *uart = uart_addr[info->line];
 	int status;
 	int mode;
+        char ch;
+        unsigned long flag = TTY_NORMAL;  
 
 	if (!tty) {
 		//printk("Uart : missing tty on line %d\n", info->line);
@@ -177,12 +183,10 @@ static void receive_chars(struct am_uart_port *info, struct pt_regs *regs,
 		__raw_writel(mode, &uart->mode);
 	}
 	do {
-		info->rx_buf[info->rx_tail] = (rx & 0x00ff);
-              info->rx_tail = (info->rx_tail+1) & (SERIAL_XMIT_SIZE - 1);
+		ch = (rx & 0x00ff);
+                tty_insert_flip_char(tty,ch,flag);
+
 		info->rx_cnt++;
-		if (info->rx_cnt >= SERIAL_XMIT_SIZE) {
-			goto clear_and_exit;
-		}
 		if ((status = __raw_readl(&uart->status) & 0x3f))
 			rx = __raw_readl(&uart->rdata);
 	} while (status);
@@ -221,13 +225,9 @@ static void BH_receive_chars(struct am_uart_port *info)
        info->rx_error = 0;
 	if(cnt)
        {
-            if(info->rx_head > info->rx_tail)
-                cnt = SERIAL_XMIT_SIZE-info->rx_head;
             
-            tty_insert_flip_string(tty,info->rx_buf+info->rx_head,cnt);
 
-            info->rx_head = (info->rx_head+cnt) & (SERIAL_XMIT_SIZE - 1);
-            info->rx_cnt -=cnt; 
+            info->rx_cnt =0; 
             
 	     tty_flip_buffer_push(tty);
        }
@@ -349,6 +349,11 @@ static void am_uart_stop_tx(struct uart_port *port)
   struct am_uart_port * info = &am_ports[port->line];
   am_uart_t *uart = uart_addr[info->line];
 	unsigned long mode;
+
+#ifdef PRINT_DEBUG
+    if(info->line == 0)
+        printk("%s\n", __FUNCTION__);
+#endif
        
 	mutex_lock(&info->info_mutex);
 	mode = __raw_readl(&uart->mode);
@@ -365,8 +370,8 @@ static void am_uart_start_tx(struct uart_port *port)
   struct uart_port * up = &info->port;
 	unsigned int ch;
   struct circ_buf *xmit = &up->state->xmit;
-       
-	mutex_lock(&info->info_mutex);
+    
+//	mutex_lock(&info->info_mutex);
 	mode = __raw_readl(&uart->mode);
 	mode |= UART_TXENB;
 	__raw_writel(mode, &uart->mode);	
@@ -379,7 +384,7 @@ static void am_uart_start_tx(struct uart_port *port)
 		xmit->tail = (xmit->tail+1) & (SERIAL_XMIT_SIZE - 1);
   }
   }
-  mutex_unlock(&info->info_mutex);
+  //mutex_unlock(&info->info_mutex);
 }
 
 static void am_uart_stop_rx(struct uart_port *port)
@@ -387,6 +392,11 @@ static void am_uart_stop_rx(struct uart_port *port)
   struct am_uart_port * info = &am_ports[port->line];
   am_uart_t *uart = uart_addr[info->line];
 	unsigned long mode;
+
+#ifdef PRINT_DEBUG
+    if(info->line == 0)
+        printk("%s\n", __FUNCTION__);
+#endif
 
 	mutex_lock(&info->info_mutex);
 	mode = __raw_readl(&uart->mode);
@@ -397,6 +407,11 @@ static void am_uart_stop_rx(struct uart_port *port)
 
 static void am_uart_enable_ms(struct uart_port *port)
 {
+#ifdef PRINT_DEBUG
+    struct am_uart_port * info = &am_ports[port->line];
+    if(info->line == 0)
+        printk("%s\n", __FUNCTION__);
+#endif
       return;
 }
 
@@ -405,6 +420,11 @@ static unsigned int am_uart_tx_empty(struct uart_port *port)
   struct am_uart_port * info = &am_ports[port->line];
   am_uart_t *uart = uart_addr[info->line];
 	unsigned long mode;
+
+#ifdef PRINT_DEBUG
+    if(info->line == 0)
+        printk("%s\n", __FUNCTION__);
+#endif
 
   mutex_lock(&info->info_mutex);
 	mode = __raw_readl(&uart->status);
@@ -415,16 +435,31 @@ static unsigned int am_uart_tx_empty(struct uart_port *port)
 
 static unsigned int am_uart_get_mctrl(struct uart_port *port)
 {
-	return 0;
+#ifdef PRINT_DEBUG
+    struct am_uart_port * info = &am_ports[port->line];
+    if(info->line == 0)
+        printk("%s\n", __FUNCTION__);
+#endif
+	return TIOCM_CTS;
 }
 
 static void am_uart_set_mctrl(struct uart_port *port, unsigned int mctrl)
 {
+#ifdef PRINT_DEBUG
+    struct am_uart_port * info = &am_ports[port->line];
+    if(info->line == 0)
+        printk("%s\n", __FUNCTION__);
+#endif
 	return;
 }
 
 static void am_uart_break_ctl(struct uart_port *port, int break_state)
 {
+#ifdef PRINT_DEBUG
+    struct am_uart_port * info = &am_ports[port->line];
+    if(info->line == 0)
+        printk("%s\n", __FUNCTION__);
+#endif
       return;
 }
 
@@ -475,6 +510,11 @@ static int am_uart_startup(struct uart_port *port)
   am_uart_t *uart = uart_addr[info->line];
 	unsigned long mode;
  
+#ifdef PRINT_DEBUG
+    if(info->line == 0)
+        printk("%s\n", __FUNCTION__);
+#endif
+
 	mutex_lock(&info->info_mutex);
 	mode = __raw_readl(&uart->mode);
 	mode |= UART_RXENB | UART_TXENB;
@@ -495,15 +535,63 @@ static void am_uart_shutdown(struct uart_port *port)
 //	mode &= ~(UART_TXENB | UART_RXENB);
 //	__raw_writel(mode, &uart->mode);
 //  mutex_unlock(&info->info_mutex);
+#ifdef PRINT_DEBUG
+    struct am_uart_port * info = &am_ports[port->line];
+    if(info->line == 0)
+        printk("%s\n", __FUNCTION__);
+#endif
 
 }
 
+static void change_speed(struct am_uart_port *info, unsigned long newbaud)
+{
+    am_uart_t *uart = uart_addr[info->line];
+    struct tty_struct *tty;
+    unsigned long tmp;
 
+#ifdef PRINT_DEBUG
+    if(info->line == 0)
+        printk("%s\n", __FUNCTION__);
+#endif
+    tty = info->port.state->port.tty;
+    if (!tty || !tty->termios)
+        return;
+
+    if (newbaud==0)
+        return;
+
+    if(newbaud == info->baud)
+        return;
+
+    printk("Changing baud to %d\n", (int)newbaud);
+
+    while (!(__raw_readl(&uart->status) & UART_TXEMPTY)) {
+    }
+
+    tmp = (clk_get_rate(clk_get_sys("clk81", NULL)) / (newbaud * 4)) - 1;
+
+    info->baud = (int)newbaud;
+
+	tmp = (__raw_readl(&uart->mode) & ~0xfff) | (tmp & 0xfff);
+	__raw_writel(tmp, &uart->mode);
+
+}
 
 static void
 am_uart_set_termios(struct uart_port *port, struct ktermios *termios,
 		       struct ktermios *old)
 {
+    struct am_uart_port * info = &am_ports[port->line];
+#ifdef PRINT_DEBUG
+    if(info->line == 0)
+        printk("%s\n", __FUNCTION__);
+#endif
+
+    //if (termios->c_cflag == old->c_cflag)
+    //    return;
+
+    change_speed(info, termios->c_ispeed);
+
 #if 0
   unsigned int mode, fcr = 0;
 	unsigned long flags;
@@ -572,6 +660,11 @@ am_uart_set_termios(struct uart_port *port, struct ktermios *termios,
 static void
 am_uart_set_ldisc(struct uart_port *port)
 {
+#ifdef PRINT_DEBUG
+    struct am_uart_port * info = &am_ports[port->line];
+    if(info->line == 0)
+        printk("%s\n", __FUNCTION__);
+#endif
        return;
 }
 
@@ -579,33 +672,63 @@ static void
 am_uart_pm(struct uart_port *port, unsigned int state,
 	      unsigned int oldstate)
 {
+#ifdef PRINT_DEBUG
+    struct am_uart_port * info = &am_ports[port->line];
+    if(info->line == 0)
+        printk("%s\n", __FUNCTION__);
+#endif
       return;
 }
 
 static void am_uart_release_port(struct uart_port *port)
 {
+#ifdef PRINT_DEBUG
+    struct am_uart_port * info = &am_ports[port->line];
+    if(info->line == 0)
+        printk("%s\n", __FUNCTION__);
+#endif
        return;
 }
 
 static int am_uart_request_port(struct uart_port *port)
 {
+#ifdef PRINT_DEBUG
+    struct am_uart_port * info = &am_ports[port->line];
+    if(info->line == 0)
+        printk("%s\n", __FUNCTION__);
+#endif
      return 0;
 }
 
 static void am_uart_config_port(struct uart_port *port, int flags)
 {
+#ifdef PRINT_DEBUG
+    struct am_uart_port * info = &am_ports[port->line];
+    if(info->line == 0)
+        printk("%s\n", __FUNCTION__);
+#endif
     return;
 }
 
 static int
 am_uart_verify_port(struct uart_port *port, struct serial_struct *ser)
 {
+#ifdef PRINT_DEBUG
+    struct am_uart_port * info = &am_ports[port->line];
+    if(info->line == 0)
+        printk("%s\n", __FUNCTION__);
+#endif
     return 0;
 }
 
 static const char *
 am_uart_type(struct uart_port *port)
 {
+#ifdef PRINT_DEBUG
+    struct am_uart_port * info = &am_ports[port->line];
+    if(info->line == 0)
+        printk("%s\n", __FUNCTION__);
+#endif
         return NULL;
 }
 
@@ -668,15 +791,7 @@ static void am_uart_start_port(struct am_uart_port *am_port)
 	am_port->count = 0;
 	am_port->blocked_open = 0;
 
-  if (!am_port->rx_buf) {
-		am_port->rx_buf = (unsigned char *)get_zeroed_page(GFP_KERNEL);
-		if (!am_port->rx_buf)
-    { 
-      printk("uart malloc page failed!\n");
-			return;
-    }
-	}
-  am_port->rx_cnt = am_port->rx_head = am_port->rx_tail = 0;
+        am_port->rx_cnt= 0;
     
   init_waitqueue_head(&am_port->open_wait);
 	init_waitqueue_head(&am_port->close_wait);
@@ -732,7 +847,10 @@ static int __init am_uart_console_setup(struct console *co, char *options)
 	int parity = 'n';
 	int flow = 'n';
        int index = am_ports[co->index].line;
-	am_uart_t *uart = uart_addr[index];
+       am_uart_t *uart;
+	if(inited_ports_flag==0)
+                     index =default_index;
+	 uart = uart_addr[index];
 	/* TODO: pinmux */
 #if 0
 	if(cp->index==1)/*PORT B*/
@@ -813,7 +931,10 @@ static int __init am_uart_console_setup(struct console *co, char *options)
 static void am_uart_console_write(struct console *co, const char *s, u_int count)
 {
        int index = am_ports[co->index].line;
-       
+
+        if(inited_ports_flag==0)
+                     index =default_index;      
+
        if (index!=default_index)
 		am_uart_console_setup(co, NULL);
        

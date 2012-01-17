@@ -7,7 +7,7 @@ config SND_AML_SOC
 	  to select the audio interfaces to support below.
 	  
 config SND_AML_M1
-	tristate "AML7266M/AML6236M evaluation board with internel audio dac"
+	tristate "M1 evaluation board with internel audio dac"
 	depends on SND_AML_SOC
 
 
@@ -16,5 +16,17 @@ config SND_AML_M1_MID_WM8900
 	depends on SND_AML_SOC
         select SND_SOC_WM8900 if SND_AML_M1_MID_WM8900
 
-
+config SND_AML_M1_ARMDEV_WM8900
+	tristate "AML8726M ARM Dev board with WM8900"
+	depends on SND_AML_SOC
+		select SND_SOC_WM8900 if SND_AML_M1_ARMDEV_WM8900
 	
+config SND_AML_M1_MID_RT5621
+	tristate "AML8726M MID board with RT5621"
+	depends on SND_AML_SOC
+		select SND_SOC_RT5621 if SND_AML_M1_MID_RT5621
+		
+config SND_AML_M1_MID_CS42L52
+	tristate "AML8726M MID board with CS42L52"
+	depends on SND_AML_SOC
+        select SND_SOC_CS42L52 if SND_AML_M1_MID_CS42L52

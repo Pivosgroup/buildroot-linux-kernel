@@ -136,41 +136,41 @@ typedef struct stream_port_s {
 } stream_port_t;
 #endif
 static int amstream_open
-    (struct inode *inode, struct file *file);
+(struct inode *inode, struct file *file);
 static int amstream_release
-    (struct inode *inode, struct file *file);
+(struct inode *inode, struct file *file);
 static int amstream_ioctl
-    (struct inode *inode, struct file *file,
-     unsigned int cmd, ulong arg);
+(struct inode *inode, struct file *file,
+ unsigned int cmd, ulong arg);
 static ssize_t amstream_vbuf_write
-    (struct file *file, const char *buf,
-     size_t count, loff_t * ppos);
+(struct file *file, const char *buf,
+ size_t count, loff_t * ppos);
 static ssize_t amstream_abuf_write
-    (struct file *file, const char *buf,
-     size_t count, loff_t * ppos);
+(struct file *file, const char *buf,
+ size_t count, loff_t * ppos);
 static ssize_t amstream_mpts_write
-    (struct file *file, const char *buf,
-     size_t count, loff_t * ppos);
+(struct file *file, const char *buf,
+ size_t count, loff_t * ppos);
 static ssize_t amstream_mpps_write
-    (struct file *file, const char *buf,
-     size_t count, loff_t * ppos);
+(struct file *file, const char *buf,
+ size_t count, loff_t * ppos);
 static ssize_t amstream_sub_read
-    (struct file *file, char *buf,
-     size_t count, loff_t * ppos);
+(struct file *file, char *buf,
+ size_t count, loff_t * ppos);
 static ssize_t amstream_sub_write
-    (struct file *file, const char *buf,
-     size_t count, loff_t * ppos);
+(struct file *file, const char *buf,
+ size_t count, loff_t * ppos);
 static unsigned int amstream_sub_poll
-    (struct file *file, poll_table *wait_table);
+(struct file *file, poll_table *wait_table);
 static int (*amstream_vdec_status)
-    (struct vdec_status *vstatus);
+(struct vdec_status *vstatus);
 static int (*amstream_adec_status)
-    (struct adec_status *astatus);
+(struct adec_status *astatus);
 static int (*amstream_vdec_trickmode)
-    (unsigned long trickmode);
+(unsigned long trickmode);
 static ssize_t amstream_mprm_write
-    (struct file *file, const char *buf,
-     size_t count, loff_t * ppos);
+(struct file *file, const char *buf,
+ size_t count, loff_t * ppos);
 
 const static struct file_operations vbuf_fops = {
     .owner    = THIS_MODULE,
@@ -1344,7 +1344,7 @@ static ssize_t bufs_show(struct class *class, struct class_attribute *attr, char
         if (p->flag & BUF_FLAG_IN_USE) {
             pbuf += sprintf(pbuf, "%s ", "Used");
         } else {
-            pbuf += sprintf(pbuf, "%s ", "Noused");
+            pbuf += sprintf(pbuf, "%s ", "Noused");
         }
         if (p->flag & BUF_FLAG_PARSER) {
             pbuf += sprintf(pbuf, "%s ", "Parser");
@@ -1590,7 +1590,7 @@ EXPORT_SYMBOL(wakeup_sub_poll);
 EXPORT_SYMBOL(get_sub_type);
 
 static struct platform_driver
-amstream_driver = {
+        amstream_driver = {
     .probe      = amstream_probe,
     .remove     = amstream_remove,
     .driver     = {

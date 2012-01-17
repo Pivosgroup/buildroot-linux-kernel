@@ -19,15 +19,10 @@
 // ***************************************************************************
 
 typedef enum ve_demo_pos_e {
-#if defined(CONFIG_ARCH_MESON)
-  VE_DEMO_POS_RIGHT = 0,
-  VE_DEMO_POS_LEFT,
-#elif defined(CONFIG_ARCH_MESON2)
   VE_DEMO_POS_TOP = 0,
   VE_DEMO_POS_BOTTOM,
   VE_DEMO_POS_LEFT,
   VE_DEMO_POS_RIGHT,
-#endif
 } ve_demo_pos_t;
 
 typedef enum ve_dnlp_rt_e {
@@ -144,7 +139,6 @@ typedef struct ve_benh_s {
     unsigned char err_cbn;
 } ve_benh_t;
 
-#if defined(CONFIG_ARCH_MESON2)
 typedef struct ve_cbar_s {
     unsigned char en;
     unsigned char wid;
@@ -152,8 +146,6 @@ typedef struct ve_cbar_s {
     unsigned char cb;
     unsigned char y;
 } ve_cbar_t;
-#endif
-
 typedef struct ve_demo_s {
     unsigned char bext;
     unsigned char dnlp;
@@ -162,24 +154,15 @@ typedef struct ve_demo_s {
     unsigned char benh;
     enum  ve_demo_pos_e  pos;
     unsigned long wid;
-#if defined(CONFIG_ARCH_MESON2)
     struct ve_cbar_s   cbar;
-#endif
 } ve_demo_t;
 
-#if defined(CONFIG_ARCH_MESON2)
 typedef struct vdo_meas_s {
     //...
 } vdo_meas_t;
-#endif
 
-#if defined(CONFIG_ARCH_MESON)
-#define VE_REG_NUM 35
-#elif defined(CONFIG_ARCH_MESON2)
-#define VE_REG_NUM 43
-#endif
 typedef struct ve_regmap_s {
-    ulong reg[VE_REG_NUM];
+    unsigned long reg[43];
 } ve_regmap_t;
 
 // ***************************************************************************

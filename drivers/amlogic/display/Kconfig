@@ -6,7 +6,7 @@ menu "Amlogic Display Driver"
 source "drivers/amlogic/display/vout/Kconfig"
 
 source "drivers/amlogic/display/osd/Kconfig"
-
+source "drivers/amlogic/display/backlight/Kconfig"
 config  AM_GE2D
 	tristate  "ge2d module"
 	default y

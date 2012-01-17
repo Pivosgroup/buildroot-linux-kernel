@@ -1,6 +1,8 @@
 #ifndef   _AMKBD_REMOTE_H
 #define   _AMKBD_REMOTE_H
 #include  <asm/ioctl.h>
+#include <linux/fiq_bridge.h>
+
 //remote config  ioctl  cmd
 #define   REMOTE_IOC_RESET_KEY_MAPPING	    _IOW_BAD('I',3,sizeof(short))
 #define   REMOTE_IOC_SET_KEY_MAPPING		    _IOW_BAD('I',4,sizeof(short))
@@ -44,16 +46,37 @@
 #define   REMOTE_IOC_GET_REG_FRAME_DATA		_IOR_BAD('I',127,sizeof(short))
 #define   REMOTE_IOC_GET_REG_FRAME_STATUS	_IOR_BAD('I',128,sizeof(short))
 
-#define   REMOTE_WORK_MODE_SW 		0
-#define   REMOTE_WORK_MODE_HW		1
+#define   REMOTE_IOC_SET_TW_BIT2_TIME			_IOW_BAD('I',129,sizeof(short))
+#define   REMOTE_IOC_SET_TW_BIT3_TIME			_IOW_BAD('I',130,sizeof(short))
+
+#define   	REMOTE_HW_DECODER_STATUS_MASK			(0xf<<4)
+#define   	REMOTE_HW_DECODER_STATUS_OK			(0<<4)
+#define	REMOTE_HW_DECODER_STATUS_TIMEOUT		(1<<4)
+#define	REMOTE_HW_DECODER_STATUS_LEADERERR	(2<<4)
+#define	REMOTE_HW_DECODER_STATUS_REPEATERR	(3<<4)
+
+#define	REMOTE_HW_PATTERN_MASK					(0xf<<4)
+#define	REMOTE_HW_NEC_PATTERN					(0x0<<4)
+#define	REMOTE_HW_TOSHIBA_PATTERN				(0x1<<4)
+
+#define   REMOTE_WORK_MODE_SW 				(0)
+#define   REMOTE_WORK_MODE_HW					(1)
+#define   REMOTE_WORK_MODE_FIQ				(2)
+#define   REMOTE_WORK_MODE_INV				(3)
+#define   REMOTE_WORK_MODE_MASK 				(7)
+#define   REMOTE_WORK_MODE_FIQ_RCMM				(4)
+
+#define   REMOTE_TOSHIBA_HW		(REMOTE_HW_TOSHIBA_PATTERN|REMOTE_WORK_MODE_HW)
+#define   REMOTE_NEC_HW				(REMOTE_HW_NEC_PATTERN|REMOTE_WORK_MODE_HW)
 
 
 #define REMOTE_STATUS_WAIT       0
-#define REMOTE_STATUS_LEADER     1
+#define REMOTE_STATUS_LEADER    1
 #define REMOTE_STATUS_DATA       2
 #define REMOTE_STATUS_SYNC       3
 #define REMOTE_LOG_BUF_LEN		8192
 #define REMOTE_LOG_BUF_ORDER		1
+
 
 
 typedef  int   (*type_printk)(const char *fmt, ...) ;
@@ -61,7 +84,8 @@ typedef  int   (*type_printk)(const char *fmt, ...) ;
 struct kp {
 	struct input_dev *input;
 	struct timer_list timer;
-       unsigned long repeat_timer;
+	struct timer_list repeat_timer;
+       unsigned long repeat_tick;
 	int irq;
 	int work_mode ;
 	unsigned int cur_keycode;
@@ -74,10 +98,13 @@ struct kp {
 //sw
 	unsigned int delay;
 	unsigned int   step;
+	unsigned int   send_data;
+	bridge_item_t 		fiq_handle_item;
+	
 	unsigned int 	bit_count;
 	unsigned int   bit_num;
 	unsigned int	last_jiffies;
-	unsigned int 	time_window[8];
+	unsigned int 	time_window[12];
 	int			last_pulse_width;
 	int			repeat_time_count;
 //config 	
@@ -90,7 +117,10 @@ struct kp {
 };
 
 extern type_printk input_dbg;
-
+extern irqreturn_t remote_bridge_isr(int irq, void *dev_id);
+extern int  register_fiq_bridge_handle(bridge_item_t *c_item) ;
+extern int  unregister_fiq_bridge_handle(bridge_item_t *c_item);
+extern int  fiq_bridge_pulse_trigger(bridge_item_t *c_item);
 
 void kp_sw_reprot_key(unsigned long data);
 void kp_send_key(struct input_dev *dev, unsigned int scancode, unsigned int type);

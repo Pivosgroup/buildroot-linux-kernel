@@ -1,5 +1,5 @@
 /* 
-* include/linux/uart-aml.h
+* linux/arch/arm/mach-meson/include/mach/i2c.h
 */
 #ifndef AML_MACH_UART
 #define AML_MACH_UART

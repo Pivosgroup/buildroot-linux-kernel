@@ -33,10 +33,11 @@ static ulong ve_benh_inv[32][2] = { // [0]: inv_10_0, [1]: inv_11
 
 static ulong ve_reg_limit(ulong val, ulong wid)
 {
-    if (val < (1<<wid))
+    if (val < (1 << wid)) {
         return(val);
-    else
-        return((1<<wid)-1);
+    } else {
+        return((1 << wid) - 1);
+    }
 }
 
 
@@ -45,34 +46,27 @@ static ulong ve_reg_limit(ulong val, ulong wid)
 // ***************************************************************************
 
 static void ve_dnlp_calculate_tgt(vframe_t *vf) // target (starting point) of a new seg is upon the total partition of the previous segs, so:
-                                                // tgt[0] is always 0 & no need calculation
-                                                // tgt[1] is calculated upon gamma[0]
-                                                // tgt[2] is calculated upon gamma[0~1]
-                                                // tgt[3] is calculated upon gamma[0~2]
-                                                // ...
-                                                // tgt[63] is calculated upon gamma[0~62], understood that gamma[63] will never be used
+// tgt[0] is always 0 & no need calculation
+// tgt[1] is calculated upon gamma[0]
+// tgt[2] is calculated upon gamma[0~1]
+// tgt[3] is calculated upon gamma[0~2]
+// ...
+// tgt[63] is calculated upon gamma[0~62], understood that gamma[63] will never be used
 {
     struct vframe_prop_s *p = &vf->prop;
-    ulong i = 0, flag = 0, sum = 0, tgt = 0, gain = 8 + 3 + ((p->hist.pixel_sum)>>30), pixs = (p->hist.pixel_sum)&0x3fffffff;
+    ulong i = 0, flag = 0, sum = 0, tgt = 0, gain = 8 + 3 + ((p->hist.pixel_sum) >> 30), pixs = (p->hist.pixel_sum) & 0x3fffffff;
 
-    for (i=1; i<64; i++)
-    {
-        if (!flag)
-        {
-            sum += p->hist.gamma[i-1]; // sum of gamma[0] ~ gamma[i-1]
-            tgt = (sum<<gain)/pixs; // mapping to total 256 luminance
-            if (tgt < 255)
-            {
+    for (i = 1; i < 64; i++) {
+        if (!flag) {
+            sum += p->hist.gamma[i - 1]; // sum of gamma[0] ~ gamma[i-1]
+            tgt = (sum << gain) / pixs; // mapping to total 256 luminance
+            if (tgt < 255) {
                 ve_dnlp_tgt[i] = (unsigned char) tgt;
-            }
-            else
-            {
+            } else {
                 ve_dnlp_tgt[i] = 255;
                 flag = 1;
             }
-        }
-        else
-        {
+        } else {
             ve_dnlp_tgt[i] = 255;
         }
     }
@@ -82,9 +76,8 @@ static void ve_dnlp_calculate_lpf(void) // lpf[0] is always 0 & no need calculat
 {
     ulong i = 0;
 
-    for (i=1; i<64; i++)
-    {
-        ve_dnlp_lpf[i] = ve_dnlp_lpf[i] - (ve_dnlp_lpf[i]>>ve_dnlp_rt) + ve_dnlp_tgt[i];
+    for (i = 1; i < 64; i++) {
+        ve_dnlp_lpf[i] = ve_dnlp_lpf[i] - (ve_dnlp_lpf[i] >> ve_dnlp_rt) + ve_dnlp_tgt[i];
     }
 }
 
@@ -92,12 +85,11 @@ static void ve_dnlp_calculate_reg(void)
 {
     ulong i = 0;
 
-    for (i=0; i<16; i++)
-    {
-        ve_dnlp_reg[i]  =  ve_dnlp_lpf[ i<<2   ] >> ve_dnlp_rt     ;
-        ve_dnlp_reg[i] |= (ve_dnlp_lpf[(i<<2)+1] >> ve_dnlp_rt)<< 8;
-        ve_dnlp_reg[i] |= (ve_dnlp_lpf[(i<<2)+2] >> ve_dnlp_rt)<<16;
-        ve_dnlp_reg[i] |= (ve_dnlp_lpf[(i<<2)+3] >> ve_dnlp_rt)<<24;
+    for (i = 0; i < 16; i++) {
+        ve_dnlp_reg[i]  =  ve_dnlp_lpf[ i << 2   ] >> ve_dnlp_rt     ;
+        ve_dnlp_reg[i] |= (ve_dnlp_lpf[(i << 2) + 1] >> ve_dnlp_rt) << 8;
+        ve_dnlp_reg[i] |= (ve_dnlp_lpf[(i << 2) + 2] >> ve_dnlp_rt) << 16;
+        ve_dnlp_reg[i] |= (ve_dnlp_lpf[(i << 2) + 3] >> ve_dnlp_rt) << 24;
     }
 }
 
@@ -123,16 +115,17 @@ static void ve_dnlp_load_reg(void)
 
 void ve_on_vs(vframe_t *vf)
 {
-    if (ve_dnlp_rt == VE_DNLP_RT_FREEZE)
+    if (ve_dnlp_rt == VE_DNLP_RT_FREEZE) {
         return;
-	// calculate dnlp target data
-	ve_dnlp_calculate_tgt(vf);
-	// calculate dnlp low-pass-filter data
-	ve_dnlp_calculate_lpf();
-	// calculate dnlp reg data
-	ve_dnlp_calculate_reg();
-	// load dnlp reg data
-	ve_dnlp_load_reg();
+    }
+    // calculate dnlp target data
+    ve_dnlp_calculate_tgt(vf);
+    // calculate dnlp low-pass-filter data
+    ve_dnlp_calculate_lpf();
+    // calculate dnlp reg data
+    ve_dnlp_calculate_reg();
+    // load dnlp reg data
+    ve_dnlp_load_reg();
 }
 
 
@@ -142,10 +135,10 @@ void ve_on_vs(vframe_t *vf)
 
 void ve_set_bext(struct ve_bext_s *p)
 {
-    WRITE_CBUS_REG_BITS(VPP_VE_ENABLE_CTRL, ve_reg_limit(p->en    , BEXT_EN_WID    ), BEXT_EN_BIT    , BEXT_EN_WID    );
-    WRITE_CBUS_REG_BITS(VPP_BLACKEXT_CTRL , ve_reg_limit(p->start , BEXT_START_WID ), BEXT_START_BIT , BEXT_START_WID );
+    WRITE_CBUS_REG_BITS(VPP_VE_ENABLE_CTRL, ve_reg_limit(p->en    , BEXT_EN_WID), BEXT_EN_BIT    , BEXT_EN_WID);
+    WRITE_CBUS_REG_BITS(VPP_BLACKEXT_CTRL , ve_reg_limit(p->start , BEXT_START_WID), BEXT_START_BIT , BEXT_START_WID);
     WRITE_CBUS_REG_BITS(VPP_BLACKEXT_CTRL , ve_reg_limit(p->slope1, BEXT_SLOPE1_WID), BEXT_SLOPE1_BIT, BEXT_SLOPE1_WID);
-    WRITE_CBUS_REG_BITS(VPP_BLACKEXT_CTRL , ve_reg_limit(p->midpt , BEXT_MIDPT_WID ), BEXT_MIDPT_BIT , BEXT_MIDPT_WID );
+    WRITE_CBUS_REG_BITS(VPP_BLACKEXT_CTRL , ve_reg_limit(p->midpt , BEXT_MIDPT_WID), BEXT_MIDPT_BIT , BEXT_MIDPT_WID);
     WRITE_CBUS_REG_BITS(VPP_BLACKEXT_CTRL , ve_reg_limit(p->slope2, BEXT_SLOPE2_WID), BEXT_SLOPE2_BIT, BEXT_SLOPE2_WID);
 }
 
@@ -156,16 +149,15 @@ void ve_set_dnlp(struct ve_dnlp_s *p)
     ulong i = 0;
 
     ve_dnlp_rt = p->rt;
-    if (!(p->en))
+    if (!(p->en)) {
         ve_dnlp_rt = VE_DNLP_RT_FREEZE;
-    if (!(ve_dnlp_rt == VE_DNLP_RT_FREEZE))
-    {
-        for (i=0; i<64; i++)
-        {
+    }
+    if (!(ve_dnlp_rt == VE_DNLP_RT_FREEZE)) {
+        for (i = 0; i < 64; i++) {
             ve_dnlp_lpf[i] = (ulong)(p->gamma[i]) << (ulong)ve_dnlp_rt;
         }
     }
-    WRITE_CBUS_REG_BITS(VPP_VE_ENABLE_CTRL, ve_reg_limit(p->en       , DNLP_EN_WID     ), DNLP_EN_BIT     , DNLP_EN_WID     );
+    WRITE_CBUS_REG_BITS(VPP_VE_ENABLE_CTRL, ve_reg_limit(p->en       , DNLP_EN_WID), DNLP_EN_BIT     , DNLP_EN_WID);
     WRITE_CBUS_REG_BITS(VPP_DNLP_CTRL_00  , ve_reg_limit(p->gamma[0],  DNLP_GAMMA00_WID), DNLP_GAMMA00_BIT, DNLP_GAMMA00_WID);
     WRITE_CBUS_REG_BITS(VPP_DNLP_CTRL_00  , ve_reg_limit(p->gamma[1],  DNLP_GAMMA01_WID), DNLP_GAMMA01_BIT, DNLP_GAMMA01_WID);
     WRITE_CBUS_REG_BITS(VPP_DNLP_CTRL_00  , ve_reg_limit(p->gamma[2],  DNLP_GAMMA02_WID), DNLP_GAMMA02_BIT, DNLP_GAMMA02_WID);
@@ -235,91 +227,91 @@ void ve_set_dnlp(struct ve_dnlp_s *p)
 
 void ve_set_hsvs(struct ve_hsvs_s *p)
 {
-    WRITE_CBUS_REG_BITS(VPP_VE_ENABLE_CTRL, ve_reg_limit(p->en                , HSVS_EN_WID           ), HSVS_EN_BIT           , HSVS_EN_WID           );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_HGAIN , ve_reg_limit(p->peak_gain_h1      , PEAK_GAIN_H1_WID      ), PEAK_GAIN_H1_BIT      , PEAK_GAIN_H1_WID      );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_HGAIN , ve_reg_limit(p->peak_gain_h2      , PEAK_GAIN_H2_WID      ), PEAK_GAIN_H2_BIT      , PEAK_GAIN_H2_WID      );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_HGAIN , ve_reg_limit(p->peak_gain_h3      , PEAK_GAIN_H3_WID      ), PEAK_GAIN_H3_BIT      , PEAK_GAIN_H3_WID      );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_HGAIN , ve_reg_limit(p->peak_gain_h4      , PEAK_GAIN_H4_WID      ), PEAK_GAIN_H4_BIT      , PEAK_GAIN_H4_WID      );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_HGAIN , ve_reg_limit(p->peak_gain_h5      , PEAK_GAIN_H5_WID      ), PEAK_GAIN_H5_BIT      , PEAK_GAIN_H5_WID      );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_VGAIN , ve_reg_limit(p->peak_gain_v1      , PEAK_GAIN_V1_WID      ), PEAK_GAIN_V1_BIT      , PEAK_GAIN_V1_WID      );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_VGAIN , ve_reg_limit(p->peak_gain_v2      , PEAK_GAIN_V2_WID      ), PEAK_GAIN_V2_BIT      , PEAK_GAIN_V2_WID      );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_VGAIN , ve_reg_limit(p->peak_gain_v3      , PEAK_GAIN_V3_WID      ), PEAK_GAIN_V3_BIT      , PEAK_GAIN_V3_WID      );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_VGAIN , ve_reg_limit(p->peak_gain_v4      , PEAK_GAIN_V4_WID      ), PEAK_GAIN_V4_BIT      , PEAK_GAIN_V4_WID      );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_VGAIN , ve_reg_limit(p->peak_gain_v5      , PEAK_GAIN_V5_WID      ), PEAK_GAIN_V5_BIT      , PEAK_GAIN_V5_WID      );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_VGAIN , ve_reg_limit(p->peak_gain_v6      , PEAK_GAIN_V6_WID      ), PEAK_GAIN_V6_BIT      , PEAK_GAIN_V6_WID      );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_1 , ve_reg_limit(p->hpeak_slope1      , HPEAK_SLOPE1_WID      ), HPEAK_SLOPE1_BIT      , HPEAK_SLOPE1_WID      );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_1 , ve_reg_limit(p->hpeak_slope2      , HPEAK_SLOPE2_WID      ), HPEAK_SLOPE2_BIT      , HPEAK_SLOPE2_WID      );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_1 , ve_reg_limit(p->hpeak_thr1        , HPEAK_THR1_WID        ), HPEAK_THR1_BIT        , HPEAK_THR1_WID        );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_2 , ve_reg_limit(p->hpeak_thr2        , HPEAK_THR2_WID        ), HPEAK_THR2_BIT        , HPEAK_THR2_WID        );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_2 , ve_reg_limit(p->hpeak_nlp_cor_thr , HPEAK_NLP_COR_THR_WID ), HPEAK_NLP_COR_THR_BIT , HPEAK_NLP_COR_THR_WID );
+    WRITE_CBUS_REG_BITS(VPP_VE_ENABLE_CTRL, ve_reg_limit(p->en                , HSVS_EN_WID), HSVS_EN_BIT           , HSVS_EN_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_HGAIN , ve_reg_limit(p->peak_gain_h1      , PEAK_GAIN_H1_WID), PEAK_GAIN_H1_BIT      , PEAK_GAIN_H1_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_HGAIN , ve_reg_limit(p->peak_gain_h2      , PEAK_GAIN_H2_WID), PEAK_GAIN_H2_BIT      , PEAK_GAIN_H2_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_HGAIN , ve_reg_limit(p->peak_gain_h3      , PEAK_GAIN_H3_WID), PEAK_GAIN_H3_BIT      , PEAK_GAIN_H3_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_HGAIN , ve_reg_limit(p->peak_gain_h4      , PEAK_GAIN_H4_WID), PEAK_GAIN_H4_BIT      , PEAK_GAIN_H4_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_HGAIN , ve_reg_limit(p->peak_gain_h5      , PEAK_GAIN_H5_WID), PEAK_GAIN_H5_BIT      , PEAK_GAIN_H5_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_VGAIN , ve_reg_limit(p->peak_gain_v1      , PEAK_GAIN_V1_WID), PEAK_GAIN_V1_BIT      , PEAK_GAIN_V1_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_VGAIN , ve_reg_limit(p->peak_gain_v2      , PEAK_GAIN_V2_WID), PEAK_GAIN_V2_BIT      , PEAK_GAIN_V2_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_VGAIN , ve_reg_limit(p->peak_gain_v3      , PEAK_GAIN_V3_WID), PEAK_GAIN_V3_BIT      , PEAK_GAIN_V3_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_VGAIN , ve_reg_limit(p->peak_gain_v4      , PEAK_GAIN_V4_WID), PEAK_GAIN_V4_BIT      , PEAK_GAIN_V4_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_VGAIN , ve_reg_limit(p->peak_gain_v5      , PEAK_GAIN_V5_WID), PEAK_GAIN_V5_BIT      , PEAK_GAIN_V5_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_VGAIN , ve_reg_limit(p->peak_gain_v6      , PEAK_GAIN_V6_WID), PEAK_GAIN_V6_BIT      , PEAK_GAIN_V6_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_1 , ve_reg_limit(p->hpeak_slope1      , HPEAK_SLOPE1_WID), HPEAK_SLOPE1_BIT      , HPEAK_SLOPE1_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_1 , ve_reg_limit(p->hpeak_slope2      , HPEAK_SLOPE2_WID), HPEAK_SLOPE2_BIT      , HPEAK_SLOPE2_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_1 , ve_reg_limit(p->hpeak_thr1        , HPEAK_THR1_WID), HPEAK_THR1_BIT        , HPEAK_THR1_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_2 , ve_reg_limit(p->hpeak_thr2        , HPEAK_THR2_WID), HPEAK_THR2_BIT        , HPEAK_THR2_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_2 , ve_reg_limit(p->hpeak_nlp_cor_thr , HPEAK_NLP_COR_THR_WID), HPEAK_NLP_COR_THR_BIT , HPEAK_NLP_COR_THR_WID);
     WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_2 , ve_reg_limit(p->hpeak_nlp_gain_pos, HPEAK_NLP_GAIN_POS_WID), HPEAK_NLP_GAIN_POS_BIT, HPEAK_NLP_GAIN_POS_WID);
     WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_2 , ve_reg_limit(p->hpeak_nlp_gain_neg, HPEAK_NLP_GAIN_NEG_WID), HPEAK_NLP_GAIN_NEG_BIT, HPEAK_NLP_GAIN_NEG_WID);
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_1 , ve_reg_limit(p->vpeak_slope1      , VPEAK_SLOPE1_WID      ), VPEAK_SLOPE1_BIT      , VPEAK_SLOPE1_WID      );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_1 , ve_reg_limit(p->vpeak_slope2      , VPEAK_SLOPE2_WID      ), VPEAK_SLOPE2_BIT      , VPEAK_SLOPE2_WID      );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_3 , ve_reg_limit(p->vpeak_thr1        , VPEAK_THR1_WID        ), VPEAK_THR1_BIT        , VPEAK_THR1_WID        );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_4 , ve_reg_limit(p->vpeak_thr2        , VPEAK_THR2_WID        ), VPEAK_THR2_BIT        , VPEAK_THR2_WID        );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_4 , ve_reg_limit(p->vpeak_nlp_cor_thr , VPEAK_NLP_COR_THR_WID ), VPEAK_NLP_COR_THR_BIT , VPEAK_NLP_COR_THR_WID );
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_1 , ve_reg_limit(p->vpeak_slope1      , VPEAK_SLOPE1_WID), VPEAK_SLOPE1_BIT      , VPEAK_SLOPE1_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_1 , ve_reg_limit(p->vpeak_slope2      , VPEAK_SLOPE2_WID), VPEAK_SLOPE2_BIT      , VPEAK_SLOPE2_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_3 , ve_reg_limit(p->vpeak_thr1        , VPEAK_THR1_WID), VPEAK_THR1_BIT        , VPEAK_THR1_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_4 , ve_reg_limit(p->vpeak_thr2        , VPEAK_THR2_WID), VPEAK_THR2_BIT        , VPEAK_THR2_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_4 , ve_reg_limit(p->vpeak_nlp_cor_thr , VPEAK_NLP_COR_THR_WID), VPEAK_NLP_COR_THR_BIT , VPEAK_NLP_COR_THR_WID);
     WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_4 , ve_reg_limit(p->vpeak_nlp_gain_pos, VPEAK_NLP_GAIN_POS_WID), VPEAK_NLP_GAIN_POS_BIT, VPEAK_NLP_GAIN_POS_WID);
     WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_4 , ve_reg_limit(p->vpeak_nlp_gain_neg, VPEAK_NLP_GAIN_NEG_WID), VPEAK_NLP_GAIN_NEG_BIT, VPEAK_NLP_GAIN_NEG_WID);
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_3 , ve_reg_limit(p->speak_slope1      , SPEAK_SLOPE1_WID      ), SPEAK_SLOPE1_BIT      , SPEAK_SLOPE1_WID      );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_3 , ve_reg_limit(p->speak_slope2      , SPEAK_SLOPE2_WID      ), SPEAK_SLOPE2_BIT      , SPEAK_SLOPE2_WID      );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_3 , ve_reg_limit(p->speak_thr1        , SPEAK_THR1_WID        ), SPEAK_THR1_BIT        , SPEAK_THR1_WID        );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_5 , ve_reg_limit(p->speak_thr2        , SPEAK_THR2_WID        ), SPEAK_THR2_BIT        , SPEAK_THR2_WID        );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_5 , ve_reg_limit(p->speak_nlp_cor_thr , SPEAK_NLP_COR_THR_WID ), SPEAK_NLP_COR_THR_BIT , SPEAK_NLP_COR_THR_WID );
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_3 , ve_reg_limit(p->speak_slope1      , SPEAK_SLOPE1_WID), SPEAK_SLOPE1_BIT      , SPEAK_SLOPE1_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_3 , ve_reg_limit(p->speak_slope2      , SPEAK_SLOPE2_WID), SPEAK_SLOPE2_BIT      , SPEAK_SLOPE2_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_3 , ve_reg_limit(p->speak_thr1        , SPEAK_THR1_WID), SPEAK_THR1_BIT        , SPEAK_THR1_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_5 , ve_reg_limit(p->speak_thr2        , SPEAK_THR2_WID), SPEAK_THR2_BIT        , SPEAK_THR2_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_5 , ve_reg_limit(p->speak_nlp_cor_thr , SPEAK_NLP_COR_THR_WID), SPEAK_NLP_COR_THR_BIT , SPEAK_NLP_COR_THR_WID);
     WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_5 , ve_reg_limit(p->speak_nlp_gain_pos, SPEAK_NLP_GAIN_POS_WID), SPEAK_NLP_GAIN_POS_BIT, SPEAK_NLP_GAIN_POS_WID);
     WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_5 , ve_reg_limit(p->speak_nlp_gain_neg, SPEAK_NLP_GAIN_NEG_WID), SPEAK_NLP_GAIN_NEG_BIT, SPEAK_NLP_GAIN_NEG_WID);
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_3 , ve_reg_limit(p->peak_cor_gain     , PEAK_COR_GAIN_WID     ), PEAK_COR_GAIN_BIT     , PEAK_COR_GAIN_WID     );
-    WRITE_CBUS_REG_BITS(VPP_SHARP_LIMIT    , ve_reg_limit(p->peak_cor_thr_l   , PEAK_COR_THR_L_WID    ), PEAK_COR_THR_L_BIT    , PEAK_COR_THR_L_WID    );
-    WRITE_CBUS_REG_BITS(VPP_SHARP_LIMIT    , ve_reg_limit(p->peak_cor_thr_h   , PEAK_COR_THR_H_WID    ), PEAK_COR_THR_H_BIT    , PEAK_COR_THR_H_WID    );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_HGAIN , ve_reg_limit(p->vlti_step         , VLTI_STEP_WID         ), VLTI_STEP_BIT         , VLTI_STEP_WID         );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_HGAIN , ve_reg_limit(p->vlti_step2        , VLTI_STEP2_WID        ), VLTI_STEP2_BIT        , VLTI_STEP2_WID        );
-    WRITE_CBUS_REG_BITS(VPP_VLTI_CTRL     , ve_reg_limit(p->vlti_thr          , VLTI_THR_WID          ), VLTI_THR_BIT          , VLTI_THR_WID          );
-    WRITE_CBUS_REG_BITS(VPP_VLTI_CTRL     , ve_reg_limit(p->vlti_gain_pos     , VLTI_GAIN_POS_WID     ), VLTI_GAIN_POS_BIT     , VLTI_GAIN_POS_WID     );
-    WRITE_CBUS_REG_BITS(VPP_VLTI_CTRL     , ve_reg_limit(p->vlti_gain_neg     , VLTI_GAIN_NEG_WID     ), VLTI_GAIN_NEG_BIT     , VLTI_GAIN_NEG_WID     );
-    WRITE_CBUS_REG_BITS(VPP_VLTI_CTRL     , ve_reg_limit(p->vlti_blend_factor , VLTI_BLEND_FACTOR_WID ), VLTI_BLEND_FACTOR_BIT , VLTI_BLEND_FACTOR_WID );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_HGAIN , ve_reg_limit(p->hlti_step         , HLTI_STEP_WID         ), HLTI_STEP_BIT         , HLTI_STEP_WID         );
-    WRITE_CBUS_REG_BITS(VPP_HLTI_CTRL     , ve_reg_limit(p->hlti_thr          , HLTI_THR_WID          ), HLTI_THR_BIT          , HLTI_THR_WID          );
-    WRITE_CBUS_REG_BITS(VPP_HLTI_CTRL     , ve_reg_limit(p->hlti_gain_pos     , HLTI_GAIN_POS_WID     ), HLTI_GAIN_POS_BIT     , HLTI_GAIN_POS_WID     );
-    WRITE_CBUS_REG_BITS(VPP_HLTI_CTRL     , ve_reg_limit(p->hlti_gain_neg     , HLTI_GAIN_NEG_WID     ), HLTI_GAIN_NEG_BIT     , HLTI_GAIN_NEG_WID     );
-    WRITE_CBUS_REG_BITS(VPP_HLTI_CTRL     , ve_reg_limit(p->hlti_blend_factor , HLTI_BLEND_FACTOR_WID ), HLTI_BLEND_FACTOR_BIT , HLTI_BLEND_FACTOR_WID );
-    WRITE_CBUS_REG_BITS(VPP_SHARP_LIMIT    , ve_reg_limit(p->vlimit_coef_h    , VLIMIT_COEF_H_WID     ), VLIMIT_COEF_H_BIT     , VLIMIT_COEF_H_WID     );
-    WRITE_CBUS_REG_BITS(VPP_SHARP_LIMIT    , ve_reg_limit(p->vlimit_coef_l    , VLIMIT_COEF_L_WID     ), VLIMIT_COEF_L_BIT     , VLIMIT_COEF_L_WID     );
-    WRITE_CBUS_REG_BITS(VPP_SHARP_LIMIT    , ve_reg_limit(p->hlimit_coef_h    , HLIMIT_COEF_H_WID     ), HLIMIT_COEF_H_BIT     , HLIMIT_COEF_H_WID     );
-    WRITE_CBUS_REG_BITS(VPP_SHARP_LIMIT    , ve_reg_limit(p->hlimit_coef_l    , HLIMIT_COEF_L_WID     ), HLIMIT_COEF_L_BIT     , HLIMIT_COEF_L_WID     );
-    WRITE_CBUS_REG_BITS(VPP_CTI_CTRL      , ve_reg_limit(p->cti_444_422_en    , CTI_C444TO422_EN_WID  ), CTI_C444TO422_EN_BIT  , CTI_C444TO422_EN_WID  );
-    WRITE_CBUS_REG_BITS(VPP_CTI_CTRL      , ve_reg_limit(p->cti_422_444_en    , CTI_C422TO444_EN_WID  ), CTI_C422TO444_EN_BIT  , CTI_C422TO444_EN_WID  );
-    WRITE_CBUS_REG_BITS(VPP_CTI_CTRL      , ve_reg_limit(p->cti_blend_factor  , CTI_BLEND_FACTOR_WID  ), CTI_BLEND_FACTOR_BIT  , CTI_BLEND_FACTOR_WID  );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_VGAIN , ve_reg_limit(p->vcti_buf_en       , VCTI_BUF_EN_WID       ), VCTI_BUF_EN_BIT       , VCTI_BUF_EN_WID       );
-    WRITE_CBUS_REG_BITS(VPP_PEAKING_VGAIN , ve_reg_limit(p->vcti_buf_mode_c5l , VCTI_BUF_MODE_C5L_WID ), VCTI_BUF_MODE_C5L_BIT , VCTI_BUF_MODE_C5L_WID );
-    WRITE_CBUS_REG_BITS(VPP_CTI_CTRL      , ve_reg_limit(p->vcti_filter       , VCTI_FILTER_WID       ), VCTI_FILTER_BIT       , VCTI_FILTER_WID       );
-    WRITE_CBUS_REG_BITS(VPP_CTI_CTRL      , ve_reg_limit(p->hcti_step         , HCTI_STEP_WID         ), HCTI_STEP_BIT         , HCTI_STEP_WID         );
-    WRITE_CBUS_REG_BITS(VPP_CTI_CTRL      , ve_reg_limit(p->hcti_step2        , HCTI_STEP2_WID        ), HCTI_STEP2_BIT        , HCTI_STEP2_WID        );
-    WRITE_CBUS_REG_BITS(VPP_CTI_CTRL      , ve_reg_limit(p->hcti_thr          , HCTI_THR_WID          ), HCTI_THR_BIT          , HCTI_THR_WID          );
-    WRITE_CBUS_REG_BITS(VPP_CTI_CTRL      , ve_reg_limit(p->hcti_gain         , HCTI_GAIN_WID         ), HCTI_GAIN_BIT         , HCTI_GAIN_WID         );
-    WRITE_CBUS_REG_BITS(VPP_CTI_CTRL      , ve_reg_limit(p->hcti_mode_median  , HCTI_MODE_MEDIAN_WID  ), HCTI_MODE_MEDIAN_BIT  , HCTI_MODE_MEDIAN_WID  );
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_NLP_3 , ve_reg_limit(p->peak_cor_gain     , PEAK_COR_GAIN_WID), PEAK_COR_GAIN_BIT     , PEAK_COR_GAIN_WID);
+    WRITE_CBUS_REG_BITS(VPP_SHARP_LIMIT    , ve_reg_limit(p->peak_cor_thr_l   , PEAK_COR_THR_L_WID), PEAK_COR_THR_L_BIT    , PEAK_COR_THR_L_WID);
+    WRITE_CBUS_REG_BITS(VPP_SHARP_LIMIT    , ve_reg_limit(p->peak_cor_thr_h   , PEAK_COR_THR_H_WID), PEAK_COR_THR_H_BIT    , PEAK_COR_THR_H_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_HGAIN , ve_reg_limit(p->vlti_step         , VLTI_STEP_WID), VLTI_STEP_BIT         , VLTI_STEP_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_HGAIN , ve_reg_limit(p->vlti_step2        , VLTI_STEP2_WID), VLTI_STEP2_BIT        , VLTI_STEP2_WID);
+    WRITE_CBUS_REG_BITS(VPP_VLTI_CTRL     , ve_reg_limit(p->vlti_thr          , VLTI_THR_WID), VLTI_THR_BIT          , VLTI_THR_WID);
+    WRITE_CBUS_REG_BITS(VPP_VLTI_CTRL     , ve_reg_limit(p->vlti_gain_pos     , VLTI_GAIN_POS_WID), VLTI_GAIN_POS_BIT     , VLTI_GAIN_POS_WID);
+    WRITE_CBUS_REG_BITS(VPP_VLTI_CTRL     , ve_reg_limit(p->vlti_gain_neg     , VLTI_GAIN_NEG_WID), VLTI_GAIN_NEG_BIT     , VLTI_GAIN_NEG_WID);
+    WRITE_CBUS_REG_BITS(VPP_VLTI_CTRL     , ve_reg_limit(p->vlti_blend_factor , VLTI_BLEND_FACTOR_WID), VLTI_BLEND_FACTOR_BIT , VLTI_BLEND_FACTOR_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_HGAIN , ve_reg_limit(p->hlti_step         , HLTI_STEP_WID), HLTI_STEP_BIT         , HLTI_STEP_WID);
+    WRITE_CBUS_REG_BITS(VPP_HLTI_CTRL     , ve_reg_limit(p->hlti_thr          , HLTI_THR_WID), HLTI_THR_BIT          , HLTI_THR_WID);
+    WRITE_CBUS_REG_BITS(VPP_HLTI_CTRL     , ve_reg_limit(p->hlti_gain_pos     , HLTI_GAIN_POS_WID), HLTI_GAIN_POS_BIT     , HLTI_GAIN_POS_WID);
+    WRITE_CBUS_REG_BITS(VPP_HLTI_CTRL     , ve_reg_limit(p->hlti_gain_neg     , HLTI_GAIN_NEG_WID), HLTI_GAIN_NEG_BIT     , HLTI_GAIN_NEG_WID);
+    WRITE_CBUS_REG_BITS(VPP_HLTI_CTRL     , ve_reg_limit(p->hlti_blend_factor , HLTI_BLEND_FACTOR_WID), HLTI_BLEND_FACTOR_BIT , HLTI_BLEND_FACTOR_WID);
+    WRITE_CBUS_REG_BITS(VPP_SHARP_LIMIT    , ve_reg_limit(p->vlimit_coef_h    , VLIMIT_COEF_H_WID), VLIMIT_COEF_H_BIT     , VLIMIT_COEF_H_WID);
+    WRITE_CBUS_REG_BITS(VPP_SHARP_LIMIT    , ve_reg_limit(p->vlimit_coef_l    , VLIMIT_COEF_L_WID), VLIMIT_COEF_L_BIT     , VLIMIT_COEF_L_WID);
+    WRITE_CBUS_REG_BITS(VPP_SHARP_LIMIT    , ve_reg_limit(p->hlimit_coef_h    , HLIMIT_COEF_H_WID), HLIMIT_COEF_H_BIT     , HLIMIT_COEF_H_WID);
+    WRITE_CBUS_REG_BITS(VPP_SHARP_LIMIT    , ve_reg_limit(p->hlimit_coef_l    , HLIMIT_COEF_L_WID), HLIMIT_COEF_L_BIT     , HLIMIT_COEF_L_WID);
+    WRITE_CBUS_REG_BITS(VPP_CTI_CTRL      , ve_reg_limit(p->cti_444_422_en    , CTI_C444TO422_EN_WID), CTI_C444TO422_EN_BIT  , CTI_C444TO422_EN_WID);
+    WRITE_CBUS_REG_BITS(VPP_CTI_CTRL      , ve_reg_limit(p->cti_422_444_en    , CTI_C422TO444_EN_WID), CTI_C422TO444_EN_BIT  , CTI_C422TO444_EN_WID);
+    WRITE_CBUS_REG_BITS(VPP_CTI_CTRL      , ve_reg_limit(p->cti_blend_factor  , CTI_BLEND_FACTOR_WID), CTI_BLEND_FACTOR_BIT  , CTI_BLEND_FACTOR_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_VGAIN , ve_reg_limit(p->vcti_buf_en       , VCTI_BUF_EN_WID), VCTI_BUF_EN_BIT       , VCTI_BUF_EN_WID);
+    WRITE_CBUS_REG_BITS(VPP_PEAKING_VGAIN , ve_reg_limit(p->vcti_buf_mode_c5l , VCTI_BUF_MODE_C5L_WID), VCTI_BUF_MODE_C5L_BIT , VCTI_BUF_MODE_C5L_WID);
+    WRITE_CBUS_REG_BITS(VPP_CTI_CTRL      , ve_reg_limit(p->vcti_filter       , VCTI_FILTER_WID), VCTI_FILTER_BIT       , VCTI_FILTER_WID);
+    WRITE_CBUS_REG_BITS(VPP_CTI_CTRL      , ve_reg_limit(p->hcti_step         , HCTI_STEP_WID), HCTI_STEP_BIT         , HCTI_STEP_WID);
+    WRITE_CBUS_REG_BITS(VPP_CTI_CTRL      , ve_reg_limit(p->hcti_step2        , HCTI_STEP2_WID), HCTI_STEP2_BIT        , HCTI_STEP2_WID);
+    WRITE_CBUS_REG_BITS(VPP_CTI_CTRL      , ve_reg_limit(p->hcti_thr          , HCTI_THR_WID), HCTI_THR_BIT          , HCTI_THR_WID);
+    WRITE_CBUS_REG_BITS(VPP_CTI_CTRL      , ve_reg_limit(p->hcti_gain         , HCTI_GAIN_WID), HCTI_GAIN_BIT         , HCTI_GAIN_WID);
+    WRITE_CBUS_REG_BITS(VPP_CTI_CTRL      , ve_reg_limit(p->hcti_mode_median  , HCTI_MODE_MEDIAN_WID), HCTI_MODE_MEDIAN_BIT  , HCTI_MODE_MEDIAN_WID);
 }
 
 
 void ve_set_ccor(struct ve_ccor_s *p)
 {
-    WRITE_CBUS_REG_BITS(VPP_VE_ENABLE_CTRL, ve_reg_limit(p->en   , CCOR_EN_WID   ), CCOR_EN_BIT   , CCOR_EN_WID   );
+    WRITE_CBUS_REG_BITS(VPP_VE_ENABLE_CTRL, ve_reg_limit(p->en   , CCOR_EN_WID), CCOR_EN_BIT   , CCOR_EN_WID);
     WRITE_CBUS_REG_BITS(VPP_CCORING_CTRL  , ve_reg_limit(p->slope, CCOR_SLOPE_WID), CCOR_SLOPE_BIT, CCOR_SLOPE_WID);
-    WRITE_CBUS_REG_BITS(VPP_CCORING_CTRL  , ve_reg_limit(p->thr  , CCOR_THR_WID  ), CCOR_THR_BIT  , CCOR_THR_WID  );
+    WRITE_CBUS_REG_BITS(VPP_CCORING_CTRL  , ve_reg_limit(p->thr  , CCOR_THR_WID), CCOR_THR_BIT  , CCOR_THR_WID);
 }
 
 
 void ve_set_benh(struct ve_benh_s *p)
 {
-    WRITE_CBUS_REG_BITS(VPP_VE_ENABLE_CTRL, ve_reg_limit(p->en                 , BENH_EN_WID)         , BENH_EN_BIT           , BENH_EN_WID           );
-    WRITE_CBUS_REG_BITS(VPP_BLUE_STRETCH_1, ve_reg_limit(p->cb_inc             , BENH_CB_INC_WID)     , BENH_CB_INC_BIT       , BENH_CB_INC_WID       );
-    WRITE_CBUS_REG_BITS(VPP_BLUE_STRETCH_1, ve_reg_limit(p->cr_inc             , BENH_CR_INC_WID)     , BENH_CR_INC_BIT       , BENH_CR_INC_WID       );
-    WRITE_CBUS_REG_BITS(VPP_BLUE_STRETCH_1, ve_reg_limit(p->gain_cr            , BENH_GAIN_CR_WID)    , BENH_GAIN_CR_BIT      , BENH_GAIN_CR_WID      );
-    WRITE_CBUS_REG_BITS(VPP_BLUE_STRETCH_1, ve_reg_limit(p->gain_cb4cr         , BENH_GAIN_CB4CR_WID) , BENH_GAIN_CB4CR_BIT   , BENH_GAIN_CB4CR_WID   );
-    WRITE_CBUS_REG_BITS(VPP_BLUE_STRETCH_1, ve_reg_limit(p->luma_h             , BENH_LUMA_H_WID)     , BENH_LUMA_H_BIT       , BENH_LUMA_H_WID       );
-    WRITE_CBUS_REG_BITS(VPP_BLUE_STRETCH_2, ve_reg_limit(p->err_crp            , BENH_ERR_CRP_WID)    , BENH_ERR_CRP_BIT      , BENH_ERR_CRP_WID      );
-    WRITE_CBUS_REG_BITS(VPP_BLUE_STRETCH_2, ve_reg_limit(p->err_crn            , BENH_ERR_CRN_WID)    , BENH_ERR_CRN_BIT      , BENH_ERR_CRN_WID      );
-    WRITE_CBUS_REG_BITS(VPP_BLUE_STRETCH_3, ve_reg_limit(p->err_cbp            , BENH_ERR_CBP_WID)    , BENH_ERR_CBP_BIT      , BENH_ERR_CBP_WID      );
-    WRITE_CBUS_REG_BITS(VPP_BLUE_STRETCH_3, ve_reg_limit(p->err_cbn            , BENH_ERR_CBN_WID)    , BENH_ERR_CBN_BIT      , BENH_ERR_CBN_WID      );
+    WRITE_CBUS_REG_BITS(VPP_VE_ENABLE_CTRL, ve_reg_limit(p->en                 , BENH_EN_WID)         , BENH_EN_BIT           , BENH_EN_WID);
+    WRITE_CBUS_REG_BITS(VPP_BLUE_STRETCH_1, ve_reg_limit(p->cb_inc             , BENH_CB_INC_WID)     , BENH_CB_INC_BIT       , BENH_CB_INC_WID);
+    WRITE_CBUS_REG_BITS(VPP_BLUE_STRETCH_1, ve_reg_limit(p->cr_inc             , BENH_CR_INC_WID)     , BENH_CR_INC_BIT       , BENH_CR_INC_WID);
+    WRITE_CBUS_REG_BITS(VPP_BLUE_STRETCH_1, ve_reg_limit(p->gain_cr            , BENH_GAIN_CR_WID)    , BENH_GAIN_CR_BIT      , BENH_GAIN_CR_WID);
+    WRITE_CBUS_REG_BITS(VPP_BLUE_STRETCH_1, ve_reg_limit(p->gain_cb4cr         , BENH_GAIN_CB4CR_WID) , BENH_GAIN_CB4CR_BIT   , BENH_GAIN_CB4CR_WID);
+    WRITE_CBUS_REG_BITS(VPP_BLUE_STRETCH_1, ve_reg_limit(p->luma_h             , BENH_LUMA_H_WID)     , BENH_LUMA_H_BIT       , BENH_LUMA_H_WID);
+    WRITE_CBUS_REG_BITS(VPP_BLUE_STRETCH_2, ve_reg_limit(p->err_crp            , BENH_ERR_CRP_WID)    , BENH_ERR_CRP_BIT      , BENH_ERR_CRP_WID);
+    WRITE_CBUS_REG_BITS(VPP_BLUE_STRETCH_2, ve_reg_limit(p->err_crn            , BENH_ERR_CRN_WID)    , BENH_ERR_CRN_BIT      , BENH_ERR_CRN_WID);
+    WRITE_CBUS_REG_BITS(VPP_BLUE_STRETCH_3, ve_reg_limit(p->err_cbp            , BENH_ERR_CBP_WID)    , BENH_ERR_CBP_BIT      , BENH_ERR_CBP_WID);
+    WRITE_CBUS_REG_BITS(VPP_BLUE_STRETCH_3, ve_reg_limit(p->err_cbn            , BENH_ERR_CBN_WID)    , BENH_ERR_CBN_BIT      , BENH_ERR_CBN_WID);
     WRITE_CBUS_REG_BITS(VPP_BLUE_STRETCH_1, ve_benh_inv[ve_reg_limit(p->err_crp, BENH_ERR_CRP_WID)][1], BENH_ERR_CRP_INV_H_BIT, BENH_ERR_CRP_INV_H_WID);
     WRITE_CBUS_REG_BITS(VPP_BLUE_STRETCH_1, ve_benh_inv[ve_reg_limit(p->err_crn, BENH_ERR_CRN_WID)][1], BENH_ERR_CRN_INV_H_BIT, BENH_ERR_CRN_INV_H_WID);
     WRITE_CBUS_REG_BITS(VPP_BLUE_STRETCH_1, ve_benh_inv[ve_reg_limit(p->err_cbp, BENH_ERR_CBP_WID)][1], BENH_ERR_CBP_INV_H_BIT, BENH_ERR_CBP_INV_H_WID);
@@ -333,86 +325,46 @@ void ve_set_benh(struct ve_benh_s *p)
 
 void ve_set_demo(struct ve_demo_s *p)
 {
-    WRITE_CBUS_REG_BITS(VPP_VE_ENABLE_CTRL               , ve_reg_limit(p->bext    , DEMO_BEXT_WID  ), DEMO_BEXT_BIT  , DEMO_BEXT_WID  );
-    WRITE_CBUS_REG_BITS(VPP_VE_ENABLE_CTRL               , ve_reg_limit(p->dnlp    , DEMO_DNLP_WID  ), DEMO_DNLP_BIT  , DEMO_DNLP_WID  );
-    WRITE_CBUS_REG_BITS(VPP_VE_ENABLE_CTRL               , ve_reg_limit(p->hsvs    , DEMO_HSVS_WID  ), DEMO_HSVS_BIT  , DEMO_HSVS_WID  );
-    WRITE_CBUS_REG_BITS(VPP_VE_ENABLE_CTRL               , ve_reg_limit(p->ccor    , DEMO_CCOR_WID  ), DEMO_CCOR_BIT  , DEMO_CCOR_WID  );
-    WRITE_CBUS_REG_BITS(VPP_VE_ENABLE_CTRL               , ve_reg_limit(p->benh    , DEMO_BENH_WID  ), DEMO_BENH_BIT  , DEMO_BENH_WID  );
-    WRITE_CBUS_REG_BITS(VPP_VE_ENABLE_CTRL               , ve_reg_limit(p->pos     , VE_DEMO_POS_WID), VE_DEMO_POS_BIT, VE_DEMO_POS_WID);
-#if defined(CONFIG_ARCH_MESON)
-    WRITE_CBUS_REG_BITS(VPP_VE_DEMO_LEFT_SCREEN_WIDTH    , ve_reg_limit(p->wid     , VE_DEMO_WID_WID), VE_DEMO_WID_BIT, VE_DEMO_WID_WID);
-#elif defined(CONFIG_ARCH_MESON2)
-    WRITE_CBUS_REG_BITS(VPP_VE_DEMO_LEFT_TOP_SCREEN_WIDTH, ve_reg_limit(p->wid     , VE_DEMO_WID_WID), VE_DEMO_WID_BIT, VE_DEMO_WID_WID);
-    WRITE_CBUS_REG_BITS(VPP_VE_DEMO_CENTER_BAR           , ve_reg_limit(p->cbar.en , VE_CBAR_EN_WID ), VE_CBAR_EN_BIT , VE_CBAR_EN_WID );
-    WRITE_CBUS_REG_BITS(VPP_VE_DEMO_CENTER_BAR           , ve_reg_limit(p->cbar.wid, VE_CBAR_WID_WID), VE_CBAR_WID_BIT, VE_CBAR_WID_WID);
-    WRITE_CBUS_REG_BITS(VPP_VE_DEMO_CENTER_BAR           , ve_reg_limit(p->cbar.cr , VE_CBAR_CR_WID ), VE_CBAR_CR_BIT , VE_CBAR_CR_WID );
-    WRITE_CBUS_REG_BITS(VPP_VE_DEMO_CENTER_BAR           , ve_reg_limit(p->cbar.cb , VE_CBAR_CB_WID ), VE_CBAR_CB_BIT , VE_CBAR_CB_WID );
-    WRITE_CBUS_REG_BITS(VPP_VE_DEMO_CENTER_BAR           , ve_reg_limit(p->cbar.y  , VE_CBAR_Y_WID  ), VE_CBAR_Y_BIT  , VE_CBAR_Y_WID  );
-#endif
+    WRITE_CBUS_REG_BITS(VPP_VE_ENABLE_CTRL           , ve_reg_limit(p->bext, DEMO_BEXT_WID), DEMO_BEXT_BIT, DEMO_BEXT_WID);
+    WRITE_CBUS_REG_BITS(VPP_VE_ENABLE_CTRL           , ve_reg_limit(p->dnlp, DEMO_DNLP_WID), DEMO_DNLP_BIT, DEMO_DNLP_WID);
+    WRITE_CBUS_REG_BITS(VPP_VE_ENABLE_CTRL           , ve_reg_limit(p->hsvs, DEMO_HSVS_WID), DEMO_HSVS_BIT, DEMO_HSVS_WID);
+    WRITE_CBUS_REG_BITS(VPP_VE_ENABLE_CTRL           , ve_reg_limit(p->ccor, DEMO_CCOR_WID), DEMO_CCOR_BIT, DEMO_CCOR_WID);
+    WRITE_CBUS_REG_BITS(VPP_VE_ENABLE_CTRL           , ve_reg_limit(p->benh, DEMO_BENH_WID), DEMO_BENH_BIT, DEMO_BENH_WID);
+    WRITE_CBUS_REG_BITS(VPP_VE_ENABLE_CTRL           , ve_reg_limit(p->pos , VE_DEMO_POS_WID), VE_DEMO_POS_BIT, VE_DEMO_POS_WID);
+    WRITE_CBUS_REG_BITS(VPP_VE_DEMO_LEFT_SCREEN_WIDTH, ve_reg_limit(p->wid , DEMO_WID_WID), DEMO_WID_BIT , DEMO_WID_WID);
 }
 
-#if defined(CONFIG_ARCH_MESON2)
-void ve_set_vdo_meas(struct vdo_meas_s *p)
-{
-}
-#endif
 
 void ve_set_regs(struct ve_regs_s *p)
 {
-    if (!(p->mode)) // read
-    {
-        switch (p->port)
-        {
-            case 0:    // direct access
-                p->val = READ_CBUS_REG_BITS(p->reg, p->bit, p->wid);
-                break;
-            case 1:    // reserved
-                break;
-            case 2:    // reserved
-                break;
-            case 3:    // reserved
-                break;
-            default:   // NA
-                break;
+    if (!(p->mode)) { // read
+        switch (p->port) {
+        case 0:    // direct access
+            p->val = READ_CBUS_REG_BITS(p->reg, p->bit, p->wid);
+            break;
+        case 1:    // reserved
+            break;
+        case 2:    // reserved
+            break;
+        case 3:    // reserved
+            break;
+        default:   // NA
+            break;
+        }
+    } else {           // write
+        switch (p->port) {
+        case 0:    // direct access
+            WRITE_CBUS_REG_BITS(p->reg, ve_reg_limit(p->val, p->wid), p->bit, p->wid);
+            break;
+        case 1:    // reserved
+            break;
+        case 2:    // reserved
+            break;
+        case 3:    // reserved
+            break;
+        default:   // NA
+            break;
         }
     }
-    else               // write
-    {
-        switch (p->port)
-        {
-            case 0:    // direct access
-                WRITE_CBUS_REG_BITS(p->reg, ve_reg_limit(p->val, p->wid), p->bit, p->wid);
-                break;
-            case 1:    // reserved
-                break;
-            case 2:    // reserved
-                break;
-            case 3:    // reserved
-                break;
-            default:   // NA
-                break;
-        }
-    }
-}
-
-void ve_set_regmap(struct ve_regmap_s *p)
-{
-    unsigned char i;
-
-    for (i=0; i<VE_REG_NUM; i++) {
-#if defined (CONFIG_ARCH_MESON)
-        if (((VPP_BLACKEXT_CTRL + i) > VPP_BLUE_STRETCH_3) &&
-            ((VPP_BLACKEXT_CTRL + i) < VPP_CCORING_CTRL))
-            continue;
-#elif defined(CONFIG_ARCH_MESON2)
-        if ((((VPP_BLACKEXT_CTRL + i) > VPP_BLUE_STRETCH_3) &&
-            ((VPP_BLACKEXT_CTRL + i) < VPP_CCORING_CTRL)) ||
-            (((VPP_BLACKEXT_CTRL + i) > VPP_VE_DEMO_CENTER_BAR) &&
-            ((VPP_BLACKEXT_CTRL + i) < VPP_VDO_MEAS_CTRL)))
-            continue;
-#endif
-        WRITE_CBUS_REG((VPP_BLACKEXT_CTRL + i), p->reg[i]);
-    }
-    return;
 }
 

@@ -66,7 +66,9 @@ static inline int install_logo_info(logo_object_t *plogo,char *para)
 //dbg
 	{"dbg",LOGO_DBG_ENABLE,	PARA_FOURTH_GROUP_START-1,	PARA_FOURTH_GROUP_START+1,	PARA_FOURTH_GROUP_START,PARA_FIFTH_GROUP_START-1},  //18
 //progress	
-	{"progress",LOGO_PROGRESS_ENABLE,PARA_FIFTH_GROUP_START-1,PARA_FIFTH_GROUP_START+1,PARA_FIFTH_GROUP_START,PARA_END},
+	{"progress",LOGO_PROGRESS_ENABLE,PARA_FIFTH_GROUP_START-1,PARA_FIFTH_GROUP_START+1,PARA_FIFTH_GROUP_START,PARA_SIXTH_GROUP_START-1},
+//loaded
+	{"loaded",LOGO_LOADED,PARA_SIXTH_GROUP_START-1,PARA_SIXTH_GROUP_START+1,PARA_SIXTH_GROUP_START,PARA_END},
 //tail	
 	{"tail",INVALID_INFO,PARA_END,0,0,PARA_END+1},
 	};
@@ -103,6 +105,10 @@ static inline int install_logo_info(logo_object_t *plogo,char *para)
 				case PARA_FIFTH_GROUP_START:
 				plogo->para.progress=1;
 				break;	
+				case PARA_SIXTH_GROUP_START:
+				plogo->para.loaded=1;
+				amlog_level(LOG_LEVEL_MAX,"logo has been loaded\n");
+				break;	
 			}
 			para_info_pair[prev].next_idx=next;
 			para_info_pair[next].prev_idx=prev;
@@ -120,7 +126,7 @@ static inline int install_logo_info(logo_object_t *plogo,char *para)
 }
 logo_object_t*	 get_current_logo_obj(void)
 {
-	if(aml_logo.dev ==NULL || aml_logo.parser ==NULL)
+	if((aml_logo.dev ==NULL || aml_logo.parser ==NULL)&&!aml_logo.para.loaded)
 	{
 		return NULL;
 	}

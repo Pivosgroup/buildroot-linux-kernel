@@ -619,7 +619,7 @@ void ge2d_set_cmd (ge2d_cmd_t *cfg)
                          (x_extra_bit_end << 14) |    //x end extra
                          ((cfg->src1_x_end & 0x3fff) << 0) // Limit the range in case of the sign bit extending to the top
                          ); 
- 
+
     WRITE_MPEG_REG(GE2D_SRC1_Y_START_END, 
                          (y_extra_bit_start << 30) |  //y start extra
                          ((cfg->src1_y_start & 0x3fff) << 16) | // Limit the range in case of the sign bit extending to the top

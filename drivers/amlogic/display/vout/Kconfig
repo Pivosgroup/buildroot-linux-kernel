@@ -20,5 +20,112 @@ config AML_TCON_T13
 	help  
 		T13 LCD panel module
 
+config AML_TCON_ML10
+	tristate "ML10 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		ML10 LCD panel module
+
+config AML_TCON_W10
+	tristate "W10 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		W10 LCD panel module
+
+config AML_TCON_W7
+	tristate "W7 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		W7 LCD panel module
+
+config AML_TCON_W7NEW
+	tristate "W7NEW panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		W7NEW LCD panel module
+		
+config AML_TCON_W8
+	tristate "W8 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		W8 LCD panel module
+
+config AML_TCON_P7
+	tristate "P7 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		P7 LCD panel module
+
+config AML_TCON_K7
+	tristate "K7 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		K7 LCD panel module
+			
+config AML_TCON_C7
+	tristate "C7 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		C7 LCD panel module	
+		
+config AML_TCON_K8
+	tristate "K8 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		K8 LCD panel module
+		
+config AML_TCON_G7
+	tristate "G7 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		G7 LCD panel module
+		
+config AML_TCON_A18
+	tristate "A18 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		A18 LCD panel module
+
+config AML_TCON_A19
+	tristate "A19 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		A19 LCD panel module
+
+config AML_TCON_R10
+	tristate "R10 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		R10 LCD panel module
+
+config AML_TCON_REFB13
+	tristate "REFB13 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		REFB13 LCD panel module
+
+config AML_TCON_REFB14
+	tristate "REFB14 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		REFB14 LCD panel module	
+
+config AML_TCON_T10
+	tristate "T10 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		T10 LCD panel module		
+		
+config AML_TCON_REFB17
+	tristate "REFB17 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		T13 LCD panel module	
+config AML_TCON_P10
+	tristate "P10 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		P10 LCD panel module
+		
 endmenu
 	

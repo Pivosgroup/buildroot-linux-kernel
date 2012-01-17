@@ -2,10 +2,7 @@
 #define AUDIO_DSP_MODULES_H
 #include <linux/device.h>
 #include <linux/timer.h>
-
-#ifdef CONFIG_PM
 #include <linux/wakelock.h>
-#endif
 /*
 #include <asm/dsp/audiodsp_control.h>
 #include <asm/dsp/dsp_register.h>
@@ -49,7 +46,7 @@
 	int last_stream_fmt;
 	struct frame_fmt frame_format;
 	struct frame_info cur_frame_info;
-	int last_valid_pts;
+	unsigned int last_valid_pts;
 	int out_len_after_last_valid_pts;
 	int decode_error_count;
 	int decode_fatal_err;
@@ -66,10 +63,8 @@
 
 	struct completion	decode_completion;
     void __iomem *p;	
-#ifdef CONFIG_PM
 // for power management
     struct wake_lock wakelock;
-#endif
 };
 
 

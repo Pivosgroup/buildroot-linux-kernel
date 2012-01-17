@@ -44,6 +44,11 @@
 #include "tvmode.h"
 #include "vout_log.h"
 #include <linux/amlog.h>
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+static struct early_suspend early_suspend;
+static int early_suspend_flag = 0;
+#endif
 
 MODULE_AMLOG(0, 0xff, LOG_LEVEL_DESC, LOG_MASK_DESC);
 //class attribute
@@ -106,10 +111,12 @@ static  void  read_reg(char *para)
 
 	if (((*para) == 'm') || ((*para) == 'M'))
 	{
-		amlog_level(LOG_LEVEL_HIGH,"[0x%x] : 0x%x\r\n", reg.addr, READ_MPEG_REG(reg.addr));
+		amlog_level(LOG_LEVEL_HIGH,"[0x%x] : 0x%x\r\n", CBUS_REG_ADDR(reg.addr), READ_MPEG_REG(reg.addr));
 	}else if (((*para) == 'p') || ((*para) == 'P')) {
 		if (APB_REG_ADDR_VALID(reg.addr))
-		amlog_level(LOG_LEVEL_HIGH,"[0x%x] : 0x%x\r\n", reg.addr, READ_APB_REG(reg.addr));
+		    amlog_level(LOG_LEVEL_HIGH,"[0x%x] : 0x%x\r\n", APB_REG_ADDR(reg.addr), READ_APB_REG(reg.addr));
+	}else if (((*para) == 'h') || ((*para) == 'H')) {
+	    amlog_level(LOG_LEVEL_HIGH,"[0x%x] : 0x%x\r\n", AHB_REG_ADDR(reg.addr), READ_AHB_REG(reg.addr));
 	}
 }
 
@@ -118,14 +125,22 @@ static  void  write_reg(char *para)
 	char  count=2;
 	vout_reg_t  reg;
 
-	memcpy(&reg,parse_para(para+1,&count),sizeof(vout_reg_t));
+	memcpy(&reg, parse_para(para+1,&count), sizeof(vout_reg_t));
 
-	if (((*para) == 'm') || ((*para) == 'M'))
-		WRITE_MPEG_REG( reg.addr,reg.value);
+	if (((*para) == 'm') || ((*para) == 'M')){
+		WRITE_MPEG_REG(reg.addr,reg.value);
+		amlog_level(LOG_LEVEL_HIGH,"[0x%x] = 0x%x 0x%x\r\n", CBUS_REG_ADDR(reg.addr), reg.value, READ_MPEG_REG(reg.addr));
+	}
 	else if (((*para) == 'p') || ((*para) == 'P')) {
-		if (APB_REG_ADDR_VALID(reg.addr))
+		if (APB_REG_ADDR_VALID(reg.addr)){
 			WRITE_APB_REG(reg.addr,reg.value);
+			amlog_level(LOG_LEVEL_HIGH,"[0x%x] = 0x%x 0x%x\r\n", APB_REG_ADDR(reg.addr), reg.value, READ_APB_REG(reg.addr));
+		}
 	}		
+	else if (((*para) == 'h') || ((*para) == 'H')) {
+		WRITE_AHB_REG(reg.addr,reg.value);
+		amlog_level(LOG_LEVEL_HIGH,"[0x%x] = 0x%x 0x%x\r\n", AHB_REG_ADDR(reg.addr), reg.value, READ_AHB_REG(reg.addr));
+	}	
 }
 
 
@@ -211,6 +226,47 @@ static int  create_vout_attr(void)
 	}
 	return   0;
 }
+
+#ifdef  CONFIG_PM
+static int  meson_vout_suspend(struct platform_device *pdev, pm_message_t state)
+{	
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    if (early_suspend_flag)
+        return 0;
+#endif
+	vout_suspend();
+	return 0;
+}
+
+static int  meson_vout_resume(struct platform_device *pdev)
+{
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    if (early_suspend_flag)
+        return 0;
+#endif
+	vout_resume();
+	return 0;
+}
+#endif 
+
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void meson_vout_early_suspend(struct early_suspend *h)
+{
+    if (early_suspend_flag)
+        return 0;
+    meson_vout_suspend((struct platform_device *)h->param, PMSG_SUSPEND);
+    early_suspend_flag = 1;
+}
+
+static void meson_vout_late_resume(struct early_suspend *h)
+{
+    if (!early_suspend_flag)
+        return 0;
+    early_suspend_flag = 0;
+    meson_vout_resume((struct platform_device *)h->param);
+}
+#endif
+
 /*****************************************************************
 **
 **	vout driver interface  
@@ -223,6 +279,14 @@ static int __init
 	
 	vout_info.base_class=NULL;
 	amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"start init vout module \r\n");
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
+    early_suspend.suspend = meson_vout_early_suspend;
+    early_suspend.resume = meson_vout_late_resume;
+    early_suspend.param = pdev;
+	register_early_suspend(&early_suspend);
+#endif
+
 	ret =create_vout_attr();
 	if(ret==0)
 	{
@@ -240,6 +304,9 @@ static int
 {
    	int i;
 	if(vout_info.base_class==NULL) return -1;
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    unregister_early_suspend(&early_suspend);
+#endif
 	
 	for(i=0;i<VOUT_ATTR_MAX;i++)
 	{
@@ -251,21 +318,7 @@ static int
 	return 0;
 }
 
-#ifdef  CONFIG_PM
-static int  meson_vout_suspend(struct platform_device *pdev, pm_message_t state)
-{	
-	vout_suspend();
-	return 0;
-}
 
-static int  meson_vout_resume(struct platform_device *pdev)
-{
-	vout_resume();
-	return 0;
-}
-
-
-#endif 
 
 static struct platform_driver
 vout_driver = {

@@ -22,6 +22,7 @@
 #define __ASM_ARCH_IRQS_H
 
 #define IRQ_BIT(irq)			((irq) & 0x1f)
+#define IRQ_INDEX(irq)          ((irq) >> 5)
 #define IRQ_MASK_REG(irq)		(A9_0_IRQ_IN0_INTR_MASK + (((irq) >> 5) << 2))
 #define IRQ_STATUS_REG(irq)		(A9_0_IRQ_IN0_INTR_STAT + (((irq) >> 5) << 2))
 #define IRQ_CLR_REG(irq)		(A9_0_IRQ_IN0_INTR_STAT_CLR + (((irq) >> 5) << 2))
@@ -138,5 +139,6 @@
 
 /* All interrupts are FIQ capable */
 #define FIQ_START					AM_IRQ0(0)
-
+extern void request_fiq(unsigned fiq, void (*isr)(void));
+extern void free_fiq(unsigned fiq, void (*isr)(void));
 #endif
