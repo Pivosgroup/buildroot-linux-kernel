@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -19,6 +19,15 @@
  * @return NULL if ID not found or valid, non-NULL if a core was found.
  */
 void* mali_memory_core_mmu_lookup(u32 id);
+
+/**
+ * Set the core pointer of MMU to core owner of MMU
+ *
+ * @param core Core holding this MMU
+ * @param mmu_ptr The MMU whose core pointer needs set to core holding the MMU
+ * 
+ */
+void mali_memory_core_mmu_owner(void *core, void *mmu_ptr);
 
 /**
  * Activate a user session with its address space on the given MMU.

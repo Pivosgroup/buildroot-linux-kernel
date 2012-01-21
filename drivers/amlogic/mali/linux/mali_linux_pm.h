@@ -1,6 +1,6 @@
 
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -20,22 +20,16 @@ typedef enum
 {
 	_MALI_DEVICE_SUSPEND,                         /* Suspend */
 	_MALI_DEVICE_RESUME,                          /* Resume */
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	_MALI_DEVICE_EARLYSUSPEND_DISABLE_FB,         /* Early suspend */
-	_MALI_DEVICE_LATERESUME,                      /* Late resume */
-#endif /* CONFIG_HAS_EARLYSUSPEND */
-	_MALI_DEVICE_SUSPEND_IN_PROGRESS,             /* Suspend in progress */
 	_MALI_DEVICE_MAX_POWER_STATES,                /* Maximum power states */
 } _mali_device_power_states;
 
 /* Number of DVFS events */
 typedef enum
 {
-	_MALI_DVFS_PAUSE_EVENT = _MALI_DEVICE_MAX_POWER_STATES-1,     /* DVFS Pause event */
+	_MALI_DVFS_PAUSE_EVENT = _MALI_DEVICE_MAX_POWER_STATES,     /* DVFS Pause event */
 	_MALI_DVFS_RESUME_EVENT,                                        /* DVFS Resume event */
 	_MALI_MAX_DEBUG_OPERATIONS,
 } _mali_device_dvfs_events;
-
 
 extern _mali_device_power_states mali_device_state;
 extern _mali_device_power_states mali_dvfs_device_state;
@@ -52,6 +46,7 @@ extern struct task_struct *pm_thread;
 
 int mali_device_suspend(u32 event_id, struct task_struct **pwr_mgmt_thread);
 int mali_device_resume(u32 event_id, struct task_struct **pwr_mgmt_thread);
+int mali_get_ospmm_thread_state(void);
 
 #endif /* CONFIG_PM */
 #endif /* USING_MALI_PMM */

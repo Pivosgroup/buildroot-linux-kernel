@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -33,6 +33,7 @@
 typedef enum
 {
 	_MALI_OSK_INTERNAL_LOCKTYPE_SPIN,            /* Mutex, implicitly non-interruptable, use spin_lock/spin_unlock */
+	_MALI_OSK_INTERNAL_LOCKTYPE_SPIN_IRQ,        /* Mutex, IRQ version of spinlock, use spin_lock_irqsave/spin_unlock_irqrestore */
 	_MALI_OSK_INTERNAL_LOCKTYPE_MUTEX,           /* Interruptable, use up()/down_interruptable() */
 	_MALI_OSK_INTERNAL_LOCKTYPE_MUTEX_NONINT,    /* Non-Interruptable, use up()/down() */
 	_MALI_OSK_INTERNAL_LOCKTYPE_MUTEX_NONINT_RW, /* Non-interruptable, Reader/Writer, use {up,down}{read,write}() */
@@ -50,6 +51,7 @@ typedef enum
 struct _mali_osk_lock_t_struct
 {
     _mali_osk_internal_locktype type;
+	unsigned long flags; 
     union
     {
         spinlock_t spinlock;
@@ -59,7 +61,6 @@ struct _mali_osk_lock_t_struct
 	MALI_DEBUG_CODE(
 				  /** original flags for debug checking */
 				  _mali_osk_lock_flags_t orig_flags;
-				  _mali_osk_lock_mode_t locked_as;
 	); /* MALI_DEBUG_CODE */
 };
 
@@ -70,13 +71,14 @@ _mali_osk_lock_t *_mali_osk_lock_init( _mali_osk_lock_flags_t flags, u32 initial
 	/* Validate parameters: */
 	/* Flags acceptable */
 	MALI_DEBUG_ASSERT( 0 == ( flags & ~(_MALI_OSK_LOCKFLAG_SPINLOCK
+									  | _MALI_OSK_LOCKFLAG_SPINLOCK_IRQ
 									  | _MALI_OSK_LOCKFLAG_NONINTERRUPTABLE
 									  | _MALI_OSK_LOCKFLAG_READERWRITER
 									  | _MALI_OSK_LOCKFLAG_ORDERED
-									  | _MALI_OSK_LOCKFLAG_ONELOCK)) );
+									  | _MALI_OSK_LOCKFLAG_ONELOCK )) );
 	/* Spinlocks are always non-interruptable */
-	MALI_DEBUG_ASSERT( ((flags & _MALI_OSK_LOCKFLAG_SPINLOCK) && (flags & _MALI_OSK_LOCKFLAG_NONINTERRUPTABLE))
-					 || !(flags & _MALI_OSK_LOCKFLAG_SPINLOCK) );
+	MALI_DEBUG_ASSERT( (((flags & _MALI_OSK_LOCKFLAG_SPINLOCK) || (flags & _MALI_OSK_LOCKFLAG_SPINLOCK_IRQ)) && (flags & _MALI_OSK_LOCKFLAG_NONINTERRUPTABLE))
+					 || !(flags & _MALI_OSK_LOCKFLAG_SPINLOCK));
 	/* Parameter initial SBZ - for future expansion */
 	MALI_DEBUG_ASSERT( 0 == initial );
 
@@ -94,6 +96,12 @@ _mali_osk_lock_t *_mali_osk_lock_init( _mali_osk_lock_flags_t flags, u32 initial
 	{
 		/* Non-interruptable Spinlocks override all others */
 		lock->type = _MALI_OSK_INTERNAL_LOCKTYPE_SPIN;
+		spin_lock_init( &lock->obj.spinlock );
+	}
+	else if ( (flags & _MALI_OSK_LOCKFLAG_SPINLOCK_IRQ ) )
+	{
+		lock->type = _MALI_OSK_INTERNAL_LOCKTYPE_SPIN_IRQ;
+		lock->flags = 0;
 		spin_lock_init( &lock->obj.spinlock );
 	}
 	else if ( (flags & _MALI_OSK_LOCKFLAG_NONINTERRUPTABLE)
@@ -115,13 +123,12 @@ _mali_osk_lock_t *_mali_osk_lock_init( _mali_osk_lock_flags_t flags, u32 initial
 		}
 
 		/* Initially unlocked */
-		init_MUTEX( &lock->obj.sema );
+		sema_init( &lock->obj.sema, 1 );
 	}
 
 	MALI_DEBUG_CODE(
 				  /* Debug tracking of flags */
 				  lock->orig_flags = flags;
-				  lock->locked_as = _MALI_OSK_LOCKMODE_UNDEF;
 				  ); /* MALI_DEBUG_CODE */
 
     return lock;
@@ -147,6 +154,9 @@ _mali_osk_errcode_t _mali_osk_lock_wait( _mali_osk_lock_t *lock, _mali_osk_lock_
 	{
 	case _MALI_OSK_INTERNAL_LOCKTYPE_SPIN:
 		spin_lock(&lock->obj.spinlock);
+		break;
+	case _MALI_OSK_INTERNAL_LOCKTYPE_SPIN_IRQ:
+		spin_lock_irqsave(&lock->obj.spinlock, lock->flags);
 		break;
 
 	case _MALI_OSK_INTERNAL_LOCKTYPE_MUTEX:
@@ -178,17 +188,6 @@ _mali_osk_errcode_t _mali_osk_lock_wait( _mali_osk_lock_t *lock, _mali_osk_lock_
 		break;
 	}
 
-	/* DEBUG tracking of previously locked state - occurs after lock obtained */
-	MALI_DEBUG_CODE(
-				  if ( _MALI_OSK_ERR_OK == err )
-				  {
-					  /* Assert that this is not currently locked */
-					  MALI_DEBUG_ASSERT( _MALI_OSK_LOCKMODE_UNDEF == lock->locked_as );
-
-					  lock->locked_as = mode;
-				  }
-				  ); /* MALI_DEBUG_CODE */
-
     return err;
 }
 
@@ -206,16 +205,13 @@ void _mali_osk_lock_signal( _mali_osk_lock_t *lock, _mali_osk_lock_mode_t mode )
 	MALI_DEBUG_ASSERT( _MALI_OSK_LOCKMODE_RW == mode
 					 || (_MALI_OSK_LOCKMODE_RO == mode && (_MALI_OSK_LOCKFLAG_READERWRITER & lock->orig_flags)) );
 
-	/* For DEBUG only, assert that we previously locked this, and in the same way (RW/RO) */
-	MALI_DEBUG_ASSERT( mode == lock->locked_as );
-
-	/* DEBUG tracking of previously locked state - occurs before lock released */
-	MALI_DEBUG_CODE( lock->locked_as = _MALI_OSK_LOCKMODE_UNDEF );
-
 	switch ( lock->type )
 	{
 	case _MALI_OSK_INTERNAL_LOCKTYPE_SPIN:
 		spin_unlock(&lock->obj.spinlock);
+		break;
+	case _MALI_OSK_INTERNAL_LOCKTYPE_SPIN_IRQ:
+		spin_unlock_irqrestore(&lock->obj.spinlock, lock->flags);
 		break;
 
 	case _MALI_OSK_INTERNAL_LOCKTYPE_MUTEX:
@@ -247,9 +243,6 @@ void _mali_osk_lock_term( _mali_osk_lock_t *lock )
 {
 	/* Parameter validation  */
 	MALI_DEBUG_ASSERT_POINTER( lock );
-
-	/* For DEBUG only, assert that this is not currently locked */
-	MALI_DEBUG_ASSERT( _MALI_OSK_LOCKMODE_UNDEF == lock->locked_as );
 
 	/* Linux requires no explicit termination of spinlocks, semaphores, or rw_semaphores */
     kfree(lock);

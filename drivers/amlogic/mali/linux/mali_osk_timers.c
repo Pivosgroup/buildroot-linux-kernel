@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -50,7 +50,6 @@ void _mali_osk_timer_del( _mali_osk_timer_t *tim )
     MALI_DEBUG_ASSERT_POINTER(tim);
     del_timer_sync(&(tim->timer));
 }
-
 
 void _mali_osk_timer_setcallback( _mali_osk_timer_t *tim, _mali_osk_timer_callback_t callback, void *data )
 {

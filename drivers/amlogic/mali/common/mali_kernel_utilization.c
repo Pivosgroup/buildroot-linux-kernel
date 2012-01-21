@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -13,7 +13,7 @@
 #include "mali_platform.h"
 
 /* Define how often to calculate and report GPU utilization, in milliseconds */
-#define MALI_GPU_UTILIZATION_TIMEOUT 10000
+#define MALI_GPU_UTILIZATION_TIMEOUT 1000
 
 static _mali_osk_lock_t *time_data_lock;
 
@@ -29,7 +29,7 @@ static mali_bool timer_running = MALI_FALSE;
 
 static void calculate_gpu_utilization(void* arg)
 {
-	u64 time_now = _mali_osk_time_get_ns();
+	u64 time_now;
 	u64 time_period;
 	u32 leading_zeroes;
 	u32 shift_val;
@@ -39,7 +39,7 @@ static void calculate_gpu_utilization(void* arg)
 
 	_mali_osk_lock_wait(time_data_lock, _MALI_OSK_LOCKMODE_RW);
 
-	if (accumulated_work_time == 0)
+	if (accumulated_work_time == 0 && work_start_time == 0)
 	{
 		/* Don't reschedule timer, this will be started if new work arrives */
 		timer_running = MALI_FALSE;
@@ -52,6 +52,7 @@ static void calculate_gpu_utilization(void* arg)
 		return;
 	}
 
+	time_now = _mali_osk_time_get_ns();
 	time_period = time_now - period_start_time;
 
 	/* If we are currently busy, update working period up to now */
@@ -110,7 +111,7 @@ static void calculate_gpu_utilization(void* arg)
 
 _mali_osk_errcode_t mali_utilization_init(void)
 {
-	time_data_lock = _mali_osk_lock_init( _MALI_OSK_LOCKFLAG_SPINLOCK|_MALI_OSK_LOCKFLAG_NONINTERRUPTABLE, 0, 0 );
+	time_data_lock = _mali_osk_lock_init( _MALI_OSK_LOCKFLAG_SPINLOCK_IRQ|_MALI_OSK_LOCKFLAG_NONINTERRUPTABLE, 0, 0 );
 	if (NULL == time_data_lock)
 	{
 		return _MALI_OSK_ERR_FAULT;
@@ -129,7 +130,14 @@ _mali_osk_errcode_t mali_utilization_init(void)
 	return _MALI_OSK_ERR_OK;
 }
 
-
+void mali_utilization_suspend(void)
+{
+	if (NULL != utilization_timer)
+	{
+		_mali_osk_timer_del(utilization_timer);
+		timer_running = MALI_FALSE;
+	}
+}
 
 void mali_utilization_term(void)
 {
@@ -186,9 +194,11 @@ void mali_utilization_core_end(void)
 		/*
 		 * No more cores are working, so accumulate the time we was busy.
 		 */
-		u64 time_now = _mali_osk_time_get_ns();
+		u64 time_now;
+
 		_mali_osk_lock_wait(time_data_lock, _MALI_OSK_LOCKMODE_RW);
 
+		time_now = _mali_osk_time_get_ns();
 		accumulated_work_time += (time_now - work_start_time);
 		work_start_time = 0;
 

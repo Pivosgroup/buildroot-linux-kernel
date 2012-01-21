@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -128,6 +128,28 @@ int profiling_clear_wrapper(struct mali_session_data *session_data, _mali_uk_pro
 	if (_MALI_OSK_ERR_OK != err)
 	{
 		return map_errcode(err);
+	}
+
+	return 0;
+}
+
+int profiling_get_config_wrapper(struct mali_session_data *session_data, _mali_uk_profiling_get_config_s __user *uargs)
+{
+	_mali_uk_profiling_get_config_s kargs;
+	_mali_osk_errcode_t err;
+
+	MALI_CHECK_NON_NULL(uargs, -EINVAL);
+
+	kargs.ctx = session_data;
+	err = _mali_ukk_profiling_get_config(&kargs);
+	if (_MALI_OSK_ERR_OK != err)
+	{
+		return map_errcode(err);
+	}
+
+	if (0 != put_user(kargs.enable_events, &uargs->enable_events))
+	{
+		return -EFAULT;
 	}
 
 	return 0;

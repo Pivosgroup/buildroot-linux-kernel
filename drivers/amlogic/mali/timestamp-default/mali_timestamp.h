@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -11,7 +11,7 @@
 #ifndef __MALI_TIMESTAMP_H__
 #define __MALI_TIMESTAMP_H__
 
-#include "mali_osk.h" 
+#include "mali_osk.h"
 
 MALI_STATIC_INLINE _mali_osk_errcode_t _mali_timestamp_reset(void)
 {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -9,19 +9,24 @@
  */
 
 /**
- * @file mali_platform.c
- * Platform specific Mali driver functions for Mali 400 PMU hardware
+ * @file mali_pmm_pmu.c
+ * Mali driver functions for Mali 400 PMU hardware
  */
 #include "mali_kernel_common.h"
 #include "mali_osk.h"
 #include "mali_platform.h"
 
+#if USING_MALI_PMU
 #if USING_MALI_PMM
 
 #include "mali_pmm.h"
 
 /* Internal test on/off */
 #define PMU_TEST 0
+
+#if MALI_POWER_MGMT_TEST_SUITE
+#include "mali_platform_pmu_internal_testing.h"
+#endif /* MALI_POWER_MGMT_TEST_SUITE */
 
 /** @brief PMU hardware info
  */
@@ -53,25 +58,18 @@ typedef enum {
 } pmu_reg_addr_mgmt_addr;
 
 /* Internal functions */
-u32 pmu_reg_read(platform_pmu_t *pmu, u32 relative_address);
-void pmu_reg_write(platform_pmu_t *pmu, u32 relative_address, u32 new_val);
-mali_pmm_core_mask pmu_translate_cores_to_pmu(mali_pmm_core_mask cores);
+static u32 pmu_reg_read(platform_pmu_t *pmu, u32 relative_address);
+static void pmu_reg_write(platform_pmu_t *pmu, u32 relative_address, u32 new_val);
+static mali_pmm_core_mask pmu_translate_cores_to_pmu(mali_pmm_core_mask cores);
 #if PMU_TEST
-void pmm_pmu_dump_regs( platform_pmu_t *pmu );
-void pmm_pmu_test( platform_pmu_t *pmu, u32 cores );
+static void pmm_pmu_dump_regs( platform_pmu_t *pmu );
+static pmm_pmu_test( platform_pmu_t *pmu, u32 cores );
 #endif
 
-#endif /* USING_MALI_PMM */
-
-
-_mali_osk_errcode_t mali_platform_init(_mali_osk_resource_t *resource)
+_mali_osk_errcode_t mali_pmm_pmu_init(_mali_osk_resource_t *resource)
 {
-#if USING_MALI_PMM
-	if( resource == NULL )
-	{
-		/* Nothing to set up for the system */	
-	}
-	else if( resource->type == PMU )
+
+	if( resource->type == PMU )
 	{
 		if( (resource->base == 0) ||
 			(resource->description == NULL) )
@@ -80,8 +78,6 @@ _mali_osk_errcode_t mali_platform_init(_mali_osk_resource_t *resource)
 			MALI_PRINT_ERROR(("PLATFORM mali400-pmu: Missing PMU set up information\n"));
 			MALI_ERROR(_MALI_OSK_ERR_INVALID_ARGS);
 		}
-
-		MALI_DEBUG_ASSERT( pmu_info == NULL );
 		pmu_info = (platform_pmu_t *)_mali_osk_malloc(sizeof(*pmu_info));
 		MALI_CHECK_NON_NULL( pmu_info, _MALI_OSK_ERR_NOMEM );	
 
@@ -142,22 +138,11 @@ cleanup:
 	_mali_osk_free(pmu_info);
 	pmu_info = NULL;
 	MALI_ERROR(_MALI_OSK_ERR_NOMEM);
-
-#else
-	/* Nothing to do when not using PMM - as mali already on */
-	MALI_SUCCESS;
-#endif
-
 }
 
-_mali_osk_errcode_t mali_platform_deinit(_mali_osk_resource_type_t *type)
+_mali_osk_errcode_t mali_pmm_pmu_deinit(_mali_osk_resource_type_t *type)
 {
-#if USING_MALI_PMM
-	if( type == NULL )
-	{
-		/* Nothing to tear down for the system */
-	}	
-	else if (*type == PMU)
+	if (*type == PMU)
 	{
 		if( pmu_info )
 		{
@@ -165,7 +150,6 @@ _mali_osk_errcode_t mali_platform_deinit(_mali_osk_resource_type_t *type)
 			_mali_osk_mem_unreqregion(pmu_info->reg_base_addr, pmu_info->reg_size);
 			_mali_osk_free(pmu_info);
 			pmu_info = NULL;
-
 			MALI_DEBUG_PRINT( 4, ("PLATFORM mali400-pmu: Terminated PMU\n") );
 		}
 	}
@@ -177,15 +161,10 @@ _mali_osk_errcode_t mali_platform_deinit(_mali_osk_resource_type_t *type)
 		
 	MALI_SUCCESS;
 
-#else
-	/* Nothing to do when not using PMM */
-	MALI_SUCCESS;
-#endif
 }
 
-_mali_osk_errcode_t mali_platform_powerdown(u32 cores)
+_mali_osk_errcode_t mali_pmm_pmu_powerdown(u32 cores)
 {
-#if USING_MALI_PMM
 	u32 stat;
 	u32 timeout;
 	u32 cores_pmu;
@@ -212,16 +191,10 @@ _mali_osk_errcode_t mali_platform_powerdown(u32 cores)
 	if( timeout == 0 ) MALI_ERROR(_MALI_OSK_ERR_TIMEOUT);
 
 	MALI_SUCCESS;
-
-#else
-	/* Nothing to do when not using PMM */
-	MALI_SUCCESS;
-#endif
 }
 
-_mali_osk_errcode_t mali_platform_powerup(u32 cores)
+_mali_osk_errcode_t mali_pmm_pmu_powerup(u32 cores)
 {
-#if USING_MALI_PMM
 	u32 cores_pmu;
 	u32 stat;
 	u32 timeout;
@@ -249,18 +222,8 @@ _mali_osk_errcode_t mali_platform_powerup(u32 cores)
 	if( timeout == 0 ) MALI_ERROR(_MALI_OSK_ERR_TIMEOUT);
 
 	MALI_SUCCESS;
-
-#else
-	/* Nothing to do when not using PMM */
-	MALI_SUCCESS;
-#endif
 }
 
-void mali_gpu_utilization_handler(u32 utilization)
-{
-}
-
-#if USING_MALI_PMM
 
 /***** INTERNAL *****/
 
@@ -270,7 +233,7 @@ void mali_gpu_utilization_handler(u32 utilization)
  * @param cores PMM cores bitmask
  * @return PMU hardware cores bitmask
  */
-u32 pmu_translate_cores_to_pmu(mali_pmm_core_mask cores)
+static u32 pmu_translate_cores_to_pmu(mali_pmm_core_mask cores)
 {
 	/* For Mali 400 PMU the cores mask is already the same as what
 	 * the hardware PMU expects.
@@ -287,7 +250,7 @@ u32 pmu_translate_cores_to_pmu(mali_pmm_core_mask cores)
  * @param relative_address relative PMU hardware address to read from
  * @return 32-bit value that was read from the address
  */
-u32 pmu_reg_read(platform_pmu_t *pmu, u32 relative_address)
+static u32 pmu_reg_read(platform_pmu_t *pmu, u32 relative_address)
 {
 	u32 read_val;
 
@@ -309,7 +272,7 @@ u32 pmu_reg_read(platform_pmu_t *pmu, u32 relative_address)
  * @param relative_address relative PMU hardware address to write to
  * @param new_val new 32-bit value to write into the address
  */
-void pmu_reg_write(platform_pmu_t *pmu, u32 relative_address, u32 new_val)
+static void pmu_reg_write(platform_pmu_t *pmu, u32 relative_address, u32 new_val)
 {
 	MALI_DEBUG_ASSERT_POINTER(pmu);
 	MALI_DEBUG_ASSERT((relative_address & 0x03) == 0);
@@ -321,23 +284,11 @@ void pmu_reg_write(platform_pmu_t *pmu, u32 relative_address, u32 new_val)
 	_mali_osk_mem_iowrite32(pmu->reg_mapped, relative_address, new_val);
 }
 
-#if MALI_POWER_MGMT_TEST_SUITE
-
-u32 pmu_get_power_up_down_info(void)
-{
-	return pmu_reg_read(pmu_info, (u32)PMU_REG_ADDR_MGMT_STATUS);
-}
-
-#endif /* MALI_POWER_MGMT_TEST_SUITE */
-
-#endif /* USING_MALI_PMM */
-
-
-#if USING_MALI_PMM && PMU_TEST
+#if PMU_TEST
 
 /***** TEST *****/
 
-void pmu_dump_regs( platform_pmu_t *pmu )
+static void pmu_dump_regs( platform_pmu_t *pmu )
 {
 	u32 addr;
 	for( addr = 0x0; addr < PMU_REGISTER_ADDRESS_SPACE_SIZE; addr += 0x4 )
@@ -347,7 +298,7 @@ void pmu_dump_regs( platform_pmu_t *pmu )
 }
 
 /* This function is an internal test for the PMU without any Mali h/w interaction */
-void pmu_test( platform_pmu_t *pmu, u32 cores )
+static void pmu_test( platform_pmu_t *pmu, u32 cores )
 {
 	u32 stat;
 	u32 timeout;
@@ -385,4 +336,15 @@ void pmu_test( platform_pmu_t *pmu, u32 cores )
 
 	MALI_PRINT( ("PMU_TEST: Finish\n") );
 }
-#endif /* USING_MALI_PMM && PMU_TEST */
+#endif /* PMU_TEST */
+
+#if MALI_POWER_MGMT_TEST_SUITE
+
+u32 pmu_get_power_up_down_info(void)
+{
+        return pmu_reg_read(pmu_info, (u32)PMU_REG_ADDR_MGMT_STATUS);
+}
+
+#endif /* MALI_POWER_MGMT_TEST_SUITE */
+#endif /* USING_MALI_PMM */
+#endif /* USING_MALI_PMU */

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -13,7 +13,6 @@
 #if USING_MALI_PMM
 #if MALI_POWER_MGMT_TEST_SUITE
 #ifdef CONFIG_PM
-#define MALI_PMM_INTERNAL_TESTING 1
 
 typedef enum
 {
@@ -28,10 +27,7 @@ extern unsigned int mali_timeout_event_recording_on;
 extern unsigned int mali_job_scheduling_events_recording_on;
 extern unsigned int pwr_mgmt_status_reg;
 extern unsigned int is_mali_pmm_testsuite_enabled;
-
-#if MALI_PMM_INTERNAL_TESTING
 extern unsigned int is_mali_pmu_present;
-#endif /* MALI_PMM_INTERNAL_TESTING */
 
 #endif /* CONFIG_PM */
 #endif /* MALI_POWER_MGMT_TEST_SUITE */

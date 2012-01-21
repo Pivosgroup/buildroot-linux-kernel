@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -23,6 +23,8 @@
 #ifdef _MALI_OSK_SPECIFIC_INDIRECT_MMAP
 #include "mali_osk_indir_mmap.h"
 #endif
+
+#error Support for non-MMU builds is no longer supported and is planned for removal.
 
 /**
  * Minimum memory allocation size
@@ -55,7 +57,7 @@ typedef struct mali_memory_bank
 	_mali_osk_list_t list; /* links multiple banks together */
 	_mali_osk_lock_t *lock;
 	u32 base_addr; /* Mali seen address of bank */
-	u32 cpu_usage_adjust; /* Adjustmen factor for what the CPU sees */
+	u32 cpu_usage_adjust; /* Adjustment factor for what the CPU sees */
 	u32 size; /* the effective size */
 	u32 real_size; /* the real size of the bank, as given by to the subsystem */
 	int min_order;
@@ -389,6 +391,9 @@ struct mali_kernel_subsystem mali_subsystem_memory =
     mali_memory_core_session_begin,             /* session_begin */
 	mali_memory_core_session_end,               /* session_end */
     NULL,                                       /* broadcast_notification */
+#if MALI_STATE_TRACKING
+	NULL,                                       /* dump_state */
+#endif
 };
 
 /* Initialized when this subsystem is initialized. This is determined by the

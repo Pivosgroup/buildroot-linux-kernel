@@ -12,7 +12,7 @@
 #
 
 #MKIMAGE         ?= $(CONFIG_SHELL) $(srctree)/scripts/mkuboot.sh
-MKIMAGE          ?= ../../../board/amlogic/atv300/mkimage
+MKIMAGE          ?= mkimage
 
 ifneq ($(MACHINE),)
 include $(srctree)/$(MACHINE)/Makefile.boot

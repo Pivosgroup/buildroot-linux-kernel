@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -25,19 +25,18 @@
 #include "mali_osk.h"
 #include "mali_uk_types.h"
 #include "mali_pmm.h"
-#include "mali_ukk.h"
 #include "mali_kernel_common.h"
 #include "mali_kernel_license.h"
-#include "mali_kernel_pm.h"
-#include "mali_device_pause_resume.h"
 #include "mali_linux_pm.h"
 #include "mali_linux_pm_testsuite.h"
 
+#if MALI_LICENSE_IS_GPL
 #if MALI_PMM_RUNTIME_JOB_CONTROL_ON
 #ifdef CONFIG_PM_RUNTIME
 static int is_runtime =0;
 #endif /* CONFIG_PM_RUNTIME */
 #endif /* MALI_PMM_RUNTIME_JOB_CONTROL_ON */
+#endif /* MALI_LICENSE_IS_GPL */
 
 #if MALI_POWER_MGMT_TEST_SUITE
 
@@ -118,12 +117,10 @@ void _mali_osk_pmm_power_down_done(mali_pmm_message_data data)
 #ifdef CONFIG_PM
 	is_wake_up_needed = 1;
 #if MALI_POWER_MGMT_TEST_SUITE
-#if MALI_PMM_INTERNAL_TESTING
 	if (is_mali_pmu_present == 0)
 	{
 		pwr_mgmt_status_reg = _mali_pmm_cores_list();
 	}
-#endif /* MALI_PMM_INTERNAL_TESTING */
 #endif /* MALI_POWER_MGMT_TEST_SUITE */
 	wake_up_process(pm_thread);
 	MALI_DEBUG_PRINT(4, ("OSPMM: MALI Power down Done\n" ));
@@ -179,6 +176,20 @@ void _mali_osk_pmm_dev_activate(void)
         }
 #endif /* MALI_PMM_RUNTIME_JOB_CONTROL_ON */
 #endif /* CONFIG_PM_RUNTIME */
+#endif /* MALI_LICENSE_IS_GPL */
+}
+
+void _mali_osk_pmm_ospmm_cleanup( void )
+{
+#if MALI_LICENSE_IS_GPL
+#ifdef CONFIG_PM
+	int thread_state;
+	thread_state = mali_get_ospmm_thread_state();
+	if (thread_state)
+	{
+		_mali_osk_pmm_dvfs_operation_done(0);
+	}
+#endif /* CONFIG_PM */
 #endif /* MALI_LICENSE_IS_GPL */
 }
 

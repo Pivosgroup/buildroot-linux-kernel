@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -145,6 +145,7 @@ typedef struct mali_core_renderunit
 	_mali_osk_list_t list;                  /* Is always in subsystem->idle_list OR session->renderunits_working */
 	mali_core_status  state;
 	mali_bool error_recovery;               /* Indicates if the core is waiting for external help to recover (typically the MMU) */
+	mali_bool in_detach_function;
 	struct mali_core_job * current_job;     /* Current job being processed on this core ||NULL */
 	u32 magic_nr;
  	_mali_osk_timer_t * timer;
@@ -187,6 +188,13 @@ typedef struct mali_core_session
 	struct mali_session_data * mmu_session; /* The session associated with the MMU page tables for this core */
 #endif
 	u32 magic_nr;
+#if MALI_STATE_TRACKING
+	_mali_osk_atomic_t jobs_received;
+	_mali_osk_atomic_t jobs_started;
+	_mali_osk_atomic_t jobs_ended;
+	_mali_osk_atomic_t jobs_returned;
+	u32 pid;
+#endif
 } mali_core_session;
 
 
@@ -203,6 +211,7 @@ typedef struct mali_core_job
 	u32 start_time_jiffies;
 	unsigned long watchdog_jiffies;
 	u32 abort_id;
+	u32 job_nr;
 } mali_core_job;
 
 /*
@@ -286,12 +295,14 @@ typedef struct register_array_user
 		MALI_DEBUG_PRINT(5, ("MUTEX: GRABBED %s() %d on %s\n",__FUNCTION__, __LINE__, subsys->name)); \
 		if ( SUBSYSTEM_MAGIC_NR != subsys->magic_nr ) MALI_PRINT_ERROR(("Wrong magic number"));\
 		rendercores_global_mutex_is_held = 1; \
+		rendercores_global_mutex_owner = _mali_osk_get_tid();  \
 	} while (0) ;
 
 #define MALI_CORE_SUBSYSTEM_MUTEX_RELEASE(subsys) \
 	do { \
 		MALI_DEBUG_PRINT(5, ("MUTEX: RELEASE %s() %d on %s\n",__FUNCTION__, __LINE__, subsys->name)); \
 		rendercores_global_mutex_is_held = 0; \
+		 rendercores_global_mutex_owner = 0; \
 		if ( SUBSYSTEM_MAGIC_NR != subsys->magic_nr ) MALI_PRINT_ERROR(("Wrong magic number"));\
 		_mali_osk_lock_signal( rendercores_global_mutex, _MALI_OSK_LOCKMODE_RW); \
 		MALI_DEBUG_PRINT(5, ("MUTEX: RELEASED %s() %d on %s\n",__FUNCTION__, __LINE__, subsys->name)); \
@@ -303,13 +314,120 @@ typedef struct register_array_user
 	do { \
 		if ( 0 == rendercores_global_mutex_is_held ) MALI_PRINT_ERROR(("ASSERT MUTEX SHOULD BE GRABBED"));\
 		if ( SUBSYSTEM_MAGIC_NR != input_pointer->magic_nr ) MALI_PRINT_ERROR(("Wrong magic number"));\
+		if ( rendercores_global_mutex_owner != _mali_osk_get_tid() ) MALI_PRINT_ERROR(("Owner mismatch"));\
 	} while (0)
 
+MALI_STATIC_INLINE _mali_osk_errcode_t mali_core_renderunit_register_rw_check(mali_core_renderunit *core,
+                                                                                 u32 relative_address)
+{
+#if USING_MALI_PMM
+	if( core->state == CORE_OFF )
+	{
+		MALI_PRINT_ERROR(("Core is OFF during access: Core: %s Addr: 0x%04X\n",
+			core->description,relative_address));
+		MALI_ERROR(_MALI_OSK_ERR_FAULT);
+	}
+#endif
 
-u32   mali_core_renderunit_register_read(struct mali_core_renderunit *core, u32 relative_address);
-void  mali_core_renderunit_register_read_array(struct mali_core_renderunit *core, u32 relative_address,  u32 * result_array, u32 nr_of_regs);
-void  mali_core_renderunit_register_write(struct mali_core_renderunit *core, u32 relative_address, u32 new_val);
-void  mali_core_renderunit_register_write_array(struct mali_core_renderunit *core, u32 relative_address,  u32 * write_array, u32 nr_of_regs);
+	MALI_DEBUG_ASSERT((relative_address & 0x03) == 0);
+
+	if (mali_benchmark) MALI_ERROR(_MALI_OSK_ERR_FAULT);
+
+	MALI_DEBUG_CODE(if (relative_address >= core->size)
+	{
+		MALI_PRINT_ERROR(("Trying to access illegal register: 0x%04x in core: %s",
+			relative_address, core->description));
+		MALI_ERROR(_MALI_OSK_ERR_FAULT);
+	})
+
+	MALI_SUCCESS;
+}
+
+
+MALI_STATIC_INLINE u32 mali_core_renderunit_register_read(struct mali_core_renderunit *core, u32 relative_address)
+{
+	u32 read_val;
+
+	if(_MALI_OSK_ERR_FAULT == mali_core_renderunit_register_rw_check(core, relative_address))
+		return 0xDEADBEEF;
+
+	read_val = _mali_osk_mem_ioread32(core->registers_mapped, relative_address);
+
+	MALI_DEBUG_PRINT(6, ("Core: renderunit_register_read: Core:%s Addr:0x%04X Val:0x%08x\n",
+	        core->description,relative_address, read_val));
+
+	return read_val;
+}
+
+MALI_STATIC_INLINE void mali_core_renderunit_register_read_array(struct mali_core_renderunit *core,
+                                                                 u32 relative_address,
+                                                                 u32 * result_array,
+                                                                 u32 nr_of_regs)
+{
+	/* NOTE Do not use burst reads against the registers */
+	u32 i;
+
+	MALI_DEBUG_PRINT(6, ("Core: renderunit_register_read_array: Core:%s Addr:0x%04X Nr_regs: %u\n",
+	        core->description,relative_address, nr_of_regs));
+
+	for(i=0; i<nr_of_regs; ++i)
+	{
+		result_array[i] = mali_core_renderunit_register_read(core, relative_address + i*4);
+	}
+}
+
+/*
+ * Write to a core register, and bypass implied memory barriers.
+ *
+ * On some systems, _mali_osk_mem_iowrite32() implies a memory barrier. This
+ * can be a performance problem when doing many writes in sequence.
+ *
+ * When using this function, ensure proper barriers are put in palce. Most
+ * likely a _mali_osk_mem_barrier() is needed after all related writes are
+ * completed.
+ *
+ */
+MALI_STATIC_INLINE void mali_core_renderunit_register_write_relaxed(mali_core_renderunit *core,
+                                                                u32 relative_address,
+                                                                u32 new_val)
+{
+	if(_MALI_OSK_ERR_FAULT == mali_core_renderunit_register_rw_check(core, relative_address))
+		return;
+
+	MALI_DEBUG_PRINT(6, ("mali_core_renderunit_register_write_relaxed: Core:%s Addr:0x%04X Val:0x%08x\n",
+		core->description,relative_address, new_val));
+
+	_mali_osk_mem_iowrite32_relaxed(core->registers_mapped, relative_address, new_val);
+}
+
+MALI_STATIC_INLINE void mali_core_renderunit_register_write(struct mali_core_renderunit *core,
+                                                            u32 relative_address,
+                                                            u32 new_val)
+{
+	MALI_DEBUG_PRINT(6, ("mali_core_renderunit_register_write: Core:%s Addr:0x%04X Val:0x%08x\n",
+            core->description,relative_address, new_val));
+
+	if(_MALI_OSK_ERR_FAULT == mali_core_renderunit_register_rw_check(core, relative_address))
+		return;
+
+	_mali_osk_mem_iowrite32(core->registers_mapped, relative_address, new_val);
+}
+
+MALI_STATIC_INLINE void mali_core_renderunit_register_write_array(struct mali_core_renderunit *core,
+                                                                  u32 relative_address,
+                                                                  u32 * write_array,
+                                                                  u32 nr_of_regs)
+{
+	u32 i;
+	MALI_DEBUG_PRINT(6, ("Core: renderunit_register_write_array: Core:%s Addr:0x%04X Nr_regs: %u\n",
+	        core->description,relative_address, nr_of_regs));
+
+	/* Do not use burst writes against the registers */
+	for( i = 0; i< nr_of_regs; i++)
+	{
+		mali_core_renderunit_register_write_relaxed(core, relative_address + i*4, write_array[i]);
+	}
+}
 
 _mali_osk_errcode_t  mali_core_renderunit_init(struct mali_core_renderunit * core);
 void  mali_core_renderunit_term(struct mali_core_renderunit * core);
@@ -342,6 +460,10 @@ void mali_core_subsystem_ioctl_abort_job(mali_core_session * session, u32 id);
 #if USING_MALI_PMM
 _mali_osk_errcode_t mali_core_subsystem_signal_power_down(mali_core_subsystem *subsys, u32 mali_core_nr, mali_bool immediate_only);
 _mali_osk_errcode_t mali_core_subsystem_signal_power_up(mali_core_subsystem *subsys, u32 mali_core_nr, mali_bool queue_only);
+#endif
+
+#if MALI_STATE_TRACKING
+u32 mali_core_renderunit_dump_state(mali_core_subsystem* subsystem, char *buf, u32 size);
 #endif
 
 #endif /* __MALI_RENDERCORE_H__ */

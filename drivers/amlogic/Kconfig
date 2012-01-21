@@ -44,9 +44,8 @@ source "drivers/amlogic/amaudio/Kconfig"
 source "drivers/amlogic/audiodsp/Kconfig"
 source "drivers/amlogic/cmem/Kconfig"
 source "drivers/amlogic/jpeglogo/Kconfig"
-source "drivers/amlogic/mali/Kconfig"
 source "drivers/amlogic/audiodsplog/Kconfig"
-
+source "drivers/amlogic/mali/Kconfig"
 source "drivers/amlogic/dvb/Kconfig"
 
 endmenu

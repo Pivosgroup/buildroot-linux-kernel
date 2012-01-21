@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -283,6 +283,13 @@ _mali_osk_errcode_t _mali_ukk_get_system_info( _mali_uk_get_system_info_s *args 
  * @return _MALI_OSK_ERR_OK on success, otherwise a suitable _mali_osk_errcode_t on failure.
  */
 _mali_osk_errcode_t _mali_ukk_wait_for_notification( _mali_uk_wait_for_notification_s *args );
+
+/** @brief Post a notification to the notification queue of this application.
+ *
+ * @param args see _mali_uk_post_notification_s in "mali_uk_types.h"
+ * @return _MALI_OSK_ERR_OK on success, otherwise a suitable _mali_osk_errcode_t on failure.
+ */
+_mali_osk_errcode_t _mali_ukk_post_notification( _mali_uk_post_notification_s *args );
 
 /** @brief Verifies if the user and kernel side of this API are compatible.
  *
@@ -656,7 +663,7 @@ _mali_osk_errcode_t _mali_ukk_profiling_start(_mali_uk_profiling_start_s *args);
 _mali_osk_errcode_t _mali_ukk_profiling_add_event(_mali_uk_profiling_add_event_s *args);
 
 /** @brief Stop recording profiling events.
- * 
+ *
  * @param args see _mali_uk_profiling_stop_s in "mali_uk_types.h"
  */
 _mali_osk_errcode_t _mali_ukk_profiling_stop(_mali_uk_profiling_stop_s *args);
@@ -673,13 +680,36 @@ _mali_osk_errcode_t _mali_ukk_profiling_get_event(_mali_uk_profiling_get_event_s
  */
 _mali_osk_errcode_t _mali_ukk_profiling_clear(_mali_uk_profiling_clear_s *args);
 
+/** @brief Get the profiling config applicable for calling process.
+ *
+ * @param args see _mali_uk_profiling_get_config_s in "mali_uk_types.h"
+ */
+_mali_osk_errcode_t _mali_ukk_profiling_get_config(_mali_uk_profiling_get_config_s *args);
+
+
 /** @} */ /* end group _mali_uk_profiling */
 #endif
+
+/** @addtogroup _mali_uk_vsync U/K VSYNC reporting module
+ * @{ */
+
+/** @brief Report events related to vsync.
+ *
+ * @note Events should be reported when starting to wait for vsync and when the
+ * waiting is finished. This information can then be used in kernel space to
+ * complement the GPU utilization metric.
+ *
+ * @param args see _mali_uk_vsync_event_report_s in "mali_uk_types.h"
+ */
+_mali_osk_errcode_t _mali_ukk_vsync_event_report(_mali_uk_vsync_event_report_s *args);
+
+/** @} */ /* end group _mali_uk_vsync */
 
 /** @} */ /* end group u_k_api */
 
 /** @} */ /* end group uddapi */
 
+u32 _mali_ukk_report_memory_usage(void);
 
 #ifdef __cplusplus
 }

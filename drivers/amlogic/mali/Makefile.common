@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2010 ARM Limited. All rights reserved.
+# Copyright (C) 2010-2011 ARM Limited. All rights reserved.
 # 
 # This program is free software and is provided to you under the terms of the GNU General Public License version 2
 # as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -7,6 +7,9 @@
 # A copy of the licence is included with the program, and can also be obtained from Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
+
+# Check if a Mali Core sub module should be enabled, true or false returned
+submodule_enabled = $(shell gcc $(DEFINES) -E $1/arch/config.h | grep type | grep -c $(2))
 
 OSKFILES=\
 	$(FILES_PREFIX)$(OSKOS)/mali_osk_atomics.c \
@@ -27,7 +30,7 @@ UKKFILES=\
 	$(FILES_PREFIX)$(OSKOS)/mali_ukk_pp.c \
 	$(FILES_PREFIX)$(OSKOS)/mali_ukk_core.c
 	
-ifneq ($(USING_PROFILING),)
+ifeq ($(USING_PROFILING),1)
 UKKFILES+=\
 	$(FILES_PREFIX)$(OSKOS)/mali_ukk_profiling.c
 endif
@@ -45,10 +48,8 @@ SVN_REV := $(MALI_RELEASE_NAME)-r$(SVN_REV)
 endif
 
 # Common version-string, will be extended by OS-specifc sections
-VERSION_STRINGS =
+VERSION_STRINGS :=
 VERSION_STRINGS += CONFIG=$(CONFIG)
-VERSION_STRINGS += USING_ZBT=$(USING_ZBT)
-VERSION_STRINGS += ONLY_ZBT=$(ONLY_ZBT)
 VERSION_STRINGS += USING_OS_MEMORY=$(USING_OS_MEMORY)
 VERSION_STRINGS += API_VERSION=$(shell cd $(DRIVER_DIR); grep "\#define _MALI_API_VERSION" $(FILES_PREFIX)common\/mali_uk_types.h | cut -d' ' -f 3 )
 VERSION_STRINGS += REPO_URL=$(shell cd $(DRIVER_DIR); (svn info || git svn info || echo 'URL: $(MALI_RELEASE_NAME)') 2>/dev/null | grep '^URL: ' | cut -d: -f2- | cut -b2-)

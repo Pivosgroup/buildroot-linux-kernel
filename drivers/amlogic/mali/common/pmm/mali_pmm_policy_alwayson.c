@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -21,7 +21,6 @@
 #include "mali_pmm.h"
 #include "mali_pmm_system.h"
 #include "mali_pmm_state.h"
-#include "mali_pmm_policy.h"
 #include "mali_pmm_policy_alwayson.h"
 
 _mali_osk_errcode_t pmm_policy_init_always_on(void)

@@ -1,12 +1,12 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
  * 
  * A copy of the licence is included with the program, and can also be obtained from Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
+*/
 
 /**
  * @file mali_osk_notification.c
@@ -20,7 +20,6 @@
 #include <linux/version.h>
 
 #include <linux/sched.h>
-#include <linux/mm.h>
 #include <linux/slab.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,26)
 #include <linux/semaphore.h>
@@ -54,7 +53,7 @@ _mali_osk_notification_queue_t *_mali_osk_notification_queue_init( void )
 	result = (_mali_osk_notification_queue_t *)kmalloc(sizeof(_mali_osk_notification_queue_t), GFP_KERNEL);
 	if (NULL == result) return NULL;
 
-	init_MUTEX(&result->mutex);
+	sema_init(&result->mutex, 1);
 	init_waitqueue_head(&result->receive_queue);
 	INIT_LIST_HEAD(&result->head);
 
@@ -66,7 +65,7 @@ _mali_osk_notification_t *_mali_osk_notification_create( u32 type, u32 size )
 	/* OPT Recycling of notification objects */
     _mali_osk_notification_wrapper_t *notification;
 
-	notification = (_mali_osk_notification_wrapper_t *)kmalloc( sizeof(_mali_osk_notification_wrapper_t), GFP_KERNEL );
+	notification = (_mali_osk_notification_wrapper_t *)kmalloc( sizeof(_mali_osk_notification_wrapper_t) + size, GFP_KERNEL );
     if (NULL == notification)
     {
 		MALI_DEBUG_PRINT(1, ("Failed to create a notification object\n"));
@@ -76,15 +75,15 @@ _mali_osk_notification_t *_mali_osk_notification_create( u32 type, u32 size )
 	/* Init the list */
 	INIT_LIST_HEAD(&notification->list);
 
-	/* allocate memory for the buffer requested */
-	notification->data.result_buffer = kmalloc( size, GFP_KERNEL );
-	if ( NULL == notification->data.result_buffer )
+	if (0 != size)
 	{
-		/* failed to buffer, cleanup */
-		MALI_DEBUG_PRINT(1, ("Failed to allocate memory for notification object buffer of size %d\n", size));
-		kfree(notification);
-		return NULL;
+		notification->data.result_buffer = ((u8*)notification) + sizeof(_mali_osk_notification_wrapper_t);
 	}
+	else
+	{
+		notification->data.result_buffer = NULL;
+	}
+
 	/* set up the non-allocating fields */
 	notification->data.notification_type = type;
 	notification->data.result_buffer_size = size;
@@ -102,8 +101,6 @@ void _mali_osk_notification_delete( _mali_osk_notification_t *object )
 
 	/* Remove from the list */
 	list_del(&notification->list);
-	/* Free the buffer */
-	kfree(notification->data.result_buffer);
 	/* Free the container */
 	kfree(notification);
 }
@@ -135,9 +132,45 @@ void _mali_osk_notification_queue_send( _mali_osk_notification_queue_t *queue, _
 	wake_up(&queue->receive_queue);
 }
 
-_mali_osk_errcode_t _mali_osk_notification_queue_receive( _mali_osk_notification_queue_t *queue, u32 timeout, _mali_osk_notification_t **result )
+static int _mali_notification_queue_is_empty( _mali_osk_notification_queue_t *queue )
 {
+	int ret;
+
+	down(&queue->mutex);
+	ret = list_empty(&queue->head);
+	up(&queue->mutex);
+	return ret;
+}
+
+#if MALI_STATE_TRACKING
+mali_bool _mali_osk_notification_queue_is_empty( _mali_osk_notification_queue_t *queue )
+{
+	return _mali_notification_queue_is_empty(queue) ? MALI_TRUE : MALI_FALSE;
+}
+#endif
+
+_mali_osk_errcode_t _mali_osk_notification_queue_dequeue( _mali_osk_notification_queue_t *queue, _mali_osk_notification_t **result )
+{
+	_mali_osk_errcode_t ret = _MALI_OSK_ERR_ITEM_NOT_FOUND;
 	_mali_osk_notification_wrapper_t *wrapper_object;
+
+	down(&queue->mutex);
+
+	if (!list_empty(&queue->head))
+	{
+		wrapper_object = list_entry(queue->head.next, _mali_osk_notification_wrapper_t, list);
+		*result = &(wrapper_object->data);
+		list_del_init(&wrapper_object->list);
+		ret = _MALI_OSK_ERR_OK;
+	}
+
+	up(&queue->mutex);
+
+	return ret;
+}
+
+_mali_osk_errcode_t _mali_osk_notification_queue_receive( _mali_osk_notification_queue_t *queue, _mali_osk_notification_t **result )
+{
     /* check input */
 	MALI_DEBUG_ASSERT_POINTER( queue );
 	MALI_DEBUG_ASSERT_POINTER( result );
@@ -145,54 +178,13 @@ _mali_osk_errcode_t _mali_osk_notification_queue_receive( _mali_osk_notification
     /* default result */
 	*result = NULL;
 
-	/* lock queue */
-	if (down_interruptible(&queue->mutex)) return _MALI_OSK_ERR_RESTARTSYSCALL; /* handle the signal, then retry */
-
-	/* check for a pending notification */
-	while (0 != list_empty(&queue->head))
+	while (_MALI_OSK_ERR_OK != _mali_osk_notification_queue_dequeue(queue, result))
 	{
-		/* no notification ready, we have to wait for one */
-		int schedule_result;
-		/* define a wait entry */
-		DEFINE_WAIT(wait);
-
-		if( timeout == 0 )
+		if (wait_event_interruptible(queue->receive_queue, !_mali_notification_queue_is_empty(queue)))
 		{
-			/* Actually, don't wait for any time when nothing is in the queue */
-			up(&queue->mutex);
-			return _MALI_OSK_ERR_TIMEOUT;
+			return _MALI_OSK_ERR_RESTARTSYSCALL;
 		}
-
-		/* prepare for exclusive wait, tag as interruptible (accept signals) */
-		prepare_to_wait_exclusive(&queue->receive_queue, &wait, TASK_INTERRUPTIBLE);
-
-		/* release the lock before waiting */
-		up(&queue->mutex);
-
-		/* if the check fails again schedule (sleep) */
-		schedule_result = schedule_timeout(msecs_to_jiffies(timeout));
-
-		/* we're running again, wait finished (or never started) */
-		finish_wait(&queue->receive_queue, &wait);
-
-		/* check why we got scheduled */
-		if (0 == schedule_result) return _MALI_OSK_ERR_TIMEOUT; /* timeout, ok, NULL will be returned */
-		if (signal_pending(current)) return _MALI_OSK_ERR_RESTARTSYSCALL; /* handle the signal, then retry */
-
-		/* we were woken because of a new entry */
-		/* lock the queue and check (with normal signal handling logic) */
-		if (down_interruptible(&queue->mutex)) return _MALI_OSK_ERR_RESTARTSYSCALL; /* handle the signal, then retry */
 	}
-
-	/*
-		The while loop terminates when the list is non-empty and we hold the lock
-		Pop the head and release the lock
-	*/
-	wrapper_object = list_entry(queue->head.next, _mali_osk_notification_wrapper_t, list);
-	*result = &(wrapper_object->data);
-	list_del_init(&wrapper_object->list);
-
-	up(&queue->mutex);
 
 	return _MALI_OSK_ERR_OK; /* all ok */
 }

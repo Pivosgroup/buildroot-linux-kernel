@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -21,6 +21,9 @@
 #if defined USING_MALI400_L2_CACHE
 #include "mali_kernel_l2_cache.h"
 #endif
+#if USING_MALI_PMM
+#include "mali_pmm.h"
+#endif /* USING_MALI_PMM */
 
 /* platform specific set up */
 #include "mali_platform.h"
@@ -49,6 +52,7 @@ static _mali_osk_errcode_t mali_kernel_subsystem_core_system_info_fill(_mali_sys
 static _mali_osk_errcode_t mali_kernel_subsystem_core_session_begin(struct mali_session_data * mali_session_data, mali_kernel_subsystem_session_slot * slot, _mali_osk_notification_queue_t * queue);
 
 static _mali_osk_errcode_t build_system_info(void);
+static void cleanup_system_info(_mali_system_info *cleanup);
 
 /**
  * @brief handler for MEM_VALIDATION resources
@@ -95,18 +99,21 @@ static struct mali_kernel_subsystem mali_subsystem_core =
 	mali_kernel_subsystem_core_session_begin,       /* session_begin */
     NULL,                                           /* session_end */
     NULL,                                           /* broadcast_notification */
+#if MALI_STATE_TRACKING
+	NULL,                                           /* dump_state */
+#endif
 };
 
 static struct mali_kernel_subsystem * subsystems[] =
 {
-	/* always initialize the hw subsystems first */
-	/* always included */
-	&mali_subsystem_memory,
 
 #if USING_MALI_PMM
 	/* The PMM must be initialized before any cores - including L2 cache */
 	&mali_subsystem_pmm,
 #endif
+
+	/* always included */
+	&mali_subsystem_memory,
 
 	/* The rendercore subsystem must be initialized before any subsystem based on the
 	 * rendercores is started e.g. mali_subsystem_mali200 and mali_subsystem_gp2 */
@@ -148,7 +155,7 @@ _mali_osk_errcode_t mali_kernel_constructor( void )
 {
     _mali_osk_errcode_t err;
 
-	err = mali_platform_init(NULL);
+	err = mali_platform_init();
 	if (_MALI_OSK_ERR_OK != err) goto error1;
 
     err = _mali_osk_init();
@@ -171,7 +178,7 @@ error3:
     _mali_osk_term();
 error2:
 	MALI_PRINT(("Mali device driver init failed\n"));
-	if (_MALI_OSK_ERR_OK != mali_platform_deinit(NULL))
+	if (_MALI_OSK_ERR_OK != mali_platform_deinit())
 	{
 		MALI_PRINT(("Failed to deinit platform\n"));
 	}
@@ -185,10 +192,13 @@ void mali_kernel_destructor( void )
 {
 	MALI_DEBUG_PRINT(2, ("\n"));
 	MALI_DEBUG_PRINT(2, ("Unloading Mali v%d device driver.\n",_MALI_API_VERSION));
+#if USING_MALI_PMM
+	malipmm_force_powerup();
+#endif
 	terminate_subsystems(); /* subsystems are responsible for their registered resources */
     _mali_osk_term();
 
-	if (_MALI_OSK_ERR_OK != mali_platform_deinit(NULL))
+	if (_MALI_OSK_ERR_OK != mali_platform_deinit())
 	{
 		MALI_PRINT(("Failed to deinit platform\n"));
 	}
@@ -298,6 +308,9 @@ static void terminate_subsystems(void)
 		if (NULL != subsystems[i]->shutdown) subsystems[i]->shutdown(i);
 	}
     if (system_info_lock) _mali_osk_lock_term( system_info_lock );
+
+	/* Free _mali_system_info struct */
+	cleanup_system_info(system_info);
 }
 
 void _mali_kernel_core_broadcast_subsystem_message(mali_core_notification_message message, u32 data)
@@ -335,6 +348,30 @@ static void mali_kernel_subsystem_core_cleanup(mali_kernel_subsystem_identifier 
     _mali_osk_resources_term(&arch_configuration, num_resources);
 }
 
+static void cleanup_system_info(_mali_system_info *cleanup)
+{
+	_mali_core_info * current_core;
+	_mali_mem_info * current_mem;
+
+	/* delete all the core info structs */
+	while (NULL != cleanup->core_info)
+	{
+		current_core = cleanup->core_info;
+		cleanup->core_info = cleanup->core_info->next;
+		_mali_osk_free(current_core);
+	}
+
+	/* delete all the mem info struct */
+	while (NULL != cleanup->mem_info)
+	{
+		current_mem = cleanup->mem_info;
+		cleanup->mem_info = cleanup->mem_info->next;
+		_mali_osk_free(current_mem);
+	}
+
+	/* delete the system info struct itself */
+	_mali_osk_free(cleanup);
+}
 
 static _mali_osk_errcode_t build_system_info(void)
 {
@@ -400,25 +437,7 @@ error_exit:
 	if (NULL == cleanup) MALI_ERROR((_mali_osk_errcode_t)err); /* no cleanup needed, return what err contains */
 
 	/* cleanup */
-
-	/* delete all the core info structs */
-	while (NULL != cleanup->core_info)
-	{
-		current_core = cleanup->core_info;
-		cleanup->core_info = cleanup->core_info->next;
-		_mali_osk_free(current_core);
-	}
-
-	/* delete all the mem info struct */
-	while (NULL != cleanup->mem_info)
-	{
-		current_mem = cleanup->mem_info;
-		cleanup->mem_info = cleanup->mem_info->next;
-		_mali_osk_free(current_mem);
-	}
-
-	/* delete the system info struct itself */
-	_mali_osk_free(cleanup);
+	cleanup_system_info(cleanup);
 
 	/* return whatever err is, we could end up here in both the error and success cases */
 	MALI_ERROR((_mali_osk_errcode_t)err);
@@ -557,29 +576,53 @@ _mali_osk_errcode_t _mali_ukk_wait_for_notification( _mali_uk_wait_for_notificat
 	if (NULL == queue)
 	{
 		MALI_DEBUG_PRINT(1, ("No notification queue registered with the session. Asking userspace to stop querying\n"));
-        args->code.type = _MALI_NOTIFICATION_CORE_SHUTDOWN_IN_PROGRESS;
+        args->type = _MALI_NOTIFICATION_CORE_SHUTDOWN_IN_PROGRESS;
 		MALI_SUCCESS;
 	}
 
     /* receive a notification, might sleep */
-	err = _mali_osk_notification_queue_receive(queue, args->code.timeout, &notification);
-	if (_MALI_OSK_ERR_TIMEOUT == err)
-	{
-		/* timeout */
-		args->code.type = _MALI_NOTIFICATION_CORE_TIMEOUT;
-        MALI_SUCCESS;
-	}
-    else if (_MALI_OSK_ERR_OK != err)
+	err = _mali_osk_notification_queue_receive(queue, &notification);
+	if (_MALI_OSK_ERR_OK != err)
 	{
         MALI_ERROR(err); /* errcode returned, pass on to caller */
     }
 
 	/* copy the buffer to the user */
-    args->code.type = (_mali_uk_notification_type)notification->notification_type;
+    args->type = (_mali_uk_notification_type)notification->notification_type;
     _mali_osk_memcpy(&args->data, notification->result_buffer, notification->result_buffer_size);
 
 	/* finished with the notification */
 	_mali_osk_notification_delete( notification );
+
+    MALI_SUCCESS; /* all ok */
+}
+
+_mali_osk_errcode_t _mali_ukk_post_notification( _mali_uk_post_notification_s *args )
+{
+	_mali_osk_notification_t * notification;
+    _mali_osk_notification_queue_t *queue;
+
+    /* check input */
+	MALI_DEBUG_ASSERT_POINTER(args);
+    MALI_CHECK_NON_NULL(args->ctx, _MALI_OSK_ERR_INVALID_ARGS);
+
+    queue = (_mali_osk_notification_queue_t *)mali_kernel_session_manager_slot_get(args->ctx, mali_subsystem_core_id);
+
+	/* if the queue does not exist we're currently shutting down */
+	if (NULL == queue)
+	{
+		MALI_DEBUG_PRINT(1, ("No notification queue registered with the session. Asking userspace to stop querying\n"));
+		MALI_SUCCESS;
+	}
+
+	notification = _mali_osk_notification_create(args->type, 0);
+	if ( NULL == notification)
+	{
+		MALI_PRINT_ERROR( ("Failed to create notification object\n")) ;
+		return _MALI_OSK_ERR_NOMEM;
+	}
+
+	_mali_osk_notification_queue_send(queue, notification);
 
     MALI_SUCCESS; /* all ok */
 }
@@ -647,15 +690,6 @@ _mali_osk_errcode_t mali_kernel_core_validate_mali_phys_range( u32 phys_base, u3
 		MALI_SUCCESS;
 	}
 
-	if (phys_base             >= mem_validator.phys_base)
-		MALI_PRINTF( ("1\n") );
-	if ((phys_base + size) >= mem_validator.phys_base)
-		MALI_PRINTF( ("2\n") );
-	if (phys_base          <= (mem_validator.phys_base + mem_validator.size))
-		MALI_PRINTF( ("3\n") );
-	if ((phys_base + size) <= (mem_validator.phys_base + mem_validator.size))
-		MALI_PRINTF( ("4\n") );
-
  failure:
 	MALI_PRINTF( ("*******************************************************************************\n") );
 	MALI_PRINTF( ("MALI PHYSICAL RANGE VALIDATION ERROR!\n") );
@@ -666,7 +700,6 @@ _mali_osk_errcode_t mali_kernel_core_validate_mali_phys_range( u32 phys_base, u3
 	MALI_PRINTF( ("address range validation mechanism has not been correctly setup\n") );
 	MALI_PRINTF( ("\n") );
 	MALI_PRINTF( ("The range supplied was: phys_base=0x%08X, size=0x%08X\n", phys_base, size) );
-	MALI_PRINTF( ("The range validator was: phys_base=0x%08X, size=0x%08X\n", mem_validator.phys_base, mem_validator.size) );
 	MALI_PRINTF( ("\n") );
 	MALI_PRINTF( ("Please refer to the ARM Mali Software Integration Guide for more information.\n") );
 	MALI_PRINTF( ("\n") );
@@ -850,4 +883,29 @@ _mali_osk_errcode_t mali_core_signal_power_down( mali_pmm_core_id core, mali_boo
 	MALI_SUCCESS;
 }
 
+#endif
+
+
+#if MALI_STATE_TRACKING
+u32 _mali_kernel_core_dump_state(char* buf, u32 size)
+{
+	int i, n;
+	char *original_buf = buf;
+	for (i = 0; i < SUBSYSTEMS_COUNT; ++i)
+	{
+		if (NULL != subsystems[i]->dump_state)
+		{
+			n = subsystems[i]->dump_state(buf, size);
+			size -= n;
+			buf += n;
+		}
+	}
+#if USING_MALI_PMM
+	n = mali_pmm_dump_os_thread_state(buf, size);
+	size -= n;
+	buf += n;
+#endif
+	/* Return number of bytes written to buf */
+	return (u32)(buf - original_buf);
+}
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -167,6 +167,10 @@ mali_pmm_core_mask pmm_cores_to_power_down( _mali_pmm_internal_state_t *pmm, mal
 				 * as the core is unregistered before we tell it to power
 				 * down, but it does not matter as we are terminating
 				 */
+#if MALI_STATE_TRACKING
+                pmm->mali_pmm_lock_acquired = 0;
+#endif /* MALI_STATE_TRACKING */
+
 				MALI_PMM_UNLOCK(pmm);
 				/* Signal the core to power down
 				 * If it is busy (not idle) it will set a pending power down flag 
@@ -176,6 +180,11 @@ mali_pmm_core_mask pmm_cores_to_power_down( _mali_pmm_internal_state_t *pmm, mal
 				 */
 				err = mali_core_signal_power_down( cores_list[n], immediate_only );
 				MALI_PMM_LOCK(pmm);
+
+#if MALI_STATE_TRACKING
+                pmm->mali_pmm_lock_acquired = 1;
+#endif /* MALI_STATE_TRACKING */
+			
 
 				/* Re-read cores_subset in case it has changed */
 				cores_subset = (*ppowered & cores);
@@ -190,6 +199,7 @@ mali_pmm_core_mask pmm_cores_to_power_down( _mali_pmm_internal_state_t *pmm, mal
 				}
 				else
 				{
+					MALI_DEBUG_PRINT(1,("The error in PMM is ...%x...%x",err,*ppowered));
 					MALI_DEBUG_ASSERT( err == _MALI_OSK_ERR_BUSY ||
 										(err == _MALI_OSK_ERR_FAULT &&
 										(*ppowered & cores_list[n]) == 0) );
@@ -244,12 +254,19 @@ void pmm_power_down_cancel( _mali_pmm_internal_state_t *pmm )
 			 * as the core is unregistered before we tell it to power
 			 * up, but it does not matter as we are terminating
 			 */
+#if MALI_STATE_TRACKING
+			pmm->mali_pmm_lock_acquired = 0;
+#endif /* MALI_STATE_TRACKING */
+
 			MALI_PMM_UNLOCK(pmm);
 			/* As we are cancelling - only move the cores back to the queue - 
 			 * no reset needed
 			 */
 			err = mali_core_signal_power_up( cores_list[n], MALI_TRUE );
 			MALI_PMM_LOCK(pmm);
+#if MALI_STATE_TRACKING
+			pmm->mali_pmm_lock_acquired = 1;
+#endif /* MALI_STATE_TRACKING */
 
 			/* Update pending list with the current registered cores */
 			pd &= (*pregistered);
@@ -281,7 +298,7 @@ mali_bool pmm_power_down_okay( _mali_pmm_internal_state_t *pmm )
 	return ( pmm->cores_pend_down == pmm->cores_ack_down ? MALI_TRUE : MALI_FALSE );
 }
 
-mali_bool pmm_invoke_power_down( _mali_pmm_internal_state_t *pmm )
+mali_bool pmm_invoke_power_down( _mali_pmm_internal_state_t *pmm, mali_power_mode power_mode )
 {
 	_mali_osk_errcode_t err;
 	MALI_DEBUG_ASSERT_POINTER(pmm);
@@ -299,8 +316,9 @@ mali_bool pmm_invoke_power_down( _mali_pmm_internal_state_t *pmm )
 	}
 	else
 	{
+		pmm->cores_powered &= ~(pmm->cores_pend_down);
 #if !MALI_PMM_NO_PMU
-		err = mali_platform_powerdown( pmm->cores_pend_down );
+		err = malipmm_powerdown( pmm->cores_pend_down, power_mode);
 #else
 		err = _MALI_OSK_ERR_OK;
 #endif
@@ -311,7 +329,6 @@ mali_bool pmm_invoke_power_down( _mali_pmm_internal_state_t *pmm )
 			mali_pmm_core_mask old_power = pmm->cores_powered;
 #endif
 			/* Remove powered down cores from idle and powered list */
-			pmm->cores_powered &= ~(pmm->cores_pend_down);
 			pmm->cores_idle &= ~(pmm->cores_pend_down);
 			/* Reset pending/acknowledged status */
 			pmm->cores_pend_down = 0;
@@ -322,6 +339,7 @@ mali_bool pmm_invoke_power_down( _mali_pmm_internal_state_t *pmm )
 		}
 		else
 		{
+			pmm->cores_powered |= pmm->cores_pend_down;
 			MALI_PRINT_ERROR( ("PMM: Failed to get PMU to power down cores - (0x%x) %s", 
 					pmm->cores_pend_down, pmm_trace_get_core_name(pmm->cores_pend_down)) );
 			pmm->fatal_power_err = MALI_TRUE;
@@ -374,9 +392,18 @@ mali_bool pmm_invoke_power_up( _mali_pmm_internal_state_t *pmm )
 				 * as the core is unregistered before we tell it to power
 				 * up, but it does not matter as we are terminating
 				 */
+#if MALI_STATE_TRACKING
+				pmm->mali_pmm_lock_acquired = 0;
+#endif /* MALI_STATE_TRACKING */
+
 				MALI_PMM_UNLOCK(pmm);
 				err = mali_core_signal_power_up( cores_list[n], MALI_FALSE );
 				MALI_PMM_LOCK(pmm);
+
+#if MALI_STATE_TRACKING
+				pmm->mali_pmm_lock_acquired = 1;
+#endif /* MALI_STATE_TRACKING */
+
 
 				if( err != _MALI_OSK_ERR_OK )
 				{
@@ -404,7 +431,7 @@ mali_bool pmm_invoke_power_up( _mali_pmm_internal_state_t *pmm )
 	{
 #if !MALI_PMM_NO_PMU
 		/* Power up must now be done */
-		err = mali_platform_powerup( pmm->cores_pend_up );
+		err = malipmm_powerup( pmm->cores_pend_up );
 #else
 		err = _MALI_OSK_ERR_OK;
 #endif
@@ -512,7 +539,7 @@ void pmm_fatal_reset( _mali_pmm_internal_state_t *pmm )
 		int n;
 		volatile mali_pmm_core_mask *pregistered = &(pmm->cores_registered);
 #if !MALI_PMM_NO_PMU
-		err = mali_platform_powerup( pmm->cores_registered );
+		err = malipmm_powerup( pmm->cores_registered );
 #endif
 		if( err != _MALI_OSK_ERR_OK )
 		{
@@ -527,10 +554,18 @@ void pmm_fatal_reset( _mali_pmm_internal_state_t *pmm )
 		{
 			if( (cores_list[n] & (*pregistered)) != 0 )
 			{
+#if MALI_STATE_TRACKING
+				pmm->mali_pmm_lock_acquired = 0;
+#endif /* MALI_STATE_TRACKING */
+
 				MALI_PMM_UNLOCK(pmm);
 				/* Core is now active - so try putting it in the idle queue */
 				err = mali_core_signal_power_up( cores_list[n], MALI_FALSE );
 				MALI_PMM_LOCK(pmm);
+#if MALI_STATE_TRACKING
+                pmm->mali_pmm_lock_acquired = 1;
+#endif /* MALI_STATE_TRACKING */
+
 				/* We either succeeded, or we were not off anyway, or we have
 				 * just be deregistered 
 				 */
@@ -562,7 +597,7 @@ void pmm_fatal_reset( _mali_pmm_internal_state_t *pmm )
 	/* Purge the event queues */
 	do
 	{
-		if( _mali_osk_notification_queue_receive( pmm->iqueue, 0, &msg ) == _MALI_OSK_ERR_OK )
+		if( _mali_osk_notification_queue_dequeue( pmm->iqueue, &msg ) == _MALI_OSK_ERR_OK )
 		{
 			_mali_osk_notification_delete ( msg );
 			break;
@@ -571,7 +606,7 @@ void pmm_fatal_reset( _mali_pmm_internal_state_t *pmm )
 
 	do
 	{
-		if( _mali_osk_notification_queue_receive( pmm->queue, 0, &msg ) == _MALI_OSK_ERR_OK )
+		if( _mali_osk_notification_queue_dequeue( pmm->queue, &msg ) == _MALI_OSK_ERR_OK )
 		{
 			_mali_osk_notification_delete ( msg );
 			break;
