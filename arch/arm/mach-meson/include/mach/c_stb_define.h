@@ -39,7 +39,7 @@
 // Bit 15 -- enable_des_pl_clk
 // Bit 14:13 -- reserved
 // Bit 12:10 -- ts_out_select, 0-TS0, 1-TS1, 2-TS2, 3,4-Reserved, 5-S2P1, 6-S2P0, 7-File
-// bit 9:8 -- des_i_sel 00 -- select_fec_0, 01 -- select_fec_1, 10 -- select_fec_2, 11 - reserved
+// bit 9:8 -- des_i_sel 00 -- select demux0 as des input, 01 -- select_demux1, 10 -- select_demux2, 11 - reserved
 // bit 7 -- enable_des_pl
 // bit 6 -- invert fec_error for S2P0
 // bit 5 -- invert fec_data for S2P0
@@ -103,7 +103,7 @@
     #define PID_MATCH_LOW                0
 
 #define COMM_DESC_KEY0          (STB_CBUS_BASE + 0xf5) // 0x16f5 // Common descrambler key (key bits[63:32])
-#define COMM_DESC_KEY1          (STB_CBUS_BASE + 0xf5) // 0x16f6 // Common descrambler key (key bits[31:0])
+#define COMM_DESC_KEY1          (STB_CBUS_BASE + 0xf6) // 0x16f6 // Common descrambler key (key bits[31:0])
 #define COMM_DESC_KEY_RW        (STB_CBUS_BASE + 0xf7) // 0x16f7 // bits[3:0] point to the address to write the key {COMM_DESC_KEY1, COMM_DESC_KEY0}
                                                                  // Writing this register writes the key to RAM
 
@@ -358,8 +358,8 @@ advanced setting -- bit 7:0 force compare result
 // section buffer write status for buff 31:0 -- Read
 // clear buffer status ( buff READY and BUSY ) -- write
 #define SEC_BUFF_READY          (STB_CBUS_BASE + DEMUX_1_OFFSET + 0x12)  // 0x1612
-#define SEC_BUFF_READY_2        (STB_CBUS_BASE + DEMUX_2_OFFSET + 0x13)  // 0x1662
-#define SEC_BUFF_READY_3        (STB_CBUS_BASE + DEMUX_3_OFFSET + 0x13)  // 0x16b2
+#define SEC_BUFF_READY_2        (STB_CBUS_BASE + DEMUX_2_OFFSET + 0x12)  // 0x1662
+#define SEC_BUFF_READY_3        (STB_CBUS_BASE + DEMUX_3_OFFSET + 0x12)  // 0x16b2
 
 // bit 15 -- section_reset_busy (Read Only)
 // bit 14 -- output_section_buffer_valid

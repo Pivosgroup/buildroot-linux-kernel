@@ -200,6 +200,9 @@ int nandmtd1_ReadChunkWithTagsFromNAND(yaffs_Device *dev,
 			(TSTR("read_oob failed, chunk %d, mtd error %d"TENDSTR),
 			chunkInNAND, retval));
 	}
+	//add by xiaojun.pi EUCLEAN is data corrected by ecc so needn`t return error
+	if (retval == -EUCLEAN)
+		retval = 0;
 
 	switch (retval) {
 	case 0:

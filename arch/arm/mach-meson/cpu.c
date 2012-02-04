@@ -91,12 +91,12 @@ static int __init meson_cpufreq_init(struct cpufreq_policy *policy)
 	if (policy->cpu != 0)
 		return -EINVAL;
 
-	policy->cur = policy->min = policy->max = clk_get_rate(cpu_clk) / 1000;
-	policy->cpuinfo.min_freq = clk_round_rate(cpu_clk, 0) / 1000;
-	policy->cpuinfo.max_freq = clk_round_rate(cpu_clk, 0xffffffff) / 1000;
+	policy->cur = clk_get_rate(cpu_clk) / 1000;
+	policy->min = policy->cpuinfo.min_freq = clk_round_rate(cpu_clk, 0) / 1000;
+	policy->max = policy->cpuinfo.max_freq = clk_round_rate(cpu_clk, 0xffffffff) / 1000;
 
 	/* FIXME: what's the actual transition time? */
-	policy->cpuinfo.transition_latency = 300 * 1000;
+	policy->cpuinfo.transition_latency = 20 * 1000;
 
 	return 0;
 }

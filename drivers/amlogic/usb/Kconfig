@@ -14,16 +14,7 @@ config USB_HOST_ELECT_TEST
 				help
 					Enable this config to support USB High speed electric test.
 					
-config DWC_USB_NO_SOF
-				bool "Disable DWC OTG USB SOF ISR"
-				depends on USB_DWC_OTG_HCD
-				default y
-				help
-					[y]Enalbe this config to disable DWC OTG USB SOF interrupt handler.
-						 Then the handler is moved to timer.
-					[n]Disable this config to let SOF handler in interrupt.
-					Don't change this if you don't know what it is.
-					
+			
 config DWC_USB_NAK_IN_TIMER
 				bool "Disable DWC OTG USB NAK ISR"
 				depends on USB_DWC_OTG_HCD
@@ -33,4 +24,12 @@ config DWC_USB_NAK_IN_TIMER
 						 The handler is moved to timer.
 					[n]Disable this config to let NAK handler in interrupt.
 					Don't change this if you don't know what it is.
+					
+config USB_PHY_CONTROL
+				bool "Amlogic usb controller power/clock/tuning control"
+				default y
+				help
+					[y]Enalbe this config to use additional function that
+						 control amlogic usb controller's power, clock, tuning and others..
+					[n]Disable this config to disable this function.
 endmenu

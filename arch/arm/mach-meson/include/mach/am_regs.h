@@ -6452,4 +6452,22 @@
 // Closing file:  ./register_map.h
 //
 
+// APB registers
+#define ADC_EN_ADC									0x4004	
+// [31] = 0 to power down ADC
+
+// AHB WIFI registers
+#define WIFI_SARADC									(0x320BE0>>2)	
+// [2] SAR_EN
+
+#define WIFI_ADC_DAC								(0x320ED8>>2)
+// [11:10]=11 to power down DAC_VBG
+// [7:6]=11 to power down ADC_I
+// [5:4]=11 to power down ADC_Q, 
+// [3:2]=11 to power down DAC_Q
+// [1:0]=11 to power down DAC_I
+
+#define ADC_EN_CMLGEN_RES							(0x320EF0>>2) 
+// [26]=0 to disable the internal Vref gen circuit ADC_EN_CMLGEN_RES
+
 #endif

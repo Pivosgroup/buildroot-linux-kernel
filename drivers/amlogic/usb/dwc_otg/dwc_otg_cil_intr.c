@@ -359,7 +359,8 @@ int32_t dwc_otg_handle_conn_id_status_change_intr(dwc_otg_core_if_t * _core_if)
 				*(uint32_t *) NULL = 0;
 		}
 		_core_if->op_state = B_PERIPHERAL;
-		dwc_otg_core_init(_core_if);
+		//dwc_otg_core_init(_core_if);
+		hcd_stop(_core_if);
 		dwc_otg_enable_global_interrupts(_core_if);
 		pcd_start(_core_if);
 	} else {
@@ -376,7 +377,8 @@ int32_t dwc_otg_handle_conn_id_status_change_intr(dwc_otg_core_if_t * _core_if)
 		/*
 		 * Initialize the Core for Host mode.
 		 */
-		dwc_otg_core_init(_core_if);
+		//dwc_otg_core_init(_core_if);
+		pcd_stop(_core_if);
 		dwc_otg_enable_global_interrupts(_core_if);
 		hcd_start(_core_if);
 	}

@@ -26,6 +26,7 @@
 #include <linux/wait.h>
 #include <linux/sched.h>
 #include <linux/fs.h>
+#include <linux/slab.h>
 #include <linux/amports/ptsserv.h>
 #include <linux/amports/amstream.h>
 
@@ -93,6 +94,12 @@ static u32 pts_equ_dts_flag;
 static unsigned first_apts, first_vpts;
 static unsigned audio_got_first_pts, video_got_first_dts, sub_got_first_pts;
 atomic_t sub_block_found = ATOMIC_INIT(0);
+
+#define DEBUG_VOB_SUB
+#ifdef DEBUG_VOB_SUB
+static u8 sub_found_num;
+static struct subtitle_info *sub_info[MAX_SUB_NUM];
+#endif
 
 static bool ptsmgr_first_vpts_ready(void)
 {
@@ -316,6 +323,10 @@ static u32 parser_process(s32 type, s32 packet_len)
                     }
                     ptsmgr_vpts_checkin(pts);
                 }
+            } else if ((pts_dts_flag & 1) == 1) {
+               ptsmgr_vpts_checkin(dts);
+            } else if ((pts_dts_flag & 2) == 2) {
+               ptsmgr_vpts_checkin(pts);
             }
 #else
             if (!ptsmgr_first_vpts_ready()) {
@@ -485,6 +496,24 @@ static u32 parser_process(s32 type, s32 packet_len)
                 sub_id_max = temp;
             }
 
+			#ifdef DEBUG_VOB_SUB				
+			for (i = 0; i < sub_found_num; i ++) {
+				if(!sub_info[i])
+					break;
+				if(temp == sub_info[i]->id)
+					break;
+			}				
+			if (i == sub_found_num && i < MAX_SUB_NUM) {				
+				if (sub_info[sub_found_num]) {
+					sub_info[sub_found_num]->id = temp;
+					sub_found_num ++;
+					printk("[psparser_process]found new sub_id=0x%x (num %d)\n", temp, sub_found_num);
+				} else {
+					printk("[psparser_process]sub info NULL!\n");
+				}	
+			}
+			#endif
+			
             if (temp == sub_id) {
                 /* DVD sub-picture data */
                 if (!packet_len) {
@@ -761,6 +790,18 @@ s32 psparser_init(u32 vid, u32 aid, u32 sid)
     u32 parser_sub_end_ptr;
     u32 parser_sub_rp;
 
+	#ifdef DEBUG_VOB_SUB
+	u8 i;
+	for(i = 0; i < MAX_SUB_NUM; i ++) {
+		sub_info[i] = kzalloc(sizeof(struct subtitle_info), GFP_KERNEL);
+		if (!sub_info[i]) {
+			printk("[psparser_init]alloc for subtitle info failed\n");
+		} else {
+			sub_info[i]->id = -1;
+		}
+	}
+	sub_found_num = 0;
+	#endif
     parser_sub_start_ptr = READ_MPEG_REG(PARSER_SUB_START_PTR);
     parser_sub_end_ptr = READ_MPEG_REG(PARSER_SUB_END_PTR);
     parser_sub_rp = READ_MPEG_REG(PARSER_SUB_RP);
@@ -820,7 +861,8 @@ s32 psparser_init(u32 vid, u32 aid, u32 sid)
 
     WRITE_MPEG_REG(PARSER_SUB_START_PTR, parser_sub_start_ptr);
     WRITE_MPEG_REG(PARSER_SUB_END_PTR, parser_sub_end_ptr);
-    WRITE_MPEG_REG(PARSER_SUB_RP, parser_sub_rp);
+    WRITE_MPEG_REG(PARSER_SUB_RP, parser_sub_start_ptr);
+    WRITE_MPEG_REG(PARSER_SUB_WP, parser_sub_start_ptr);
     SET_MPEG_REG_MASK(PARSER_ES_CONTROL, (7 << ES_SUB_WR_ENDIAN_BIT) | ES_SUB_MAN_RD_PTR);
 
     WRITE_MPEG_REG(PFIFO_RD_PTR, 0);
@@ -878,6 +920,7 @@ Err_1:
 
 void psparser_release(void)
 {
+	u8 i;
     printk("psparser_release\n");
 
     WRITE_MPEG_REG(PARSER_INT_ENABLE, 0);
@@ -886,6 +929,14 @@ void psparser_release(void)
 
     pts_stop(PTS_TYPE_VIDEO);
     pts_stop(PTS_TYPE_AUDIO);
+#ifdef DEBUG_VOB_SUB
+	for(i = 0; i < MAX_SUB_NUM; i ++) {
+		if (sub_info[i]) {
+			kfree(sub_info[i]);
+		}
+	}
+	printk("psparser release subtitle info\n");
+#endif
 }
 
 ssize_t psparser_write(struct file *file,
@@ -985,4 +1036,38 @@ void psparser_sub_reset(void)
     spin_unlock_irqrestore(&lock, flags);
 
     return;
+}
+
+u8 psparser_get_sub_found_num(void)
+{
+#ifdef DEBUG_VOB_SUB
+	return sub_found_num;
+#else
+	return 0;
+#endif
+}
+
+u8 psparser_get_sub_info(struct subtitle_info **sub_infos)
+{
+#ifdef DEBUG_VOB_SUB
+	u8 i = 0;
+	int ret = 0;
+	u8 size = sizeof(struct subtitle_info);	
+	for (i = 0; i < sub_found_num; i ++) {
+		if (!sub_info[i]){
+			printk("[psparser_get_sub_info:%d]  sub_info[%d] NULL\n", __LINE__, i);
+			ret = -1;
+			break;
+		}
+		if (!sub_infos[i]){
+			printk("[psparser_get_sub_info:%d]  sub_infos[%d] NULL\n", __LINE__, i);
+			ret = -2;
+			break;
+		}		
+		memcpy(sub_infos[i], sub_info[i], size);		
+	}	
+	return ret;
+#else
+	return 0;
+#endif
 }

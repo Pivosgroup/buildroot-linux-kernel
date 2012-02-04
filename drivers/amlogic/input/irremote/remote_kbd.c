@@ -92,7 +92,7 @@ static  pin_config_t  pin_config[]={
 		},
 } ;
 
-static __u16 key_map[256];
+static __u16 key_map[512];
 static __u16 mouse_map[6]; /*Left Right Up Down + middlewheel up &down*/
 
 int remote_printk(const char *fmt, ...)
@@ -255,8 +255,14 @@ static void kp_repeat_sr(unsigned long data)
 static void kp_timer_sr(unsigned long data)
 {
     struct kp *kp_data=(struct kp *)data;
-    if(kp_data->work_mode == REMOTE_WORK_MODE_FIQ_RCMM)
-        kp_send_key(kp_data->input, kp_data->cur_keycode>>(kp_data->bit_count - 8), 0);
+    if(kp_data->work_mode == REMOTE_WORK_MODE_FIQ_RCMM){
+        if(kp_data->bit_count == 32)
+            kp_send_key(kp_data->input, 0x100|(kp_data->cur_keycode>>(kp_data->bit_count - 8)), 1);    
+        else
+            kp_send_key(kp_data->input, kp_data->cur_keycode>>(kp_data->bit_count - 8), 0);
+	}
+    else if(kp_data->work_mode == REMOTE_WORK_MODE_RC5 || kp_data->work_mode == REMOTE_WORK_MODE_RC6)
+        kp_send_key(kp_data->input, kp_data->cur_keycode, 0);
     else
         kp_send_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff ,0);
     if(!(kp_data->work_mode&REMOTE_WORK_MODE_HW))
@@ -273,7 +279,12 @@ static irqreturn_t kp_interrupt(int irq, void *dev_id)
 }
 static void kp_fiq_interrupt(void)
 {
-	kp_sw_reprot_key((unsigned long)gp_kp);
+    if(gp_kp->work_mode == REMOTE_WORK_MODE_RC6)
+        kp_rc6_reprot_key((unsigned long)gp_kp);
+    else if(gp_kp->work_mode == REMOTE_WORK_MODE_RC5)
+        kp_rc5_reprot_key((unsigned long)gp_kp);    
+    else
+	    kp_sw_reprot_key((unsigned long)gp_kp);
 	WRITE_MPEG_REG(IRQ_CLR_REG(NEC_REMOTE_IRQ_NO), 1 << IRQ_BIT(NEC_REMOTE_IRQ_NO));
 }
 static inline int kp_hw_reprot_key(struct kp *kp_data )
@@ -483,9 +494,15 @@ work_mode_config(unsigned int cur_mode)
 		case REMOTE_WORK_MODE_FIQ_RCMM:
 		if((last_mode==REMOTE_WORK_MODE_FIQ)||(last_mode==REMOTE_WORK_MODE_FIQ_RCMM))
 			break;
+        
 		//disable common irq and enable fiq.
 		free_irq(NEC_REMOTE_IRQ_NO,kp_interrupt);
-		gp_kp->fiq_handle_item.handle=remote_bridge_isr;
+        if(cur_mode == REMOTE_WORK_MODE_RC6)
+            gp_kp->fiq_handle_item.handle=remote_rc6_bridge_isr;
+        else if(cur_mode == REMOTE_WORK_MODE_RC5)
+            gp_kp->fiq_handle_item.handle=remote_rc5_bridge_isr;
+        else
+		    gp_kp->fiq_handle_item.handle=remote_bridge_isr;
 		gp_kp->fiq_handle_item.key=(u32)gp_kp;
 		gp_kp->fiq_handle_item.name="remote_bridge";
 		register_fiq_bridge_handle(&gp_kp->fiq_handle_item);

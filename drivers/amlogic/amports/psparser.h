@@ -39,5 +39,9 @@ extern void psparser_audio_reset(void);
 
 extern void psparser_sub_reset(void);
 
+extern u8 psparser_get_sub_found_num(void);
+
+extern u8 psparser_get_sub_info(struct subtitle_info *sub_infos[]);
+
 #endif /* PSPARSER_H */
 

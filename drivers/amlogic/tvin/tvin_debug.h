@@ -14,6 +14,9 @@
 #ifndef __TVIN_DEBUG_H
 #define __TVIN_DEBUG_H
 
+/* Standard Linux Headers */
+#include <linux/device.h>
+#include <linux/types.h>
 
 extern ssize_t vdin_dbg_store(struct device *dev,
     struct device_attribute *attr, const char * buf, size_t count);

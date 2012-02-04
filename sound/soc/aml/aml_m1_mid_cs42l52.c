@@ -7,6 +7,7 @@
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
 #include <linux/workqueue.h>
+#include <linux/switch.h>
 
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -24,13 +25,16 @@
 #include "aml_pcm.h"
 #include "../codecs/cs42l52.h"
 
-//#define HP_DET 1
+#define HP_DET 1
 
 #if HP_DET
 static struct timer_list timer;
 static int hp_detect_flag = 0;
+static struct switch_dev sdev;
 void mute_spk(struct snd_soc_codec* codec, int flag);
 #endif
+
+extern int cs42l52_read_register(struct i2c_client *client, u8 addr);
 
 static int aml_m1_hw_params(struct snd_pcm_substream *substream,
     struct snd_pcm_hw_params *params)
@@ -131,20 +135,8 @@ struct work_struct cs42l52_workqueue;
 
 void mute_spk(struct snd_soc_codec* codec, int flag)
 {
-    /*
-    int gpio_status = 0;
-    if(flag){
-        gpio_status = snd_soc_read(codec, WM8900_REG_GPIO);
-        gpio_status &= ~(7<<4);
-        gpio_status |= (6<<4);
-        snd_soc_write(codec, WM8900_REG_GPIO, gpio_status);
-    }else{
-        gpio_status = snd_soc_read(codec, WM8900_REG_GPIO);
-        gpio_status &= ~(7<<4);
-        gpio_status |= (7<<4);
-        snd_soc_write(codec, WM8900_REG_GPIO, gpio_status);
-    }
-    */
+    u8 reg_val	= flag ? 0xAF : 0xFA;
+    snd_soc_write(codec, CODEC_CS42L52_PWCTL3, reg_val);
 }
 
 static void cs42l52_hp_detect_queue(struct work_struct* work)
@@ -152,10 +144,15 @@ static void cs42l52_hp_detect_queue(struct work_struct* work)
     int level = 0x0;
     struct cs42l52_work_t* pwork = container_of(work,struct cs42l52_work_t, cs42l52_workqueue);
     struct snd_soc_codec* codec = (struct snd_soc_codec*)(pwork->data);
+    struct cs42l52_platform_data *pdata = soc_cs42l52_dai.ac97_pdata;
+    if (!pdata->is_hp_pluged) return;
 
-    if ((soc_cs42l52_dai.ac97_pdata) && ((struct cs42l52_platform_data *) (soc_cs42l52_dai.ac97_pdata))->is_hp_pluged)
-        level = ((struct cs42l52_platform_data *) (soc_cs42l52_dai.ac97_pdata))->is_hp_pluged();
-
+		if (pdata->is_hp_pluged > 1)
+    	level = pdata->is_hp_pluged();
+    else {
+			level = (cs42l52_read_register(codec->control_data, CODEC_CS42L52_SPK_STATUS)>>3)&1;
+    	level = !(level ^ pdata->hp_pwr_ctrl);
+		}
     //printk("level = %x, hp_detect_flag = %x\n", level, hp_detect_flag);
     if(level == 0x1 && hp_detect_flag!= 0x1){ // HP
         printk("Headphone pluged in\n");
@@ -163,9 +160,12 @@ static void cs42l52_hp_detect_queue(struct work_struct* work)
         snd_soc_dapm_enable_pin(codec, "MIC IN");
         snd_soc_dapm_sync(codec);
         // pull down the gpio to mute spk
+				snd_soc_write(codec, CODEC_CS42L52_BEEP_TONE_CTL, DEFAULT_BEEP_TONE_CTL_HP);
+				snd_soc_write(codec, CODEC_CS42L52_TONE_CTL, DEFAULT_TONE_CTL_HP);
         mute_spk(codec, 1);
         snd_soc_jack_report(&hp_jack, SND_JACK_HEADSET, SND_JACK_HEADSET);
         hp_detect_flag = level;
+	switch_set_state(&sdev, 1);
     }else if(level != hp_detect_flag){ // HDMI
         printk("Headphone unpluged\n");
         snd_soc_dapm_enable_pin(codec, "Ext Spk");
@@ -173,7 +173,10 @@ static void cs42l52_hp_detect_queue(struct work_struct* work)
         snd_soc_dapm_sync(codec);
         snd_soc_jack_report(&hp_jack,0, SND_JACK_HEADSET);
         hp_detect_flag = level;
+				snd_soc_write(codec, CODEC_CS42L52_BEEP_TONE_CTL, DEFAULT_BEEP_TONE_CTL);
+				snd_soc_write(codec, CODEC_CS42L52_TONE_CTL, DEFAULT_TONE_CTL);
         mute_spk(codec, 0);
+	switch_set_state(&sdev, 0);
     }
 }
 
@@ -192,27 +195,41 @@ static int aml_m1_codec_init(struct snd_soc_codec *codec)
     struct snd_soc_card *card = codec->socdev->card;
 
     int err;
+   
     //Add board specific DAPM widgets and routes
     err = snd_soc_dapm_new_controls(codec, aml_m1_dapm_widgets, ARRAY_SIZE(aml_m1_dapm_widgets));
     if(err){
         dev_warn(card->dev, "Failed to register DAPM widgets\n");
         return 0;
     }
-
-    err = snd_soc_dapm_add_routes(codec, intercon,
-        ARRAY_SIZE(intercon));
-    if(err){
-        dev_warn(card->dev, "Failed to setup dapm widgets routine\n");
-        return 0;
-    }
-
+//    err = snd_soc_dapm_add_routes(codec, intercon,
+//        ARRAY_SIZE(intercon));
+//    if(err){
+//        dev_warn(card->dev, "Failed to setup dapm widgets routine\n");
+//        return 0;
+//    }
+//      printk("***aml_m1_codec_init 3***\n");
 #if HP_DET
-    if ((soc_cs42l52_dai.ac97_pdata) && ((struct cs42l52_platform_data *) (soc_cs42l52_dai.ac97_pdata))->is_hp_pluged)
-        hp_detect_flag = ((struct cs42l52_platform_data *) (soc_cs42l52_dai.ac97_pdata))->is_hp_pluged() ? (0) : (1);
-    else
-        hp_detect_flag = 1; // If is_hp_pluged function is not registered in bsp, set speaker as default.
 
-    err = snd_soc_jack_new(card, "hp_switch",
+    struct cs42l52_platform_data *pdata = soc_cs42l52_dai.ac97_pdata;
+   if (pdata && pdata->is_hp_pluged) {
+   			if (pdata->is_hp_pluged > 1)
+        	hp_detect_flag = pdata->is_hp_pluged();
+        else {
+        	hp_detect_flag = (cs42l52_read_register(codec->control_data, CODEC_CS42L52_SPK_STATUS)>>3)&1;
+        	hp_detect_flag = !(hp_detect_flag ^ pdata->hp_pwr_ctrl);
+				}
+        mute_spk(codec,hp_detect_flag);
+    		printk("hp plug status: %d, hpctrl: %d\n", hp_detect_flag, pdata->hp_pwr_ctrl);
+        if (hp_detect_flag){
+					snd_soc_write(codec, CODEC_CS42L52_BEEP_TONE_CTL, DEFAULT_BEEP_TONE_CTL_HP);
+					snd_soc_write(codec, CODEC_CS42L52_TONE_CTL, DEFAULT_TONE_CTL_HP);
+				}
+				else {
+					snd_soc_write(codec, CODEC_CS42L52_BEEP_TONE_CTL, DEFAULT_BEEP_TONE_CTL);
+					snd_soc_write(codec, CODEC_CS42L52_TONE_CTL, DEFAULT_TONE_CTL);					
+				}
+        err = snd_soc_jack_new(card, "hp_switch",
         SND_JACK_HEADSET, &hp_jack);
     if(err){
         dev_warn(card->dev, "Failed to alloc resource for hook switch\n");
@@ -230,6 +247,8 @@ static int aml_m1_codec_init(struct snd_soc_codec *codec)
     timer.expires = jiffies + HZ*10;
     init_timer(&timer);
     INIT_WORK(&cs42l52_work.cs42l52_workqueue, cs42l52_hp_detect_queue);
+    add_timer(&timer);
+    }
 #endif
 
     snd_soc_dapm_nc_pin(codec,"LINPUT1");
@@ -290,12 +309,22 @@ static int aml_m1_audio_probe(struct platform_device *pdev)
     ret = platform_device_add(aml_m1_snd_device);
     if (ret) {
         printk(KERN_ERR "ASoC: Platform device allocation failed\n");
-        goto error;
+        goto error2;
     }
 
     aml_m1_platform_device = platform_device_register_simple("aml_m1_codec", -1, NULL, 0);
+#if HP_DET
+	sdev.name = "h2w";//for report headphone to android
+	ret = switch_dev_register(&sdev);
+	if (ret < 0){
+		printk(KERN_ERR "ASoC: register switch dev failed\n");
+		goto error1;
+	}
+#endif
     return 0;
-error:
+error1:
+	platform_device_unregister(aml_m1_snd_device);
+error2:
     platform_device_put(aml_m1_snd_device);
     return ret;
 }
@@ -305,7 +334,7 @@ static int aml_m1_audio_remove(struct platform_device *pdev)
     printk("***Entered %s:%s\n", __FILE__,__func__);
 #if HP_DET
     del_timer_sync(&timer);
-    
+    switch_dev_unregister(&sdev);
 #endif
     platform_device_unregister(aml_m1_snd_device);
     return 0;

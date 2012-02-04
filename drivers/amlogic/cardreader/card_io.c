@@ -263,6 +263,7 @@ void sdio_cmd_int_handle(struct memory_card *card)
 
 void sdio_timeout_int_handle(struct memory_card *card) 
 {
+	if(card){
 	card->card_io_init(card);
 	card->card_detector(card);
 //	if(sdio_timeout_int_num && ((sdio_timeout_int_num%10000)==0))
@@ -272,6 +273,13 @@ void sdio_timeout_int_handle(struct memory_card *card)
 		sdio_timeout_int_num = 0;
 		sdio_timeout_int_times = 0;
 		complete(&sdio_int_complete);		
+	}
+	}else{
+			printk("%s%s Null Card point\n", __FILE__, __func__);
+			sdio_close_host_interrupt(SDIO_TIMEOUT_INT);
+			sdio_timeout_int_num = 0;
+			sdio_timeout_int_times = 0;
+			complete(&sdio_int_complete);		
 	}
 	return;
 }

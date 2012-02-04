@@ -243,29 +243,20 @@ s32 stbuf_wait_space(struct stream_buf_s *stream_buf, size_t count)
     stream_buf_t *p = stream_buf;
     long time_out = 20;
 
-    init_timer(&p->timer);
-
-    p->timer.data = (ulong)p;
-    p->timer.function = _stbuf_timer_func;
-    p->timer.expires = jiffies + STBUF_WAIT_INTERVAL;
     p->wcnt = count;
 
-    add_timer(&p->timer);
+    setup_timer(&p->timer, _stbuf_timer_func, (ulong)p);
 
-#if 0
-    if (wait_event_interruptible(p->wq, stbuf_space(p) >= count)) {
-        del_timer_sync(&p->timer);
-
-        //printk("[stbuf_wait_space]time out,eagain!\n");
-        return -ERESTARTSYS;
-    }
-#else
+    mod_timer(&p->timer, jiffies + STBUF_WAIT_INTERVAL);
+    
     if (wait_event_interruptible_timeout(p->wq, stbuf_space(p) >= count, time_out) == 0) {
         del_timer_sync(&p->timer);
 
         return -EAGAIN;
     }
-#endif
+
+    del_timer_sync(&p->timer);
+
     return 0;
 }
 

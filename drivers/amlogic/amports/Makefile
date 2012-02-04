@@ -5,8 +5,8 @@
 # Object file lists.
 
 obj-$(CONFIG_AM_STREAMING) += amports.o
-amports-objs := amstream.o streambuf.o vdec.o adec.o tsdemux.o psparser.o esparser.o rmparser.o amvdec.o amve.o amcm.o
-amports-y    := amstream.o streambuf.o vdec.o adec.o tsdemux.o psparser.o esparser.o rmparser.o amvdec.o amve.o amcm.o
+amports-objs := amstream.o streambuf.o vdec.o adec.o tsdemux.o psparser.o esparser.o rmparser.o amvdec.o amve.o amcm.o amstream_profile.o
+amports-y    := amstream.o streambuf.o vdec.o adec.o tsdemux.o psparser.o esparser.o rmparser.o amvdec.o amve.o amcm.o amstream_profile.o
 
 obj-$(CONFIG_AM_VDEC_MPEG12) += amvdec_mpeg12.o
 amvdec_mpeg12-objs := vmpeg12.o
@@ -23,6 +23,10 @@ amvdec_vc1-y    := vvc1.o
 obj-$(CONFIG_AM_VDEC_H264) += amvdec_h264.o
 amvdec_h264-objs := vh264.o
 amvdec_h264-y    := vh264.o
+
+obj-$(CONFIG_AM_VDEC_H264MVC) += amvdec_h264mvc.o
+amvdec_h264mvc-objs := vh264mvc.o
+amvdec_h264mvc-y    := vh264mvc.o
 
 obj-$(CONFIG_AM_VDEC_MJPEG) += amvdec_mjpeg.o
 amvdec_mjpeg-objs := vmjpeg.o
@@ -49,5 +53,5 @@ obj-$(CONFIG_AM_PTSSERVER) += ptsserv.o
 obj-$(CONFIG_AM_SUBTITLE) += subtitle.o
 
 ifneq ($(CONFIG_AM_DVB),)
-EXTRA_CFLAGS = -DENABLE_DEMUX_DRIVER -DVIDEO_PTS_CHASE -DMODIFY_TIMESTAMP_INC_WITH_PLL
+EXTRA_CFLAGS = -DENABLE_DEMUX_DRIVER -DMODIFY_TIMESTAMP_INC_WITH_PLL -DCALC_CACHED_TIME #-DUSE_VMASTER_MODE
 endif

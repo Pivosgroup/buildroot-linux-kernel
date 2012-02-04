@@ -131,6 +131,7 @@ struct dvb_frontend_private {
 	int quality;
 	unsigned int check_wrapped;
 	enum dvbfe_search algo_status;
+	int user_delay;		
 };
 
 static void dvb_frontend_wakeup(struct dvb_frontend *fe);
@@ -580,6 +581,8 @@ restart:
 			fepriv->reinitialise = 0;
 		}
 
+		if (fepriv->user_delay>=0)
+
 		/* do an iteration of the tuning loop */
 		if (fe->ops.get_frontend_algo) {
 			algo = fe->ops.get_frontend_algo(fe);
@@ -656,6 +659,12 @@ restart:
 		} else {
 			dvb_frontend_swzigzag(fe);
 		}
+
+		if(fepriv->user_delay>0)
+			msleep(fepriv->user_delay);
+		else if(fepriv->user_delay<0)
+			msleep(200);
+
 	}
 
 	if (dvb_powerdown_on_sleep) {
@@ -1878,6 +1887,11 @@ static int dvb_frontend_ioctl_legacy(struct inode *inode, struct file *file,
 		fepriv->tune_mode_flags = (unsigned long) parg;
 		err = 0;
 		break;
+
+	case FE_SET_DELAY:
+		fepriv->user_delay = (int)parg;
+		err = 0;
+		break;			
 	};
 
 	if (fe->dvb->fe_ioctl_override) {

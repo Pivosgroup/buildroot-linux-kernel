@@ -31,7 +31,8 @@
 #define VIDTYPE_TYPEMASK                0x7
 #define VIDTYPE_INTERLACE               0x1
 #define VIDTYPE_INTERLACE_FIRST         0x8
-#define VIDTYPE_PULLDOWN                0x10
+#define VIDTYPE_MVC                     0x10
+#define VIDTYPE_NO_VIDEO_ENABLE         0x20
 #define VIDTYPE_VIU_422                 0x800
 #define VIDTYPE_VIU_FIELD               0x1000
 #define VIDTYPE_VIU_SINGLE_PLANE        0x2000
@@ -42,6 +43,7 @@
 #define DISP_RATIO_CTRL_MASK            0x00000003
 #define DISP_RATIO_NO_KEEPRATIO         0x00000000
 #define DISP_RATIO_KEEPRATIO            0x00000001
+#define DISP_RATIO_PORTRAIT_MODE        0x00000004
 
 #define DISP_RATIO_ASPECT_RATIO_MASK    0x0003ff00
 #define DISP_RATIO_ASPECT_RATIO_BIT     8
@@ -116,6 +118,14 @@ typedef struct vframe_s {
     u32 height;
     u32 ratio_control;
 
+    u32 orientation;
+
+    /* vframe extension */
+    int (*early_process_fun)(void* arg);
+    int (*process_fun)(void* arg, unsigned zoom_start_x_lines,
+            unsigned zoom_end_x_lines, unsigned zoom_start_y_lines, unsigned zoom_end_y_lines);
+    void* private_data;
+    /**/
 #if 1
     /* vframe properties */
     struct vframe_prop_s prop;

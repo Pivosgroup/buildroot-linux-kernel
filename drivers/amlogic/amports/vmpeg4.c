@@ -30,6 +30,7 @@
 #include <linux/amports/canvas.h>
 #include <linux/amports/vframe.h>
 #include <linux/amports/vframe_provider.h>
+#include <linux/amports/vframe_receiver.h>
 #include <mach/am_regs.h>
 
 //#define CONFIG_AM_VDEC_MPEG4_LOG
@@ -103,21 +104,22 @@ MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 
 #define DUR2PTS(x) ((x) - ((x) >> 4))
 
-static vframe_t *vmpeg_vf_peek(void);
-static vframe_t *vmpeg_vf_get(void);
-static void vmpeg_vf_put(vframe_t *);
-static int  vmpeg_vf_states(vframe_states_t *states);
+static vframe_t *vmpeg_vf_peek(void*);
+static vframe_t *vmpeg_vf_get(void*);
+static void vmpeg_vf_put(vframe_t *, void*);
+static int  vmpeg_vf_states(vframe_states_t *states, void*);
 
 static const char vmpeg4_dec_id[] = "vmpeg4-dev";
 
-static const struct vframe_provider_s vmpeg_vf_provider = {
+#define PROVIDER_NAME   "decoder.mpeg4"
+static const struct vframe_operations_s vmpeg_vf_provider = {
     .peek = vmpeg_vf_peek,
     .get = vmpeg_vf_get,
     .put = vmpeg_vf_put,
     .vf_states = vmpeg_vf_states,
 };
+static struct vframe_provider_s vmpeg_vf_prov;
 
-static const struct vframe_receiver_op_s *vf_receiver;
 static struct vframe_s vfpool[VF_POOL_SIZE];
 static u32 vfpool_idx[VF_POOL_SIZE];
 static s32 vfbuf_use[4];
@@ -127,7 +129,9 @@ static struct timer_list recycle_timer;
 static u32 stat;
 static u32 buf_start, buf_size, buf_offset;
 static u32 vmpeg4_ratio;
+static u64 vmpeg4_ratio64;
 static u32 rate_detect;
+static u32 vmpeg4_rotation;
 
 static u32 total_frame;
 static u32 last_vop_time_inc, last_duration;
@@ -176,10 +180,18 @@ static inline void ptr_atomic_wrap_inc(u32 *ptr)
 
 static void set_aspect_ratio(vframe_t *vf, unsigned pixel_ratio)
 {
-    int ar = 0;
-    int num = vmpeg4_ratio>>16;
-    int den = vmpeg4_ratio & 0xffff;
+    unsigned int ar = 0;
+    unsigned int num = 0;
+    unsigned int den = 0;
 
+	if (vmpeg4_ratio64 != 0) {
+		num = vmpeg4_ratio64>>32;
+		den = vmpeg4_ratio64 & 0xffffffff;
+	} else {		
+		num = vmpeg4_ratio>>16;
+		den = vmpeg4_ratio & 0xffff;
+	
+	}
     if ((num == 0) || (den == 0)) {
         num = 1;
         den = 1;
@@ -189,7 +201,7 @@ static void set_aspect_ratio(vframe_t *vf, unsigned pixel_ratio)
         vf->ratio_control |= (0x90 << DISP_RATIO_ASPECT_RATIO_BIT); // always stretch to 16:9
     } else if (pixel_ratio > 0x0f) {
         num = (pixel_ratio >> 8) * vmpeg4_amstream_dec_info.width * num;
-        ar = ((pixel_ratio & 0xff) * vmpeg4_amstream_dec_info.height * den * 0x100 + (num>>1))  / num;
+        ar = div_u64((pixel_ratio & 0xff) * vmpeg4_amstream_dec_info.height * den * 0x100ULL + (num>>1),  num);
     } else {
         switch (aspect_ratio_table[pixel_ratio]) {
         case 0:
@@ -363,6 +375,7 @@ static void vmpeg4_isr(void)
             vf->width = vmpeg4_amstream_dec_info.width;
             vf->height = vmpeg4_amstream_dec_info.height;
             vf->bufWidth = 1920;
+            vf->orientation = vmpeg4_rotation;
             vf->pts = pts;
             vf->duration = duration >> 1;
             vf->duration_pulldown = 0;
@@ -374,12 +387,13 @@ static void vmpeg4_isr(void)
             vfbuf_use[buffer_index]++;
 
             INCPTR(fill_ptr);
-
+		vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
             vfpool_idx[fill_ptr] = buffer_index;
             vf = &vfpool[fill_ptr];
             vf->width = vmpeg4_amstream_dec_info.width;
             vf->height = vmpeg4_amstream_dec_info.height;
             vf->bufWidth = 1920;
+            vf->orientation = vmpeg4_rotation;
 
             vf->pts = 0;
             vf->duration = duration >> 1;
@@ -397,10 +411,8 @@ static void vmpeg4_isr(void)
                        vf->duration, vmpeg4_amstream_dec_info.rate, picture_type);
 
             INCPTR(fill_ptr);
- #ifdef CONFIG_POST_PROCESS_MANAGER
-            if (vf_receiver)
-    	        vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL, NULL);	
-#endif    	        
+
+            vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
 
         } else { // progressive
             vfpool_idx[fill_ptr] = buffer_index;
@@ -408,6 +420,7 @@ static void vmpeg4_isr(void)
             vf->width = vmpeg4_amstream_dec_info.width;
             vf->height = vmpeg4_amstream_dec_info.height;
             vf->bufWidth = 1920;
+            vf->orientation = vmpeg4_rotation;
             vf->pts = pts;
             vf->duration = duration;
             vf->duration_pulldown = 0;
@@ -422,10 +435,7 @@ static void vmpeg4_isr(void)
             vfbuf_use[buffer_index]++;
 
             INCPTR(fill_ptr);
- #ifdef CONFIG_POST_PROCESS_MANAGER
-            if (vf_receiver)
-    	        vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL, NULL);	
-#endif    	        
+            vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
         }
 
         total_frame++;
@@ -444,7 +454,7 @@ static void vmpeg4_isr(void)
 #endif
 }
 
-static vframe_t *vmpeg_vf_peek(void)
+static vframe_t *vmpeg_vf_peek(void* op_arg)
 {
     if (get_ptr == fill_ptr) {
         return NULL;
@@ -453,7 +463,7 @@ static vframe_t *vmpeg_vf_peek(void)
     return &vfpool[get_ptr];
 }
 
-static vframe_t *vmpeg_vf_get(void)
+static vframe_t *vmpeg_vf_get(void* op_arg)
 {
     vframe_t *vf;
 
@@ -468,12 +478,11 @@ static vframe_t *vmpeg_vf_get(void)
     return vf;
 }
 
-static void vmpeg_vf_put(vframe_t *vf)
+static void vmpeg_vf_put(vframe_t *vf, void* op_arg)
 {
     INCPTR(putting_ptr);
 }
-
-static int  vmpeg_vf_states(vframe_states_t *states)
+static int  vmpeg_vf_states(vframe_states_t *states, void* op_arg)
 {
     unsigned long flags;
     int i;
@@ -629,6 +638,10 @@ static void vmpeg4_local_init(void)
     int i;
 
     vmpeg4_ratio = vmpeg4_amstream_dec_info.ratio;
+	
+	vmpeg4_ratio64 = vmpeg4_amstream_dec_info.ratio64;
+
+    vmpeg4_rotation = (((u32)vmpeg4_amstream_dec_info.param) >> 16) & 0xffff;
 
     fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
 
@@ -643,8 +656,6 @@ static void vmpeg4_local_init(void)
     vop_time_inc_since_last_anch = 0;
 
     frame_num_since_last_anch = 0;
-
-    vf_receiver = NULL;
 
 #ifdef CONFIG_AM_VDEC_MPEG4_LOG
     pts_hit = pts_missed = pts_i_hit = pts_i_missed = 0;
@@ -719,11 +730,12 @@ static s32 vmpeg4_init(void)
 
     stat |= STAT_ISR_REG;
  #ifdef CONFIG_POST_PROCESS_MANAGER
-	vf_receiver = vf_ppmgr_reg_provider(&vmpeg_vf_provider);
-	if ((vf_receiver) && (vf_receiver->event_cb))
-	vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_START, NULL, NULL); 	
+    vf_provider_init(&vmpeg_vf_prov, PROVIDER_NAME, &vmpeg_vf_provider, NULL);
+    vf_reg_provider(&vmpeg_vf_prov);
+    vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_START,NULL);
  #else 
- 	vf_reg_provider(&vmpeg_vf_provider);
+    vf_provider_init(&vmpeg_vf_prov, PROVIDER_NAME, &vmpeg_vf_provider, NULL);
+    vf_reg_provider(&vmpeg_vf_prov);
  #endif 
     stat |= STAT_VF_HOOK;
 
@@ -789,13 +801,7 @@ static int amvdec_mpeg4_remove(struct platform_device *pdev)
         spin_lock_irqsave(&lock, flags);
         fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
         spin_unlock_irqrestore(&lock, flags);
- #ifdef CONFIG_POST_PROCESS_MANAGER
-	vf_ppmgr_unreg_provider();
-	if ((vf_receiver) && (vf_receiver->event_cb))
-	vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_UNREG, NULL, NULL); 	
- #else 
- 	vf_unreg_provider();
- #endif         
+        vf_unreg_provider(&vmpeg_vf_prov);
         stat &= ~STAT_VF_HOOK;
     }
 
@@ -822,7 +828,10 @@ static struct platform_driver amvdec_mpeg4_driver = {
         .name = DRIVER_NAME,
     }
 };
-
+static struct codec_profile_t amvdec_mpeg4_profile = {
+	.name = "mpeg4",
+	.profile = ""
+};
 static int __init amvdec_mpeg4_driver_init_module(void)
 {
     amlog_level(LOG_LEVEL_INFO, "amvdec_mpeg4 module init\n");
@@ -831,7 +840,7 @@ static int __init amvdec_mpeg4_driver_init_module(void)
         amlog_level(LOG_LEVEL_ERROR, "failed to register amvdec_mpeg4 driver\n");
         return -ENODEV;
     }
-
+	vcodec_profile_register(&amvdec_mpeg4_profile);
     return 0;
 }
 

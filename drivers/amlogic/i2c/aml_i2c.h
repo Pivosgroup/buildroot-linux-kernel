@@ -188,7 +188,7 @@ struct aml_i2c_reg_slave{
 };
 
 struct aml_i2c {
-	spinlock_t		lock;
+	struct mutex     lock;
 	unsigned int 		i2c_debug;
 	unsigned int		cur_slave_addr;
 	unsigned int 		wait_count;

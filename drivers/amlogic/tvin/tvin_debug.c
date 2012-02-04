@@ -12,19 +12,23 @@
 
 /* Standard Linux Headers */
 #include <linux/string.h>
+#include <linux/kernel.h>
 
 /* Amlogic Headers */
-#include "am_regs.h"
+#include <mach/am_regs.h>
+
 /* Local Headers */
 #include "tvin_debug.h"
 
 
-static void tvin_dbg_usage()
+static void tvin_dbg_usage(void)
 {
     pr_info("Usage: rc address or wc address value\n");
     pr_info("Notes: address in hexadecimal and prefix 0x\n");
     return;
 }
+
+
 /*
 * rc 0x12345678
 * rw 0x12345678 1234
@@ -37,78 +41,116 @@ ssize_t vdin_dbg_store(struct device *dev,
     char strcmd[16];
     char straddr[10];
     char strval[32];
-    int i=0;
+    int i = 0;
+    int j = 0;
     unsigned long addr;
     unsigned int value=0;
     unsigned int retval;
 
+
     /* get parameter command string */
-    while( (i < count) && (buf[i]) && (buf[i] != ',') && (buf[i] != ' ')){
-        strcmd[i] = buf[i];
+    j = 0;
+    while( (i < count) && (buf[i]) && (buf[i] != ',') && (buf[i] != ' ') && (buf[i] != 10)){
+        strcmd[j] = buf[i];
         i++;
+        j++;
     }
-    strcmd[i]=0;
+    strcmd[j] = '\0';
 
     /* ignore */
-    while( (i < count) && (buf[i] =',') || (buf = ' ')){
+    while( (i < count) && (buf[i]) && ((buf[i] ==',') || (buf[i] == ' ') || (buf[i] == 10))){
         i++;
     }
 
     /* check address */
-    if (strncmp(&buf[i], "0x", 2) == 0){
-        pr_info("tvin_debug: the parameter address(0x) is invalid\n");
+    if (strncmp(&buf[i], "0x", 2) != 0){
+        pr_info("invalid parameter address\n");
         tvin_dbg_usage();
-        return -1;
+        return 32;
     }
+
 
     /* get parameter address string */
-    while( (i < count) && (buf[i]) && (buf[i] != ',') && (buf[i] != ' ')){
-        straddr[i] = buf[i];
+    j = 0;
+    while( (i < count) && (buf[i]) && (buf[i] != ',') && (buf[i] != ' ' && (buf[i] != 10))){
+        straddr[j] = buf[i];
         i++;
+        j++;
     }
-    straddr[i]=0;
-    addr = simple_strtoul(straddr, NULL, 16);
+    straddr[j] = 0;
+    addr = simple_strtoul(straddr, NULL, 16);       //hex data
 
-    /* rc */
+    /* rc read cbus */
     if (strncmp(strcmd, "rc", 2) == 0){
         retval = READ_CBUS_REG(addr);
-        pr_info("tvin_debug: %s --> %d\n", strcmd, retval);
-        return 0;
+        pr_info("%s: 0x%x --> 0x%x\n", strcmd, addr, retval);
+        return 32;
     }
-    /* wc */
+    /* rp read apb */
+    else if (strncmp(strcmd, "rp", 2) == 0){
+        retval = READ_APB_REG(addr);
+        pr_info("%s: 0x%x --> 0x%x\n", strcmd, addr, retval);
+        return 32;
+    }
+    /* wc write cbus */
     else if (strncmp(strcmd, "wc", 2) == 0){
-
         /* get parameter value string*/
         /* ignore */
-        while( (i < count) && (buf[i] =',') || (buf = ' ')){
+        while( (i < count) && (buf[i]) && ((buf[i] ==',') || (buf[i] == ' ') || (buf[i] == 10))){
             i++;
         }
-
         if (!buf[i]){
-            pr_info("tvin_debug: no parameter value");
+            pr_info("no parameter value\n");
             tvin_dbg_usage();
-            return -1;
+            return 32;
         }
-        
-        while( (i < count) && (buf[i]) && (buf[i] != ',') && (buf[i] != ' ')){
-            strval[i] = buf[i];
+
+        j = 0;
+        while( (i < count) && (buf[i]) && (buf[i] != ',') && (buf[i] != ' ')&& (buf[i] != 10)){
+            strval[j] = buf[i];
+            i++;
+            j++;
+        }
+        strval[j] = '\0';
+        value = simple_strtol(strval, NULL, 16);    //hex data
+
+        WRITE_CBUS_REG(addr, value);
+        pr_info("%s: 0x%x <-- 0x%x\n", strcmd, addr, value);
+        return 32;
+    }
+    /* wp write apb */
+    else if (strncmp(strcmd, "wp", 2) == 0){
+        /* get parameter value string*/
+        /* ignore */
+        while( (i < count) && (buf[i]) && ((buf[i] ==',') || (buf[i] == ' ') || (buf[i] == 10))){
             i++;
         }
-        strval[i]=0;
-        value = simple_strtol(strval, NULL, 10);
-        if ();
+        if (!buf[i]){
+            pr_info("no parameter value\n");
+            tvin_dbg_usage();
+            return 32;
+        }
 
-        retval = WRITE_CBUS_REG(addr, value);
-        pr_info("tvin_debug: %s <-- %d\n", strcmd, retval);
-        return 0;
+        j = 0;
+        while( (i < count) && (buf[i]) && (buf[i] != ',') && (buf[i] != ' ')&& (buf[i] != 10)){
+            strval[j] = buf[i];
+            i++;
+            j++;
+        }
+        strval[j] = '\0';
+        value = simple_strtol(strval, NULL, 16);    //hex data
+
+        WRITE_APB_REG(addr, value);
+        pr_info("%s: 0x%x <-- 0x%x\n", strcmd, addr, value);
+        return 32;
     }
     else{
-        pr_info("tvin_debug: invalid parameter\n");
+        pr_info("invalid parameter\n");
         tvin_dbg_usage();
-        return -1;   
+        return 32;
     }
-    
-    return 0;
+
+    return 32;
 }
 
 

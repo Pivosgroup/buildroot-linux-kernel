@@ -1,0 +1,6 @@
+
+menu "Amlogic Vibrator Support"
+
+source "drivers/amlogic/vibrator/haptic/Kconfig"
+
+endmenu

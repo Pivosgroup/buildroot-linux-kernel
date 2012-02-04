@@ -154,7 +154,8 @@ void uart_set_pinmux(int port,int uart_bank)
 		switch(uart_bank)
 		{
 			case UART_B_TCK_TDO://JTAG=TCK,TDO
-			        CLEAR_CBUS_REG_MASK(PREG_JTAG_GPIO_ADDR,1<<3);
+			        //CLEAR_CBUS_REG_MASK(PREG_JTAG_GPIO_ADDR,1<<3);
+				SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, 1<<30);
 				SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<18)|(1<<22));
 				break;
 			case UART_B_GPIO_B0_B1://GPIO+B0.B1
@@ -191,10 +192,16 @@ void set_audio_pinmux(int type)
 			set_mio_mux(8, (1<<5));
 		}
 		else if(type == AUDIO_OUT_TEST_N){
-				set_mio_mux(1, (1<<11)|(1<<15)|(1<<19));
-				set_mio_mux(0, (1<<18));
+			clear_mio_mux(1, (1<<6));
+			clear_mio_mux(0, (1<<17));
+			clear_mio_mux(6, (1<<24));
+			WRITE_CBUS_REG_BITS(0x200b,0,16,1); //Set TEST_N Output mode
+			set_mio_mux(1, (1<<11)|(1<<15)|(1<<19));
+			set_mio_mux(0, (1<<18));
 		}
 		else if(type == AUDIO_IN_JTAG){
+			clear_mio_mux(1, (1<<6));
+			set_mio_mux(1,(1<<11)|(1<<15)|(1<<19));
 			set_mio_mux(8, (1<<8)|(1<<9)|(1<<10));
 			set_mio_mux(8, (1<<11));
 		}

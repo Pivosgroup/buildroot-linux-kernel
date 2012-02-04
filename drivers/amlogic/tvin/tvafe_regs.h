@@ -17,7 +17,7 @@
 // ******** ACD REGISTERS ********
 // *****************************************************************************
 
-#define ACD_BASE_ADD                                   0x100
+#define ACD_BASE_ADD                                   0x1900
 
 #define ACD_REG_00                                      ((ACD_BASE_ADD+0x00)<<2)
     #define MD_LUT_STEP06_BIT              28
@@ -489,7 +489,7 @@
 // ******** ADC REGISTERS ********
 // ****************************************************************************
 
-#define ADC_BASE_ADD                                     0x200
+#define ADC_BASE_ADD                                     0x1A00
 
 #define ADC_REG_00                                      ((ADC_BASE_ADD+0x00)<<2)
     #define CHIPREV_BIT                    0
@@ -605,7 +605,7 @@
 //#define ADC_REG_16                                    ((ADC_BASE_ADD+0x16)<<2)
 #define ADC_REG_17                                      ((ADC_BASE_ADD+0x17)<<2)
     #define INMUXA_BIT                     4
-    #define INMUXA_WID                     2
+    #define INMUXA_WID                     3
     #define INMUXB_BIT                     0
     #define INMUXB_WID                     3
 
@@ -978,7 +978,7 @@
 // ******** TOP REGISTERS ********
 // **************************************************** ************************
 
-#define TOP_BASE_ADD                                         0x300
+#define TOP_BASE_ADD                                         0x1B00
 
 // ******** DVSS -- YPBPR & RGB *********************** ************************
 
@@ -1594,9 +1594,9 @@
 
 #define TVFE_DEG_H                                      ((TOP_BASE_ADD+0x63)<<2)
     #define DATAPROC_DLY_BIT                28
-    #define DATAPROC_DLY_WID                8
+    #define DATAPROC_DLY_WID                4
     #define SYNCPROC_DLY_BIT                24
-    #define SYNCPROC_DLY_WID                8
+    #define SYNCPROC_DLY_WID                4
     #define DEG_HEND_BIT                    12
     #define DEG_HEND_WID                    12
     #define DEG_HSTART_BIT                  0
@@ -1681,16 +1681,28 @@
 100: cab
 101: cba
 */
-    #define SWT_GY_BCB_RCR_IN_BIT            28
-    #define SWT_GY_BCB_RCR_IN_WID            3
+    #define SWT_GY_BCB_RCR_IN_BIT           28
+    #define SWT_GY_BCB_RCR_IN_WID           3
+    #define ADC_AUTO_CAL_MASK_BIT           27
+    #define ADC_AUTO_CAL_MASK_WID           1
+    #define VGA_DDC_SEL_BIT_WID             22
+    #define VGA_DDC_SEL_WID                 1
+    #define ABLC_ENABLE_BIT                 21
+    #define ABLC_ENABLE_WID                 1
+    #define DEBUG_MUX_BIT                   16
+    #define DEBUG_MUX_WID                   5
+    #define COMP_CLK_ENABLE_BIT             15
+    #define COMP_CLK_ENABLE_WID             1
+    #define DCLK_ENABLE_BIT                 14
+    #define DCLK_ENABLE_WID                 1
     #define ADC_CLK_INV_BIT                 13
     #define ADC_CLK_INV_WID                 1
     #define DATACK_INV_SEL_BIT              12
     #define DATACK_INV_SEL_WID              1
-    #define VAFE_CLKPI_EN_BIT               11
-    #define VAFE_CLKPI_EN_WID               1
-    #define AUTOMODE_CLK_EN_BIT             10
-    #define AUTOMODE_CLK_EN_WID             1
+    #define VAFE_MCLK_EN_BIT                11
+    #define VAFE_MCLK_EN_WID                1
+    #define EDID_CLK_EN_BIT                 10
+    #define EDID_CLK_EN_WID                 1
     #define TVFE_ADC_CLK_DIV_BIT            8
     #define TVFE_ADC_CLK_DIV_WID            2
     #define ADC_EXT_COAST_EN_BIT            6
@@ -1902,7 +1914,7 @@
 // ******** CVD2 REGISTERS ********
 // **************************************************** *************************
 
-#define CVD_BASE_ADD                                     0x000
+#define CVD_BASE_ADD                                     0x1800
 
 #define CVD2_CONTROL0                                   ((CVD_BASE_ADD+0x00)<<2)
     #define HV_DLY_BIT                      7
@@ -2258,27 +2270,27 @@
     #define MV_COLOURSTRIPES_BIT            5
     #define MV_COLOURSTRIPES_WID            3
     #define MV_VBI_DETECTED_BIT             4
-    #define MV_VBI_DETECTED_WID             4
+    #define MV_VBI_DETECTED_WID             1
     #define CHROMALOCK_BIT                  3
-    #define CHROMALOCK_WID                  4
+    #define CHROMALOCK_WID                  1
     #define VLOCK_BIT                       2
-    #define VLOCK_WID                       4
+    #define VLOCK_WID                       1
     #define HLOCK_BIT                       1
     #define HLOCK_WID                       1
     #define NO_SIGNAL_BIT                   0
-    #define NO_SIGNAL_WID                   4
+    #define NO_SIGNAL_WID                   1
 
 #define CVD2_STATUS_REGISTER2                           ((CVD_BASE_ADD+0x3B)<<2)
     #define STATUS_COMB3D_OFF_BIT           4
-    #define STATUS_COMB3D_OFF_WID           4
+    #define STATUS_COMB3D_OFF_WID           1
     #define BKNWT_DETECTED_BIT              3
-    #define BKNWT_DETECTED_WID              4
+    #define BKNWT_DETECTED_WID              1
     #define VNON_STD_BIT                    2
-    #define VNON_STD_WID                    4
+    #define VNON_STD_WID                    1
     #define HNON_STD_BIT                    1
     #define HNON_STD_WID                    1
     #define PROSCAN_DETECTED_BIT            0
-    #define PROSCAN_DETECTED_WID            4
+    #define PROSCAN_DETECTED_WID            1
 
 #define CVD2_STATUS_REGISTER3                           ((CVD_BASE_ADD+0x3C)<<2)
     #define VCR_REW_BIT                     7
@@ -3026,11 +3038,11 @@
 
 #define CVD2_CAGC_GATE_START                            ((CVD_BASE_ADD+0xFB)<<2)
     #define CAGC_GATE_START_BIT             0
-    #define CAGC_GATE_START_WID             1
+    #define CAGC_GATE_START_WID             8
 
 #define CVD2_CAGC_GATE_END                              ((CVD_BASE_ADD+0xFC)<<2)
     #define CAGC_GATE_END_BIT               0
-    #define CAGC_GATE_END_WID               1
+    #define CAGC_GATE_END_WID               8
 
 #define CVD2_CKILL_LEVEL_15_8                           ((CVD_BASE_ADD+0xFD)<<2)
     #define CKILL_15_8_BIT                  0

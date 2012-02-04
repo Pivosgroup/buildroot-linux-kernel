@@ -10,8 +10,16 @@ comment "Char devices"
 source "drivers/amlogic/uart/Kconfig"
 source "drivers/amlogic/rtc/Kconfig"
 source "drivers/amlogic/i2c/Kconfig"
+source "drivers/amlogic/spi/Kconfig"
 source "drivers/amlogic/input/Kconfig"
+source "drivers/amlogic/power/Kconfig"
+source "drivers/amlogic/light_sensor/Kconfig"
+source "drivers/amlogic/extern_io/Kconfig"
+source "drivers/amlogic/gpio/Kconfig"
+source "drivers/amlogic/minilvds/Kconfig"
 source "drivers/amlogic/efuse/Kconfig"
+source "drivers/amlogic/smartcard/Kconfig"
+source "drivers/amlogic/gps/Kconfig"
 
 #	Block devices
 #
@@ -29,7 +37,8 @@ source "drivers/amlogic/demod/Kconfig"
 #
 comment "Network devices"
 source "drivers/amlogic/net/Kconfig"
-
+source "drivers/amlogic/wifi/Kconfig"
+source "drivers/amlogic/bluetooth/Kconfig"
 
 #
 #	Media devices
@@ -44,9 +53,27 @@ source "drivers/amlogic/amaudio/Kconfig"
 source "drivers/amlogic/audiodsp/Kconfig"
 source "drivers/amlogic/cmem/Kconfig"
 source "drivers/amlogic/jpeglogo/Kconfig"
-source "drivers/amlogic/audiodsplog/Kconfig"
+source "drivers/amlogic/ump/Kconfig"
 source "drivers/amlogic/mali/Kconfig"
 source "drivers/amlogic/dvb/Kconfig"
+source "drivers/amlogic/ppmgr/Kconfig"
+source "drivers/amlogic/audiodsplog/Kconfig"
+source "drivers/amlogic/deinterlace/Kconfig"
 
-endmenu
+#
+#	camera devices
+#
+source "drivers/amlogic/camera/Kconfig"
+source "drivers/amlogic/modem/Kconfig"
 
+source "drivers/amlogic/vibrator/Kconfig"
+
+source "drivers/amlogic/debug/Kconfig"
+source "drivers/amlogic/ueventmsg/Kconfig"
+
+#
+# crypto
+#
+source "drivers/amlogic/crypto/Kconfig"
+
+endmenu	

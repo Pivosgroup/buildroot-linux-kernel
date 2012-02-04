@@ -6,6 +6,39 @@
 #define CHANNEL_VALID 			(1<<2)	
 #define SAMPLE_RATE_VALID     	(1<<3)	
 #define DATA_WIDTH_VALID     	(1<<4)	
+
+struct digit_raw_output_info
+{
+	int	framelength;
+	unsigned char* framebuf;
+	int frame_size;
+	int frame_samples;
+	unsigned char* rawptr;
+    //for AC3
+	int sampleratecode;
+	int bsmod;
+
+    int bpf;
+    int brst;
+    int length;
+    int padsize;
+    int mode;
+    unsigned int syncword1;
+    unsigned int syncword2;
+    unsigned int syncword3;
+
+    unsigned int syncword1_mask;
+    unsigned int syncword2_mask;
+    unsigned int syncword3_mask;
+
+    unsigned chstat0_l;
+    unsigned chstat0_r;
+    unsigned chstat1_l;
+    unsigned chstat1_r;
+
+    unsigned can_bypass;
+};
+
 struct frame_fmt
 {
 

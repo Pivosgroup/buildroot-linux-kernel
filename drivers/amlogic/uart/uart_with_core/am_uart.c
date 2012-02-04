@@ -426,11 +426,15 @@ static unsigned int am_uart_tx_empty(struct uart_port *port)
         printk("%s\n", __FUNCTION__);
 #endif
 
+#if 0
   mutex_lock(&info->info_mutex);
 	mode = __raw_readl(&uart->status);
   mutex_unlock(&info->info_mutex);
       
   return ( mode & UART_TXEMPTY) ? TIOCSER_TEMT : 0;
+#else
+  return TIOCSER_TEMT;
+#endif
 }
 
 static unsigned int am_uart_get_mctrl(struct uart_port *port)
@@ -1165,6 +1169,23 @@ void raw_printk5(const char *str, uint n1, uint n2, uint n3, uint n4)
 }
 
 EXPORT_SYMBOL(raw_printk5);
+int get_baud(int line)
+{
+    struct am_uart_port * info = &am_ports[line];
+
+    printk("uart%d %s %d\n", line, __FUNCTION__, info->baud);
+    return info->baud ? info->baud : 115200;
+}
+EXPORT_SYMBOL(get_baud);
+
+void set_baud(int line, unsigned long newbaud)
+{
+      struct am_uart_port * info = &am_ports[line];
+
+      change_speed(info, newbaud);
+      printk("uart%d %s %d\n", line, __FUNCTION__, info->baud);
+}
+EXPORT_SYMBOL(set_baud);
 
 
 MODULE_LICENSE("GPL");

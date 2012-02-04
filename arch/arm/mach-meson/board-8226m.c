@@ -34,6 +34,7 @@
 #include <asm/mach/map.h>
 #include <mach/am_eth_pinmux.h>
 #include <mach/nand.h>
+#include <mach/card_io.h>
 #include <linux/i2c.h>
 #include <linux/i2c-aml.h>
 #include <mach/pinmux.h>
@@ -41,6 +42,12 @@
 #include <linux/delay.h>
 #include <mach/clk_set.h>
 #include "board-8626m.h"
+
+#ifdef CONFIG_ANDROID_PMEM
+#include <linux/slab.h>
+#include <linux/dma-mapping.h>
+#include <linux/android_pmem.h>
+#endif
 
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
@@ -83,18 +90,21 @@ static struct platform_device input_device = {
 };
 #endif
 
-#ifdef CONFIG_FB_AM
+#if defined(CONFIG_FB_AM)
 static struct resource fb_device_resources[] = {
     [0] = {
         .start = OSD1_ADDR_START,
         .end   = OSD1_ADDR_END,
         .flags = IORESOURCE_MEM,
     },
+#if defined(CONFIG_FB_OSD2_ENABLE)
     [1] = {
         .start = OSD2_ADDR_START,
-        .end   =OSD2_ADDR_END,
+        .end   = OSD2_ADDR_END,
         .flags = IORESOURCE_MEM,
     },
+#endif
+
 };
 
 static struct platform_device fb_device = {
@@ -292,12 +302,41 @@ static struct resource amlogic_card_resource[]  = {
 	}
 };
 
+static struct aml_card_info  amlogic_card_info[] = {
+	[0] = {
+		.name = "sd_card",
+		.work_mode = CARD_HW_MODE,
+		.io_pad_type = SDIO_GPIOA_9_14,
+		.card_ins_en_reg = EGPIO_GPIOA_ENABLE,
+		.card_ins_en_mask = PREG_IO_11_MASK,
+		.card_ins_input_reg = EGPIO_GPIOA_INPUT,
+		.card_ins_input_mask = PREG_IO_11_MASK,
+		.card_power_en_reg = EGPIO_GPIOA_ENABLE,
+		.card_power_en_mask = PREG_IO_9_MASK,
+		.card_power_output_reg = EGPIO_GPIOA_OUTPUT,
+		.card_power_output_mask = PREG_IO_9_MASK,
+		.card_power_en_lev = 0,
+		.card_wp_en_reg = EGPIO_GPIOA_ENABLE,
+		.card_wp_en_mask = PREG_IO_12_MASK,
+		.card_wp_input_reg = EGPIO_GPIOA_INPUT,
+		.card_wp_input_mask = PREG_IO_12_MASK,
+		.card_extern_init = 0,
+	},
+};
+
+static struct aml_card_platform amlogic_card_platform = {
+	.card_num = ARRAY_SIZE(amlogic_card_info),
+	.card_info = amlogic_card_info,
+};
 
 static struct platform_device amlogic_card_device = { 
 	.name = "AMLOGIC_CARD", 
 	.id    = -1,
 	.num_resources = ARRAY_SIZE(amlogic_card_resource),
 	.resource = amlogic_card_resource,
+	.dev = {
+		.platform_data = &amlogic_card_platform,
+	},
 };
 #endif
 
@@ -318,7 +357,7 @@ static struct platform_device audiodsp_device = {
 };
 #endif
 
-#ifdef CONFIG_AM_NAND
+#ifdef CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE
 static struct mtd_partition partition_info[] = 
 {
 	{
@@ -456,6 +495,25 @@ static struct platform_device aml_i2c_device = {
 };
 #endif
 
+#ifdef CONFIG_ANDROID_PMEM
+static struct android_pmem_platform_data pmem_data =
+{
+	.name = "pmem",
+	.start = PMEM_START,
+	.size = PMEM_SIZE,
+	.no_allocator = 1,
+	.cached = 0,
+};
+
+static struct platform_device android_pmem_device =
+{
+	.name = "android_pmem",
+	.id = 0,
+	.dev = {
+		.platform_data = &pmem_data,
+	},
+};
+#endif
 
 static struct resource amlogic_dvb_resource[]  = {
 	[0] = {
@@ -568,7 +626,7 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AMLOGIC_SPI_NOR)
     	&amlogic_spi_nor_device,
     #endif
-    #if defined(CONFIG_AM_NAND)
+    #if defined(CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE)
 		&aml_nand_device,
     #endif		
 	
@@ -577,6 +635,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif
     #if defined(CONFIG_I2C_AML)
 		&aml_i2c_device,
+    #endif
+    #if defined(CONFIG_ANDROID_PMEM)
+		&android_pmem_device,
     #endif
     #if defined(CONFIG_AM_DVB)
 		&amlogic_dvb_device,

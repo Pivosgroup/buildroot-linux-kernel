@@ -263,6 +263,10 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
    	 u32  srckey_enable;
 	 u32  gbl_alpha;
 	 u32  osd_order;
+	 s32  osd_axis[4] = {0};
+	 u32  block_windows[8] = {0};
+	 u32  block_mode;
+
     	switch (cmd)
   	{
    		case  FBIOPUT_OSD_SRCKEY_ENABLE:
@@ -274,6 +278,10 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 		case FBIOPUT_OSD_SET_GBL_ALPHA:
 			copy_from_user(&gbl_alpha,argp,sizeof(u32));
 			break;
+		case FBIOPUT_OSD_SCALE_AXIS:
+			copy_from_user(&osd_axis, argp, 4 * sizeof(s32));
+			break;
+		case FBIOGET_OSD_SCALE_AXIS:
 		case FBIOPUT_OSD_ORDER:
 		case FBIOGET_OSD_ORDER:
 		case FBIOGET_OSD_GET_GBL_ALPHA:
@@ -282,6 +290,18 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 		case FBIOPUT_OSD_FREE_SCALE_ENABLE:
 		case FBIOPUT_OSD_FREE_SCALE_WIDTH:
 		case FBIOPUT_OSD_FREE_SCALE_HEIGHT:
+		case FBIOGET_OSD_BLOCK_WINDOWS:
+		case FBIOGET_OSD_BLOCK_MODE:
+		case FBIOGET_OSD_FREE_SCALE_AXIS:
+			break;
+		case FBIOPUT_OSD_BLOCK_MODE:
+			block_mode = (u32)argp;
+			break;
+		case FBIOPUT_OSD_BLOCK_WINDOWS:
+			copy_from_user(&block_windows, argp, 8 * sizeof(u32));
+			break;
+		case FBIOPUT_OSD_FREE_SCALE_AXIS:
+			copy_from_user(&osd_axis, argp, 4 * sizeof(s32));
 			break;
 		default :
 			amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_HIGH,"command not supported\r\n ");
@@ -360,6 +380,38 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 	 	gbl_alpha=osddev_get_gbl_alpha(info->node);
 	 	copy_to_user(argp, &gbl_alpha, sizeof(u32));
 	  	break;
+
+		case FBIOGET_OSD_SCALE_AXIS:
+			osddev_get_scale_axis(info->node, &osd_axis[0], &osd_axis[1], &osd_axis[2], &osd_axis[3]);
+			copy_to_user(argp, &osd_axis, 4 * sizeof(s32));
+			break;
+		case FBIOPUT_OSD_SCALE_AXIS:
+			osddev_set_scale_axis(info->node, osd_axis[0], osd_axis[1], osd_axis[2], osd_axis[3]);
+			break;
+		case FBIOGET_OSD_BLOCK_WINDOWS:
+			osddev_get_block_windows(info->node, block_windows);
+			copy_to_user(argp, &block_windows, 8 * sizeof(u32));
+			break;
+		case FBIOPUT_OSD_BLOCK_WINDOWS:
+			osddev_set_block_windows(info->node, block_windows);
+			break;
+		case FBIOPUT_OSD_BLOCK_MODE:
+			osddev_set_block_mode(info->node, block_mode);
+			break;
+		case FBIOGET_OSD_BLOCK_MODE:
+			osddev_get_block_mode(info->node, &block_mode);
+			copy_to_user(argp, &block_mode, sizeof(u32));
+			break;
+		case FBIOGET_OSD_FREE_SCALE_AXIS:
+			osddev_get_free_scale_axis(info->node, &osd_axis[0], &osd_axis[1], &osd_axis[2], &osd_axis[3]);
+			copy_to_user(argp, &osd_axis, 4 * sizeof(s32));
+			break;
+		case FBIOPUT_OSD_FREE_SCALE_AXIS:
+			osddev_set_free_scale_axis(info->node, osd_axis[0], osd_axis[1], osd_axis[2], osd_axis[3]);
+			break;
+
+		default:
+			break;
     	}
 
    	mutex_unlock(&fbdev->lock);
@@ -686,6 +738,91 @@ static ssize_t show_enable_key_onhold(struct device *device, struct device_attri
 	return snprintf(buf, PAGE_SIZE, (fbdev->enable_key_flag & KEYCOLOR_FLAG_ONHOLD) ? "1\n" : "0\n");
 }
 
+
+static int parse_para(const char *para, int para_num, int *result)
+{
+	char *endp;
+	const char *startp = para;
+	int *out = result;
+	int len = 0, count = 0;
+
+	if (!startp)
+		return 0;
+
+	len = strlen(startp);
+
+	do {
+		while (startp && (isspace(*startp) || !isgraph(*startp)) && len) {
+			startp++;
+			len--;
+		}
+
+		if (len == 0)
+			break;
+
+		*out++ = simple_strtol(startp, &endp, 0);
+
+		len -= endp - startp;
+		startp = endp;
+		count++;
+
+	} while ((endp) && (count < para_num) && (len > 0));
+
+	return count;
+}
+
+static ssize_t show_free_scale_axis(struct device *device, struct device_attribute *attr,
+			 char *buf)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	int x, y, w, h;
+
+	osddev_get_free_scale_axis(fb_info->node, &x, &y, &w, &h);
+
+    return snprintf(buf, PAGE_SIZE, "%d %d %d %d\n", x, y, w, h);
+}
+
+static ssize_t store_free_scale_axis(struct device *device, struct device_attribute *attr,
+			 const char *buf, size_t count)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	int parsed[4];
+
+	if (likely(parse_para(buf, 4, parsed) == 4)) {
+		osddev_set_free_scale_axis(fb_info->node, parsed[0], parsed[1], parsed[2], parsed[3]);
+	} else {
+		amlog_level(LOG_LEVEL_HIGH, "set free scale axis error\n");
+	}
+
+	return count;
+}
+
+static ssize_t show_scale_axis(struct device *device, struct device_attribute *attr,
+			 char *buf)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	int x0, y0, x1, y1;
+
+	osddev_get_scale_axis(fb_info->node, &x0, &y0, &x1, &y1);
+
+    return snprintf(buf, PAGE_SIZE, "%d %d %d %d\n", x0, y0, x1, y1);
+}
+
+static ssize_t store_scale_axis(struct device *device, struct device_attribute *attr,
+			 const char *buf, size_t count)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	int parsed[4];
+
+	if (likely(parse_para(buf, 4, parsed) == 4)) {
+		osddev_set_scale_axis(fb_info->node, parsed[0], parsed[1], parsed[2], parsed[3]);
+	} else {
+		amlog_level(LOG_LEVEL_HIGH, "set scale axis error\n");
+	}
+
+	return count;
+}
+
 static ssize_t store_scale_width(struct device *device, struct device_attribute *attr,
 			 const char *buf, size_t count)
 {
@@ -697,6 +834,7 @@ static ssize_t store_scale_width(struct device *device, struct device_attribute 
 		return err;
 	return count;
 }
+
 static ssize_t store_scale_height(struct device *device, struct device_attribute *attr,
 			 const char *buf, size_t count)
 {
@@ -762,17 +900,72 @@ static ssize_t show_order(struct device *device, struct device_attribute *attr,
 		return err;
 	return snprintf(buf, PAGE_SIZE, "order:[0x%x]\n",fbdev->order);
 }
+
+static ssize_t show_block_windows(struct device *device, struct device_attribute *attr,
+			 char *buf)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	u32 wins[8];
+
+	osddev_get_block_windows(fb_info->node, wins);
+
+    return snprintf(buf, PAGE_SIZE, "0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x\n", 
+			wins[0], wins[1], wins[2], wins[3], wins[4], wins[5], wins[6], wins[7]);
+}
+
+static ssize_t store_block_windows(struct device *device, struct device_attribute *attr,
+			 const char *buf, size_t count)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	int parsed[8];
+
+	if (likely(parse_para(buf, 8, parsed) == 8)) {
+		osddev_set_block_windows(fb_info->node, parsed);
+	} else {
+		amlog_level(LOG_LEVEL_HIGH, "set block windows error\n");
+	}
+
+	return count;
+}
+
+static ssize_t show_block_mode(struct device *device, struct device_attribute *attr,
+			 char *buf)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	u32 mode;
+
+	osddev_get_block_mode(fb_info->node, &mode);
+
+    return snprintf(buf, PAGE_SIZE, "0x%x\n", mode);
+}
+
+static ssize_t store_block_mode(struct device *device, struct device_attribute *attr,
+			 const char *buf, size_t count)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	u32 mode;
+
+	mode = simple_strtoul(buf, NULL, 0);
+	osddev_set_block_mode(fb_info->node, mode);
+
+	return count;
+}
+
 static struct device_attribute osd_attrs[] = {
 	__ATTR(scale, S_IRUGO|S_IWUSR, show_scale, store_scale),
 	__ATTR(order, S_IRUGO|S_IWUSR, show_order, store_order),	
 	__ATTR(enable_3d, S_IRUGO|S_IWUSR, show_enable_3d, store_enable_3d),
 	__ATTR(preblend_enable,S_IRUGO|S_IWUSR, show_preblend_enable, store_preblend_enable),
 	__ATTR(free_scale, S_IRUGO|S_IWUSR, NULL, store_free_scale),
+	__ATTR(scale_axis, S_IRUGO|S_IWUSR, show_scale_axis, store_scale_axis),
 	__ATTR(scale_width, S_IRUGO|S_IWUSR, NULL, store_scale_width),
 	__ATTR(scale_height, S_IRUGO|S_IWUSR, NULL, store_scale_height),
     __ATTR(color_key, S_IRUGO|S_IWUSR, show_color_key, store_color_key),
     __ATTR(enable_key, S_IRUGO|S_IWUSR, show_enable_key, store_enable_key),
     __ATTR(enable_key_onhold, S_IRUGO|S_IWUSR, show_enable_key_onhold, store_enable_key_onhold),
+	__ATTR(block_windows, S_IRUGO|S_IWUSR, show_block_windows, store_block_windows),
+	__ATTR(block_mode, S_IRUGO|S_IWUSR, show_block_mode, store_block_mode),
+	__ATTR(free_scale_axis, S_IRUGO|S_IWUSR, show_free_scale_axis, store_free_scale_axis),
 };		
 
 #ifdef  CONFIG_PM
@@ -814,7 +1007,37 @@ static void osd_late_resume(struct early_suspend *h)
     osd_resume((struct platform_device *)h->param);
 }
 #endif
-
+#ifdef CONFIG_FB_MULTI_OUTPUT_MODE
+static int screen_width=0;
+static int screen_height=0;
+int  __init  resolution_setup(char *str)
+{
+    char *options;
+    if(NULL==str)
+	  {
+		    printk("resolution string erro\n");
+		    return -EINVAL;
+	  } 
+	  printk("resolution string = %s\n", str);
+	  
+	  if((options = strchr(str,',')) != NULL)
+	  	*(options++) = 0;
+	  else
+	  	return -EINVAL;
+//	  printk("width =%s ,height=%s\n",str,options);
+	  screen_width = 	simple_strtoul(str, NULL, 0);
+	  screen_height = simple_strtoul(options, NULL, 0);	
+    printk("screen_height = %d ,screen_width = %d\n" ,screen_height,screen_width);
+	  if((screen_height > 1080)||(screen_width > 1920))
+	  {	
+	      screen_height = 0;
+	  	  screen_width = 0;
+	  }	
+	  return 0;
+	
+}
+__setup("resolution_size=",resolution_setup);
+#endif 
 static int __init
 osd_probe(struct platform_device *pdev)
 {
@@ -924,6 +1147,40 @@ osd_probe(struct platform_device *pdev)
 		} else {
 			amlog_level(LOG_LEVEL_HIGH,"---------------clear framebuffer%d memory  \r\n",index);
 			memset((char*)fbdev->fb_mem_vaddr, 0, fbdev->fb_len);	
+			#ifdef CONFIG_FB_MULTI_OUTPUT_MODE
+			static  para_info_outputmode_osd_t output_osd[outputmode_num]={
+			{"480i",CONFIG_FB_OSD1_480_DEFAULT_WIDTH, CONFIG_FB_OSD1_480_DEFAULT_HEIGHT, CONFIG_FB_OSD1_480_DEFAULT_WIDTH_VIRTUAL, CONFIG_FB_OSD1_480_DEFAULT_HEIGHT_VIRTUAL},
+			{"480p",CONFIG_FB_OSD1_480_DEFAULT_WIDTH, CONFIG_FB_OSD1_480_DEFAULT_HEIGHT, CONFIG_FB_OSD1_480_DEFAULT_WIDTH_VIRTUAL, CONFIG_FB_OSD1_480_DEFAULT_HEIGHT_VIRTUAL},
+			{"576i",CONFIG_FB_OSD1_576_DEFAULT_WIDTH, CONFIG_FB_OSD1_576_DEFAULT_HEIGHT, CONFIG_FB_OSD1_576_DEFAULT_WIDTH_VIRTUAL, CONFIG_FB_OSD1_576_DEFAULT_HEIGHT_VIRTUAL},
+			{"576p",CONFIG_FB_OSD1_576_DEFAULT_WIDTH, CONFIG_FB_OSD1_576_DEFAULT_HEIGHT, CONFIG_FB_OSD1_576_DEFAULT_WIDTH_VIRTUAL, CONFIG_FB_OSD1_576_DEFAULT_HEIGHT_VIRTUAL},
+			{"720p",CONFIG_FB_OSD1_720_DEFAULT_WIDTH, CONFIG_FB_OSD1_720_DEFAULT_HEIGHT, CONFIG_FB_OSD1_720_DEFAULT_WIDTH_VIRTUAL, CONFIG_FB_OSD1_720_DEFAULT_HEIGHT_VIRTUAL},
+			{"1080i",CONFIG_FB_OSD1_1080_DEFAULT_WIDTH, CONFIG_FB_OSD1_1080_DEFAULT_HEIGHT, CONFIG_FB_OSD1_1080_DEFAULT_WIDTH_VIRTUAL, CONFIG_FB_OSD1_1080_DEFAULT_HEIGHT_VIRTUAL},
+			{"1080p",CONFIG_FB_OSD1_1080_DEFAULT_WIDTH, CONFIG_FB_OSD1_1080_DEFAULT_HEIGHT, CONFIG_FB_OSD1_1080_DEFAULT_WIDTH_VIRTUAL, CONFIG_FB_OSD1_1080_DEFAULT_HEIGHT_VIRTUAL},
+			};
+			char *para=outputmode;
+			if(para)
+			{
+			    for(i=0;i<outputmode_num;i++)
+					{
+					    if(strcmp(output_osd[i].name,para)==0)
+						  {
+						       mydef_var[index].xres=output_osd[i].xres;
+						       mydef_var[index].yres=output_osd[i].yres;	
+						       mydef_var[index].xres_virtual=output_osd[i].xres_virtual;
+						       mydef_var[index].yres_virtual=output_osd[i].yres_virtual;//logo always use double buffer
+						       if((screen_width != 0) && (screen_height !=0))
+						       {
+					             mydef_var[index].xres=screen_width;
+						           mydef_var[index].yres=screen_height;	
+						           mydef_var[index].xres_virtual=screen_width;
+						           mydef_var[index].yres_virtual=screen_height*2;//logo always use double buffer
+					         }		
+						  }
+					}
+				}
+
+			#endif
+			
 		}
 	
 		_fbdev_set_default(fbdev,index);

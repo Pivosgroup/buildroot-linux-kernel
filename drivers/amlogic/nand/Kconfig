@@ -1,17 +1,28 @@
 #
-# Sensor device configuration
+# Amlogic NAND device configuration
 #
 
-menu "AMLOGIC NAND Flash  support"
+menu "AMLOGIC NAND Flash support"
 
 config AM_NAND
 	bool "Amlogic NAND FLASH SUPPORT"
-	depends on ARCH_MESON || ARCH_MESON2
+	    depends on ARCH_MESON
 	default y
-	select MTD_NAND 
-	select MTD_PARTITIONS
-	select MTD_BLOCK
-	select MTD_CHAR
-	help
+        select MTD_NAND 
+	    select MTD_PARTITIONS
+        select MTD_BLOCK
+        select MTD_CHAR
+        help
 		This is Meson_M1 nand suport
+
+config AML_NAND_ENV
+	bool "use aml nand env (/dev/nand_env)"
+	    depends on AM_NAND
+	default y
+config AML_NFTL
+	tristate "Amlogic NFTL (NAND Flash Translation Layer) support"
+	depends on AM_NAND
+	default m
+        help
+		This is aml nftl suport
 endmenu

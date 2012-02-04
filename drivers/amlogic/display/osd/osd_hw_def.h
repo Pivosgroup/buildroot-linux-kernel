@@ -11,8 +11,65 @@
 **************************************************************************/
 #define	LEFT		0
 #define	RIGHT		1
-#define  	OSD_RELATIVE_BITS				0x333f0
-#define    HW_OSD_COUNT					2
+#define	OSD_RELATIVE_BITS				0x333f0
+#define HW_OSD_COUNT					2
+#define HW_OSD_BLOCK_COUNT				4
+#define HW_OSD_BLOCK_REG_COUNT			(HW_OSD_BLOCK_COUNT*2)
+#define HW_OSD_BLOCK_ENABLE_MASK		0x000F
+#define HW_OSD_BLOCK_ENABLE_0			0x0001 /* osd blk0 enable */
+#define HW_OSD_BLOCK_ENABLE_1			0x0002 /* osd blk1 enable */
+#define HW_OSD_BLOCK_ENABLE_2			0x0004 /* osd blk2 enable */
+#define HW_OSD_BLOCK_ENABLE_3			0x0008 /* osd blk3 enable */
+#define HW_OSD_BLOCK_LAYOUT_MASK		0xFFFF0000
+/* 
+ * osd block layout horizontal: 
+ * -------------
+ * |     0     |
+ * |-----------|
+ * |     1     |
+ * |-----------|
+ * |     2     |
+ * |-----------|
+ * |     3     |
+ * -------------
+ */
+#define HW_OSD_BLOCK_LAYOUT_HORIZONTAL 0x10000
+/* 
+ * osd block layout vertical: 
+ * -------------
+ * |  |  |  |  |
+ * |  |  |  |  |
+ * | 0| 1| 2| 3|
+ * |  |  |  |  |
+ * |  |  |  |  |
+ * -------------
+ *
+ * NOTE: 
+ *     In this mode, just one of the OSD blocks can be enabled at the same time.
+ *     Because the blocks must be sequenced in vertical display order if they
+ *     want to be both enabled at the same time.
+ */
+#define HW_OSD_BLOCK_LAYOUT_VERTICAL 0x20000
+/* 
+ * osd block layout grid: 
+ * -------------
+ * |     |     |
+ * |  0  |  1  |
+ * |-----|-----|
+ * |     |     |
+ * |  2  |  3  |
+ * -------------
+ *
+ * NOTE: 
+ *     In this mode, Block0 and Block1 cannot be enabled at the same time.
+ *     Neither can Block2 and Block3.
+ */
+#define HW_OSD_BLOCK_LAYOUT_GRID 0x30000
+/*
+ * osd block layout customer, need setting block_windows
+ */
+#define HW_OSD_BLOCK_LAYOUT_CUSTOMER 0xFFFF0000
+
 
 /************************************************************************
 **
@@ -50,6 +107,7 @@ typedef  pandata_t  dispdata_t;
 typedef  struct {
 	pandata_t 		pandata[HW_OSD_COUNT];
 	dispdata_t		dispdata[HW_OSD_COUNT];
+	pandata_t 		scaledata[HW_OSD_COUNT];
 	u32  			gbl_alpha[HW_OSD_COUNT];
 	u32  			color_key[HW_OSD_COUNT];
 	u32				color_key_enable[HW_OSD_COUNT];
@@ -67,6 +125,9 @@ typedef  struct {
 	osd_3d_mode_t	mode_3d[HW_OSD_COUNT];
 	u32			updated[HW_OSD_COUNT];	
 	hw_list_t	 	reg[HW_OSD_COUNT][HW_REG_INDEX_MAX];
+	u32 			block_windows[HW_OSD_COUNT][HW_OSD_BLOCK_REG_COUNT];
+	u32 			block_mode[HW_OSD_COUNT];
+	pandata_t 		free_scale_data[HW_OSD_COUNT];
 }hw_para_t;
 
 /************************************************************************

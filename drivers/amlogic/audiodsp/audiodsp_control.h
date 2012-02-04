@@ -26,10 +26,9 @@ char *data;
 #define AUDIODSP_SYNC_AUDIO_START					_IOW('a',8,unsigned long)
 #define AUDIODSP_SYNC_AUDIO_TSTAMP_DISCONTINUITY	_IOW('a',9,unsigned long)
 #define AUDIODSP_SYNC_SET_APTS						_IOW('a',10,unsigned long)
-
-#ifdef ENABLE_WAIT_FORMAT
 #define AUDIODSP_WAIT_FORMAT						_IOW('a',11,long)
-#endif
+
+#define AUDIODSP_DROP_PCMDATA					_IOW('a',12, unsigned long)
 
 
 #define AUDIODSP_GET_CHANNELS_NUM					_IOR('r',1,long)
@@ -54,5 +53,6 @@ char *data;
 #define MCODEC_FMT_PCM      (1<<10)
 #define MCODEC_FMT_WMAPRO     (1<<11)
 #define MCODEC_FMT_ALAC     (1<<12)
+#define MCODEC_FMT_APE     (1<<15)
 #endif
 

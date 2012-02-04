@@ -55,7 +55,11 @@ static struct fb_var_screeninfo mydef_var[] = {
 #endif
 	.xoffset         = 0,
 	.yoffset         = 0,
-	.bits_per_pixel  = 16,
+#if defined(CONFIG_FB_OSD1_DEFAULT_BITS_PER_PIXEL)
+	.bits_per_pixel  = CONFIG_FB_OSD1_DEFAULT_BITS_PER_PIXEL,
+#else
+	.bits_per_pixel = 16,
+#endif
 	.grayscale       = 0,
 	.red             = {0, 0, 0},
 	.green           = {0, 0, 0},
@@ -104,7 +108,11 @@ static struct fb_var_screeninfo mydef_var[] = {
 #endif
 	.xoffset         = 0,
 	.yoffset         = 0,
-	.bits_per_pixel  = 32,
+#if defined(CONFIG_FB_OSD2_DEFAULT_BITS_PER_PIXEL)
+	.bits_per_pixel  = CONFIG_FB_OSD2_DEFAULT_BITS_PER_PIXEL,
+#else
+	.bits_per_pixel = 32,
+#endif
 	.grayscale       = 0,
 	.red             = {0, 0, 0},  //leave as it is ,set by system.
 	.green           = {0, 0, 0},
@@ -158,10 +166,28 @@ typedef  struct {
 #define  FBIOPUT_OSD_FREE_SCALE_HEIGHT	0x4506
 #define  FBIOPUT_OSD_ORDER  		0x4507
 #define  FBIOGET_OSD_ORDER  		0x4508
+#define  FBIOGET_OSD_SCALE_AXIS		0x4509
+#define  FBIOPUT_OSD_SCALE_AXIS		0x450a
+#define  FBIOGET_OSD_BLOCK_WINDOWS	0x450b
+#define  FBIOPUT_OSD_BLOCK_WINDOWS	0x450c
+#define  FBIOGET_OSD_BLOCK_MODE		0x450d
+#define  FBIOPUT_OSD_BLOCK_MODE		0x450e
+#define  FBIOGET_OSD_FREE_SCALE_AXIS 0x450f
+#define  FBIOPUT_OSD_FREE_SCALE_AXIS 0x4510
 
 
 
-
+#ifdef CONFIG_FB_MULTI_OUTPUT_MODE
+typedef  struct {
+	char *name;	
+	__u32   xres;
+	__u32   yres;
+	__u32   xres_virtual;
+	__u32   yres_virtual;
+}para_info_outputmode_osd_t;
+#define outputmode_num 7
+extern char outputmode[];
+#endif
 
 
 

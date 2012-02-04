@@ -177,19 +177,30 @@ static struct clocksource clocksource_timer_e = {
 	.rating = 300,
 	.read   = cycle_read_timerE,
 	.mask   = CLOCKSOURCE_MASK(24),
-	.shift  = 20,
 	.flags  = CLOCK_SOURCE_IS_CONTINUOUS,
 };
 
 static void __init meson_clocksource_init(void)
 {
 	CLEAR_CBUS_REG_MASK(ISA_TIMER_MUX, TIMER_E_INPUT_MASK);
-	SET_CBUS_REG_MASK(ISA_TIMER_MUX, TIMERE_UNIT_1us << TIMER_E_INPUT_BIT);
+	SET_CBUS_REG_MASK(ISA_TIMER_MUX, TIMERE_UNIT_1ms << TIMER_E_INPUT_BIT);
 	WRITE_CBUS_REG(ISA_TIMERE, 0);
 
+	clocksource_timer_e.shift = clocksource_hz2shift(24, 1000);
 	clocksource_timer_e.mult =
-		clocksource_khz2mult(1000, clocksource_timer_e.shift);
+		clocksource_khz2mult(1, clocksource_timer_e.shift);
 	clocksource_register(&clocksource_timer_e);
+}
+
+/*
+ * sched_clock()
+ */
+unsigned long long sched_clock(void)
+{
+	cycle_t cyc = cycle_read_timerE(NULL);
+	struct clocksource *cs = &clocksource_timer_e;
+
+	return clocksource_cyc2ns(cyc, cs->mult, cs->shift);
 }
 
 /********** Clock Event Device, Timer-AC *********/

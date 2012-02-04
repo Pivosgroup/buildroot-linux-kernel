@@ -37,7 +37,13 @@ config AML_TCON_W7
 	depends on  AM_TCON_OUTPUT
 	help  
 		W7 LCD panel module
-
+		
+config AML_TCON_W7CPT
+	tristate "W7CPT panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		W7CPT LCD panel module
+		
 config AML_TCON_W7NEW
 	tristate "W7NEW panel driver"
 	depends on  AM_TCON_OUTPUT

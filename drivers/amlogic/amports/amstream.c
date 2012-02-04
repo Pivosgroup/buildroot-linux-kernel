@@ -29,6 +29,7 @@
 #include <linux/mm.h>
 #include <linux/major.h>
 #include <linux/sched.h>
+#include <linux/interrupt.h>
 #include <linux/amports/amstream.h>
 #include <linux/amports/vformat.h>
 #include <linux/amports/aformat.h>
@@ -460,6 +461,7 @@ static int sub_port_reset(stream_port_t *port, struct stream_buf_s * pbuf)
 
     if (port->sid == 0xffff) { // es sub
         esparser_sub_reset();
+        pbuf->flag |= BUF_FLAG_PARSER;
     }
 
     pbuf->flag |= BUF_FLAG_IN_USE;
@@ -917,7 +919,7 @@ static int amstream_release(struct inode *inode, struct file *file)
     }
     this->flag = 0;
 
-    timestamp_pcrscr_set(0);
+    ///timestamp_pcrscr_set(0);
 
 #ifdef DATA_DEBUG
     if (debug_filp) {
@@ -1256,7 +1258,25 @@ static int amstream_ioctl(struct inode *inode, struct file *file,
     case AMSTREAM_IOC_PCRSCR:
         *((u32 *)arg) = timestamp_pcrscr_get();
         break;
+		
+	case AMSTREAM_IOC_SUB_NUM:
+        *((u32 *)arg) = psparser_get_sub_found_num();
+        break;
 
+	case AMSTREAM_IOC_SUB_INFO:
+		if (arg > 0) {
+			struct subtitle_info msub_info[MAX_SUB_NUM];
+			struct subtitle_info *psub_info[MAX_SUB_NUM];
+			int i;
+			for (i = 0; i < MAX_SUB_NUM; i ++) {
+				psub_info[i] = &msub_info[i];
+			}					
+			r = psparser_get_sub_info(psub_info);
+			if(r == 0) {
+				copy_to_user((void __user *)arg, msub_info, sizeof(struct subtitle_info) * MAX_SUB_NUM);
+			}
+		}
+		break;
     default:
         r = -ENOIOCTLCMD;
     }
@@ -1366,6 +1386,7 @@ static ssize_t bufs_show(struct class *class, struct class_attribute *attr, char
             pbuf += sprintf(pbuf, "\tbuf regbase:%#lx\n", p->reg_base);
             pbuf += sprintf(pbuf, "\tbuf level:%#x\n", stbuf_level(p));
             pbuf += sprintf(pbuf, "\tbuf space:%#x\n", stbuf_space(p));
+			pbuf += sprintf(pbuf, "\tbuf read pointer:%#x\n", stbuf_rp(p));
         } else {
             u32 sub_wp, sub_rp, data_size;
             sub_wp = stbuf_sub_wp_get();
@@ -1389,15 +1410,111 @@ static ssize_t bufs_show(struct class *class, struct class_attribute *attr, char
     return pbuf - buf;
 }
 
+#include <linux/string.h>
+
+//just one command,can retry if return value <0;
+#define MAX_CMD_PACKET 64
+static char amutils_cmd[MAX_CMD_PACKET]; 
+static int amutils_enable = 0; //default is disable
+
+static DEFINE_MUTEX(amutils_barrier_mutex);
+
+static ssize_t show_cmd(struct class *class,
+                          struct class_attribute *attr,
+                          char *buf)
+{
+	int r = 0;
+	if(mutex_trylock(&amutils_barrier_mutex)){
+		if(strlen(amutils_cmd)>1){
+			r = sprintf(buf, "%s\n", amutils_cmd);	
+			//clear
+			memset(amutils_cmd,0,MAX_CMD_PACKET);
+		}	
+		mutex_unlock(&amutils_barrier_mutex);
+	}
+    return r;
+}
+
+static ssize_t store_cmd(struct class *class,
+                           struct class_attribute *attr,
+                           const char *buf,
+                           size_t size)
+{
+	if(amutils_enable ==0){
+		return -EINVAL;
+	}
+    char tmp[MAX_CMD_PACKET];;
+    ssize_t r;
+	if(size>MAX_CMD_PACKET){
+		return -EINVAL;
+	}
+	memset(tmp,0,MAX_CMD_PACKET);
+    r = sscanf(buf, "%s", tmp);
+    if ((r <= 0)) {
+        return -EINVAL;
+    }
+	printk("amutils cmd is %s\n", tmp);
+	if(mutex_trylock(&amutils_barrier_mutex)){
+		strncpy(amutils_cmd,tmp,MAX_CMD_PACKET);
+		mutex_unlock(&amutils_barrier_mutex);
+		return size;
+	}else{
+		printk("amutils can't get write lock,drop this cmd\n");
+		return -EINVAL;	
+	}
+}
+
+static ssize_t show_enable(struct class *class,
+                           struct class_attribute *attr,
+                           char *buf)
+{
+    if (amutils_enable) {
+        return sprintf(buf, "1: enabled\n");
+    }
+
+    return sprintf(buf, "0: disabled\n");
+}
+
+static ssize_t store_enable(struct class *class,
+                            struct class_attribute *attr,
+                            const char *buf,
+                            size_t size)
+{
+    unsigned mode;
+    ssize_t r;
+
+    r = sscanf(buf, "%d", &mode);
+    if ((r != 1)) {
+        return -EINVAL;
+    }
+    printk("amutils enable is %d\n", mode);
+    amutils_enable = mode ? 1 : 0;
+
+    return size;
+}
+
+static ssize_t vcodec_profile_show(struct class *class, 
+								   struct class_attribute *attr, 
+								   const char *buf, 
+								   size_t size)
+{
+	return vcodec_profile_read(buf,size);
+}
+
+
 static struct class_attribute amstream_class_attrs[] = {
     __ATTR_RO(ports),
     __ATTR_RO(bufs),
+    __ATTR_RO(vcodec_profile),   
+	__ATTR(amutils_enable,  S_IRUGO | S_IWUSR, show_enable,  store_enable),
+    __ATTR(amutils_cmd,     S_IRUGO | S_IWUSR, show_cmd,  store_cmd),   
     __ATTR_NULL
 };
 static struct class amstream_class = {
         .name = "amstream",
         .class_attrs = amstream_class_attrs,
     };
+
 static int  amstream_probe(struct platform_device *pdev)
 {
     int i;

@@ -17,26 +17,21 @@
 
 /* Standard Liniux Headers */
 #include <linux/module.h>
+#include <linux/cdev.h>
 #include <linux/i2c.h>
+#include <linux/kernel.h>
+#include <linux/slab.h>
+#include <linux/fs.h>
+#include <linux/device.h>
 
 /* Amlogic Headers */
 #include <linux/tvin/tvin.h>
 
 /* Local Headers */
-#include "tvin_tuner_device.h"
+//#include "tvin_tuner_device.h"
 
-typedef struct fq1216me_device_s {
-    struct class            *clsp;
-    dev_t                   devno;
-    struct cdev             cdev;
 
-	struct i2c_adapter      *adap;
-    struct i2c_client       *tuner;
-    struct i2c_client       *demod;
 
-    /* reserved for futuer abstract */
-    struct tvin_tuner_ops_s *tops;
-} fq1216me_device_s;
 
 
 #endif //__TVIN_TUNER_FQ1216ME_H

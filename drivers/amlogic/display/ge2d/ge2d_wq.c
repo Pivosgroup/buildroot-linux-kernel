@@ -118,18 +118,24 @@ static int ge2d_process_work_queue(ge2d_context_t *  wq)
             	ge2d_set_cmd(&pitem->cmd);//set START_FLAG in this func.
       		//remove item
       		block_mode=pitem->cmd.wait_done_flag;
-      		spin_lock(&wq->lock);
-		pos=pos->next;	
-		list_move_tail(&pitem->list,&wq->free_queue);
-		spin_unlock(&wq->lock);
+      		//spin_lock(&wq->lock);
+		//pos=pos->next;	
+		//list_move_tail(&pitem->list,&wq->free_queue);
+		//spin_unlock(&wq->lock);
 		
 		while(ge2d_is_busy())
 		interruptible_sleep_on_timeout(&ge2d_manager.event.cmd_complete, 1);
 		//if block mode (cmd)
 		if(block_mode)
 		{
+			pitem->cmd.wait_done_flag = 0;
 			wake_up_interruptible(&wq->cmd_complete);
 		}
+		spin_lock(&wq->lock);
+		pos = pos->next;
+		list_move_tail(&pitem->list,&wq->free_queue);
+		spin_unlock(&wq->lock);
+
 		pitem=(ge2d_queue_item_t *)pos;
 	}while(pos!=head);
 	ge2d_manager.last_wq=wq;
@@ -232,7 +238,8 @@ int ge2d_wq_add_work(ge2d_context_t *wq)
 	//add block mode   if()
 	if(pitem->cmd.wait_done_flag)
 	{
-		interruptible_sleep_on(&wq->cmd_complete);
+		wait_event_interruptible(wq->cmd_complete, pitem->cmd.wait_done_flag==0);
+		//interruptible_sleep_on(&wq->cmd_complete);
 	}
 	return 0;
 error:

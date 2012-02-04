@@ -18,6 +18,7 @@
 #include <asm/div64.h>
 #include "../aml/aml_audio_hw.h"
 #include "rt5621.h"
+#include "../aml/aml_pcm.h"
 
 #if REALTEK_HWDEP
 
@@ -1816,6 +1817,8 @@ static int rt5621_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *
         pr_err("failed to initialise rt5621\n");
 
 	rt5621_dai.ac97_pdata = i2c->dev.platform_data;
+	
+	aml_soc_platform.pcm_pdata = i2c->dev.platform_data;
 
     return ret;
 }

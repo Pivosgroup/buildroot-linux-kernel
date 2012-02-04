@@ -13,12 +13,12 @@ static u32 dvbc_get_ch_power(void)
 
     tmp = apb_read_reg(0, 0x09c);
 
-    ad_power = tmp>>22&0x1ff;
-    agc_gain = tmp>>11&0x7ff;
+    ad_power = (tmp>>22)&0x1ff;
+    agc_gain = (tmp>>0)&0x7ff;
 
     ad_power = ad_power>>4;
     // ch_power = lookuptable(agc_gain) + ad_power; TODO
-    ch_power = ad_power;
+    ch_power = (ad_power & 0xffff) + ((agc_gain & 0xffff) << 16) ;
 
     return ch_power;
 }
@@ -58,7 +58,7 @@ static u32 dvbc_get_per(void)
     rs_packet_len = apb_read_reg(0, 0x10)&0xffff;
     rs_per = apb_read_reg(0, 0x18)>>16&0xffff;
 
-    // u32 acc_rs_per_times = apb_read_reg(0, 0xcc)&0xffff;
+    u32 acc_rs_per_times = apb_read_reg(0, 0xcc)&0xffff;
     //rs_per = rs_per / rs_packet_len;
     
     if(rs_packet_len == 0)
@@ -66,7 +66,8 @@ static u32 dvbc_get_per(void)
     else
 	rs_per = 10000 * rs_per / rs_packet_len;  // 1e-4
 
-    return rs_per;
+    //return rs_per;
+    return acc_rs_per_times;
 }
 
 static u32 dvbc_get_symb_rate(void)
@@ -113,11 +114,11 @@ static void dvbc_set_test_bus(u8 sel)
 
 void dvbc_get_test_out(u8 sel, u32 len, u32 *buf)
 {
-    int i;
+    int i, cnt;
 
     dvbc_set_test_bus(sel);
 
-    for (i=0; i<len-4; i++) {
+    for (i=0, cnt=0; i<len-4 && cnt<1000000; i++) {
 	buf[i] = apb_read_reg(0, 0xb0);
 	if (buf[i]>>11&1) {
 	    buf[i++] = apb_read_reg(0, 0xb0);
@@ -128,6 +129,8 @@ void dvbc_get_test_out(u8 sel, u32 len, u32 *buf)
 	else {
 	    i--;
 	}
+
+	cnt++;
     }
 }
 
@@ -240,6 +243,7 @@ static void dvbc_reg_initial(struct aml_demod_sta *demod_sta)
 	//apb_write_reg(0, 0x094, 0x7f800d2c); // AGC_CTRL  ALPS tuner
 	//apb_write_reg(0, 0x094, 0x7f80292c); // Pilips & maxlinear Tuner
 	apb_write_reg(0, 0x094, 0x7f802b3d);  // Pilips Tuner & maxlinear Tuner
+	//apb_write_reg(0, 0x094, 0x7f802b3a);  // Pilips Tuner & maxlinear Tuner
 	break;
     
     case 3 : // 128 QAM
@@ -275,7 +279,7 @@ static void dvbc_reg_initial(struct aml_demod_sta *demod_sta)
     }
     
     apb_write_reg(0, 0x00c, 0xfffffffe);  // adc_cnt, symb_cnt
-
+	
     if (clk_freq == 0)
         afifo_ctr = 0;
     else
@@ -293,10 +297,8 @@ static void dvbc_reg_initial(struct aml_demod_sta *demod_sta)
     // printk("phs_cfg = %x\n", phs_cfg);
     apb_write_reg(0, 0x024, 0x4c000000 | (phs_cfg&0x7fffff));  // PHS_OFFSET, IF offset, 
 
-    // apb_write_reg(0, 0x030, 0x046bf453);  // TIM_CTL0 start sweeping speed is 9,  fast timing sync speed * 2
-    apb_write_reg(0, 0x030, 0x035bf454);  // TIM_CTL0 start speed is 9,  fast speed * 2, fast search speed in multipath
-    // apb_write_reg(0, 0x030, 0x06aaebee);  // TIM_CTL0 start sweeping speed is 11,  fast timing sync
-    // apb_write_reg(0, 0x030, 0x046c7c00);  // TIM_CTL0 no sweeping
+    //apb_write_reg(0, 0x030, 0x035bf454);  // TIM_CTL0 start speed is 10,   fast search speed in multipath
+    apb_write_reg(0, 0x030, 0x011bf400);  // TIM_CTL0 start speed is 0,  when know symbol rate
 
     apb_write_reg(0, 0x034, ((adc_freq & 0xffff) << 16) | (symb_rate&0xffff) );
     
@@ -313,6 +315,7 @@ static void dvbc_reg_initial(struct aml_demod_sta *demod_sta)
     //apb_write_reg(0, 0x0c0, 0xffffff68); // threshold
     //apb_write_reg(0, 0x0c0, 0xffffff6f); // threshold
     //apb_write_reg(0, 0x0c0, 0xfffffd68); // threshold
+    //apb_write_reg(0, 0x0c0, 0xffffff68); // threshold
     apb_write_reg(0, 0x0c0, 0xffffff68); // threshold
 /************* hw state machine config **********/ 		
  		
@@ -339,7 +342,7 @@ static void dvbc_reg_initial(struct aml_demod_sta *demod_sta)
     if ((agc_mode&2)==0) // IF control
 	apb_write_reg(0, 0x094, apb_read_reg(0, 0x94) | (0x1 << 13));     // freeze rf agc
     
-    apb_write_reg(0, 0x094, 0x7f80292d);     // Maxlinear Tuner
+    //apb_write_reg(0, 0x094, 0x7f80292d);     // Maxlinear Tuner
 	              
     apb_write_reg(0, 0x098, 0x9fcc8190);  // AGC_IFGAIN_CTRL  
     //apb_write_reg(0, 0x0a0, 0x0e028c00);  // AGC_RFGAIN_CTRL 0x0e020800
@@ -369,6 +372,8 @@ int dvbc_set_ch(struct aml_demod_sta *demod_sta,
     u8  mode;
     u32 ch_freq;
 
+   printk("f=%d, s=%d, q=%d\n", demod_dvbc->ch_freq, demod_dvbc->symb_rate, demod_dvbc->mode);
+   
     mode      = demod_dvbc->mode;
     symb_rate = demod_dvbc->symb_rate;
     ch_freq   = demod_dvbc->ch_freq;
@@ -430,6 +435,7 @@ int dvbc_status(struct aml_demod_sta *demod_sta,
     demod_sts->symb_rate = dvbc_get_symb_rate();
     demod_sts->freq_off = dvbc_get_freq_off();
     demod_sts->dat0 = apb_read_reg(0, 0x28);
+  //  demod_sts->dat1 = tuner_get_ch_power(demod_i2c);
 
     return 0;
 }
@@ -497,3 +503,18 @@ void dvbc_isr(struct aml_demod_sta *demod_sta)
 	}
     }
 }
+
+int dvbc_isr_islock(void)
+{
+#define IN_SYNC4_MASK (0x80)
+
+    u32 stat, mask;
+
+    stat = apb_read_reg(0, 0xd4);
+    apb_write_reg(0, 0xd4, 0);
+    mask = apb_read_reg(0, 0xd0);
+    stat &= mask;
+
+    return ((stat&IN_SYNC4_MASK)==IN_SYNC4_MASK);
+}
+

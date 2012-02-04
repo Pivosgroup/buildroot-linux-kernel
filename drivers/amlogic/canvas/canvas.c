@@ -91,13 +91,10 @@ void canvas_copy(u32 src, u32 dst)
 {
     unsigned long addr;
     unsigned width, height, wrap, blkmode;
-    ulong flags;
 
     if ((src >= CANVAS_NUM) || (dst >= CANVAS_NUM))
         return;
 
-    spin_lock_irqsave(&lock, flags);
-    
     addr = canvasPool[src].addr;
     width = canvasPool[src].width;
     height = canvasPool[src].height;
@@ -126,8 +123,6 @@ void canvas_copy(u32 src, u32 dst)
     canvasPool[dst].wrap = wrap;
     canvasPool[dst].blkmode = blkmode;
 
-    spin_unlock_irqrestore(&lock, flags);
-    
     return;
 }
 EXPORT_SYMBOL(canvas_copy);

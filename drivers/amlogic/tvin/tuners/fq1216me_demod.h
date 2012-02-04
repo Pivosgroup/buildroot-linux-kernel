@@ -21,7 +21,9 @@
 /* Amlogic Headers */
 #include <linux/tvin/tvin.h>
 
-
+extern void fq1216me_set_demod_std(tuner_std_id ptstd);
+extern int fq1216me_set_demod(void);
+extern void fq1216me_get_afc(struct tuner_parm_s *ptp);
 
 
 #endif //__TVIN_TUNER_FQ1216ME_DEMOD_H

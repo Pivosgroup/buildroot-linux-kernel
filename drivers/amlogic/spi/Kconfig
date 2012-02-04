@@ -1,0 +1,17 @@
+#
+# Sensor device configuration
+#
+
+menu "AMLOGIC SPI Hardware bus support"
+
+
+config AMLOGIC_SPI_HW_MASTER
+	tristate "AMLOGIC SPI HARDWARE BUS MASTER SUPPORT"
+
+  select SPI
+	help
+		This is amlogic spi bus Hardware master suport
+		This driver can also be built as a module.  If so, the module
+		will be called spi-apollo.
+	  
+endmenu

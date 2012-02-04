@@ -12,7 +12,7 @@ obj-$(CONFIG_TVIN_DVIN) += tvin_dvin.o
 tvin_dvin-objs := dvin.o
 
 obj-$(CONFIG_TVIN_VDIN) += tvin_vdin.o
-tvin_vdin-objs := tvin_format_table.o vdin_vf.o vdin.o tvin_notifier.o vdin_ctl.o tvin_debug.o
+tvin_vdin-objs := tvin_format_table.o vdin_vf.o vdin.o tvin_notifier.o vdin_ctl.o
 
 obj-y += tuners/
 

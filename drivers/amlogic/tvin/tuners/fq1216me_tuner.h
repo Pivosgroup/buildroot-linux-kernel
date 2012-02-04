@@ -22,6 +22,19 @@
 /* Amlogic Headers */
 #include <linux/tvin/tvin.h>
 
+extern int fq1216me_set_tuner(void);
+extern void fq1216me_get_tuner(struct tuner_parm_s *ptp);
+extern void fq1216me_get_std(tuner_std_id *ptstd);
+
+extern void fq1216me_set_tuner_std(tuner_std_id ptstd);
+
+extern void fq1216me_get_freq(struct tuner_freq_s *ptf);
+
+extern void fq1216me_set_freq(struct tuner_freq_s tf);
+
+
+
+
 
 
 

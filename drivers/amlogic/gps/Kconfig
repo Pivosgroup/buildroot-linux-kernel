@@ -1,0 +1,11 @@
+
+menu "Amlogic GPS Support"
+
+config AR1520_GPS
+	bool "Atheros 1520 gps support"
+	depends on SERIAL_CORE
+	---help---
+	  This module adds support for gps adapters based on
+	  Atheros 1520 chipset.
+	  
+endmenu

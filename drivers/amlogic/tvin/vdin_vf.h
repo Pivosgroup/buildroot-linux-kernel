@@ -39,12 +39,11 @@ vframe_t *vfq_pop(vfq_t *q);
 vframe_t *vfq_pop_newframe(void);
 vframe_t *vfq_pop_display(void);
 vframe_t *vfq_pop_recycle(void);
-
 void vdin_vf_init(void);
 
 
 void vdin_reg_vf_provider(void);
 void vdin_unreg_vf_provider(void);
-
+void vdin_notify_receiver(int type, void* data, void* private_data);
 #endif
 

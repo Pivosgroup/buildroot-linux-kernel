@@ -26,8 +26,10 @@
 #include <linux/i2c.h>
 #include <linux/platform_device.h>
 #include <linux/interrupt.h>
-#include <linux/errno.h>
 #include <asm/uaccess.h>
+#include <linux/sysctl.h>
+
+
 
 /* Amlogic Headers */
 #include <linux/tvin/tvin.h>
@@ -36,29 +38,34 @@
 #include "fq1216me.h"
 #include "fq1216me_tuner.h"
 #include "fq1216me_demod.h"
-#include "tvin_tuner_device.h"
 
 
-#define DEVICE_NAME "fq1216me"
-#define DRIVER_NAME "fq1216me"
-#define MODULE_NAME "fq1216me"
-#define CLASS_NAME  "fq1216me"
-#define DEVICE_COUNT    1
+#define TUNER_DEVICE_NAME "tuner_fq1216me"
 
 
+typedef struct fq1216me_device_s {
+    struct class            *clsp;
+    dev_t                   devno;
+    struct cdev             cdev;
+//	struct i2c_adapter      *adap;
+//    struct i2c_client       *tuner;
+//    struct i2c_client       *demod;
+
+    /* reserved for futuer abstract */
+    struct tvin_tuner_ops_s *tops;
+}fq1216me_device_t;
+
+
+static struct fq1216me_device_s *devp;
 
 static int fq1216me_open(struct inode *inode, struct file *file)
 {
-    struct fq1216me_device_s *devp;
-
+    struct fq1216me_device_s *devp_o;
+//    pr_info( "%s . \n", __FUNCTION__ );
     /* Get the per-device structure that contains this cdev */
-    devp = container_of(inode->i_cdev, struct fq1216me_device_s, cdev);
-    file->private_data = devp;
+    devp_o = container_of(inode->i_cdev, fq1216me_device_t, cdev);
+    file->private_data = devp_o;
 
-    /* @todo */
-    //fn(devp->adap, devp->tuenr);
-
-    printk(KERN_INFO "device opened ok.\n");
     return 0;
 }
 
@@ -66,18 +73,105 @@ static int fq1216me_open(struct inode *inode, struct file *file)
 
 static int fq1216me_release(struct inode *inode, struct file *file)
 {
-    /* @todo */
-    printk(KERN_INFO "device released ok.\n");
+
+    file->private_data = NULL;
+
+    //    pr_info( "%s . \n", __FUNCTION__ );
     return 0;
 }
 
-
-
 static int fq1216me_ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsigned long arg)
 {
-    /* @todo */
+    int ret = 0;
+    struct fq1216me_device_s *devp_c;
+    void __user *argp = (void __user *)arg;
 
-    return 0;
+	if (_IOC_TYPE(cmd) != TVIN_IOC_MAGIC) {
+		return -EINVAL;
+	}
+
+    devp_c = container_of(inode->i_cdev, fq1216me_device_t, cdev);
+//    pr_info("%s:  \n",__FUNCTION__);
+    switch (cmd)
+    {
+        case TVIN_IOC_G_TUNER_STD:
+            {
+                tuner_std_id std_id = 0;
+                fq1216me_get_std(&std_id);
+    		    if (copy_to_user((void __user *)arg, &std_id, sizeof(tuner_std_id)))
+    		    {
+                    pr_err("%s: TVIN_IOC_G_TUNER_STD para is error. \n " ,__FUNCTION__);
+                    ret = -EFAULT;
+    		    }
+//                pr_info("TVIN_IOC_G_TUNER_STD: %lx, \n", std_id);
+
+            }
+            break;
+        case TVIN_IOC_S_TUNER_STD:
+            {
+                tuner_std_id std_id = 0;
+                if (copy_from_user(&std_id, argp, sizeof(tuner_std_id)))
+                {
+                    pr_err("%s: TVIN_IOC_S_TUNER_STD para is error. \n ",__FUNCTION__);
+                    ret = -EFAULT;
+                    break;
+                }
+                fq1216me_set_tuner_std(std_id);
+                fq1216me_set_demod_std(std_id);
+    //            fq1216me_set_tuner();
+                fq1216me_set_demod();
+//                pr_info("TVIN_IOC_S_TUNER_STD \n");
+
+            }
+            break;
+        case TVIN_IOC_G_TUNER_FREQ:
+            {
+                struct tuner_freq_s tuner_freq = {0, 0};
+                fq1216me_get_freq(&tuner_freq);
+    		    if (copy_to_user((void __user *)arg, &tuner_freq, sizeof(struct tuner_freq_s)))
+    		    {
+                    pr_err("%s: TVIN_IOC_G_TUNER_FREQ para is error. \n " ,__FUNCTION__);
+                    ret = -EFAULT;
+    		    }
+//                pr_info(" TVIN_IOC_G_TUNER_FREQ: %d, \n", tuner_freq.freq);
+
+            }
+            break;
+        case TVIN_IOC_S_TUNER_FREQ:
+            {
+                struct tuner_freq_s tuner_freq = {0, 0};
+                if (copy_from_user(&tuner_freq, argp, sizeof(struct tuner_freq_s)))
+                {
+                    pr_err("%s: TVIN_IOC_S_TUNER_FREQ para is error. \n " ,__FUNCTION__);
+                    ret = -EFAULT;
+                    break;
+                }
+                fq1216me_set_freq(tuner_freq);
+                fq1216me_set_tuner();
+    //            fq1216me_set_demod();
+//            pr_info(" TVIN_IOC_S_TUNER_FREQ\n");
+
+            }
+            break;
+        case TVIN_IOC_G_TUNER_PARM:
+            {
+                struct tuner_parm_s tuner_parm = {0, 0, 0, 0, 0};
+                fq1216me_get_tuner(&tuner_parm);
+                fq1216me_get_afc(&tuner_parm);
+    		    if (copy_to_user((void __user *)arg, &tuner_parm, sizeof(struct tuner_parm_s)))
+    		    {
+                    pr_err("%s: TVIN_IOC_G_TUNER_PARM para is error. \n " ,__FUNCTION__);
+                    ret = -EFAULT;
+    		    }
+//                  pr_info(" TVIN_IOC_G_TUNER_PARM-- status: %d, \n", tuner_parm.if_status);
+            }
+            break;
+        default:
+            ret = -ENOIOCTLCMD;
+            break;
+    }
+
+    return ret;
 }
 
 static struct file_operations fq1216me_fops = {
@@ -88,32 +182,31 @@ static struct file_operations fq1216me_fops = {
 };
 
 
-static struct fq1216me_device_s * fq1216me_device_init(void)
+static int fq1216me_device_init(struct fq1216me_device_s *devp)
 {
-    int ret = 0;
-    struct fq1216me_device_s *devp;
+    int ret;
+    struct device *devp_;
 
     devp = kmalloc(sizeof(struct fq1216me_device_s), GFP_KERNEL);
     if (!devp)
     {
         printk(KERN_ERR "failed to allocate memory\n");
-        return NULL;
+        return -ENOMEM;
     }
 
-    ret = alloc_chrdev_region(&devp->devno, 0, 1, DEVICE_NAME);
+    ret = alloc_chrdev_region(&devp->devno, 0, 1, TUNER_DEVICE_NAME);
 	if (ret < 0) {
 		printk(KERN_ERR "failed to allocate major number\n");
         kfree(devp);
-		return NULL;
+		return -1;
 	}
-
-    devp->clsp = class_create(THIS_MODULE, CLASS_NAME);
+    devp->clsp = class_create(THIS_MODULE, TUNER_DEVICE_NAME);
     if (IS_ERR(devp->clsp))
     {
         unregister_chrdev_region(devp->devno, 1);
         kfree(devp);
         ret = (int)PTR_ERR(devp->clsp);
-        return NULL;
+        return -1;
     }
     cdev_init(&devp->cdev, &fq1216me_fops);
     devp->cdev.owner = THIS_MODULE;
@@ -123,74 +216,51 @@ static struct fq1216me_device_s * fq1216me_device_init(void)
         class_destroy(devp->clsp);
         unregister_chrdev_region(devp->devno, 1);
         kfree(devp);
-        return NULL;
+        return ret;
     }
-    device_create(devp->clsp, NULL, devp->devno, NULL, DEVICE_NAME);
-    return devp;
+    devp_ = device_create(devp->clsp, NULL, devp->devno , NULL, "tuner%d", 0);
+    if (IS_ERR(devp_)) {
+        pr_err("failed to create device node\n");
+        class_destroy(devp->clsp);
+        unregister_chrdev_region(devp->devno, 1);
+        kfree(devp);
+
+        /* @todo do with error */
+        return PTR_ERR(devp);;
+    }
+    return 0;
 }
 
 static void fq1216me_device_release(struct fq1216me_device_s *devp)
 {
+    cdev_del(&devp->cdev);
+    device_destroy(devp->clsp, devp->devno );
     cdev_del(&devp->cdev);
     class_destroy(devp->clsp);
     unregister_chrdev_region(devp->devno, 1);
     kfree(devp);
 }
 
-static struct i2c_board_info fq1216me_tuner_info = {
-    .type = "fq1216me-tuner"
-};
-
-static const unsigned short fq1216me_tuner_addrs[] = {
-    0xC0, 0xC2, 0xC4, 0xC6, I2C_CLIENT_END
-};
-
-static struct i2c_board_info fq1216me_demod_info = {
-    I2C_BOARD_INFO("fq1216me-demod", 0x84)
-};
 
 static int fq1216me_probe(struct platform_device *pdev)
 {
-    int ret = 0;
-    struct fq1216me_device_s * devp;
-    struct i2c_adapter *adapp;
+    int ret;
     int i2c_nr = 0;
-
-    devp = fq1216me_device_init();
-    if (!devp)
+    pr_info("%s: \n", __FUNCTION__);
+    ret = fq1216me_device_init(devp);
+    if (ret)
     {
-        pr_info("device init failed\n");
+        pr_info(" device init failed\n");
         return ret;
     }
 
-    /* @todo: adapter id can be got from platfrom_data by bsp */
-
-    adapp = i2c_get_adapter(i2c_nr);
-    if (!adapp){
-        printk(KERN_ERR "can't get i2c adapter %d.\n", i2c_nr);
-        fq1216me_device_release(devp);
-        return -1;
-    }
-
-    /* the tuner address may be one of the address list */
-    devp->tuner = i2c_new_probed_device(adapp, &fq1216me_tuner_info, fq1216me_tuner_addrs);
-    /* the demodulation only has fix address 0x84 in fq1216me */
-    devp->demod = i2c_new_device(adapp, &fq1216me_demod_info);
-    i2c_put_adapter(adapp);
-
-    /* set the platform data so used later */
-    platform_set_drvdata(pdev, devp);
-    printk(KERN_ERR "driver probed ok.\n");
-    return ret;
+    printk("fq1216me_probe ok.\n");
+    return 0;
 }
 
 static int fq1216me_remove(struct platform_device *pdev)
 {
-    struct fq1216me_device_s *devp;
 
-    devp = platform_get_drvdata(pdev);
-    i2c_unregister_device(devp->demod);
-    i2c_unregister_device(devp->tuner);
     fq1216me_device_release(devp);
     printk(KERN_ERR "driver removed ok.\n");
 
@@ -201,7 +271,7 @@ static struct platform_driver fq1216me_driver = {
     .probe      = fq1216me_probe,
     .remove     = fq1216me_remove,
     .driver     = {
-        .name   = DRIVER_NAME,
+        .name   = TUNER_DEVICE_NAME,
     }
 };
 
@@ -209,6 +279,7 @@ static struct platform_driver fq1216me_driver = {
 static int __init fq1216me_init(void)
 {
     int ret = 0;
+    pr_info( "%s . \n", __FUNCTION__ );
     ret = platform_driver_register(&fq1216me_driver);
     if (ret != 0) {
         printk(KERN_ERR "failed to register module, error %d\n", ret);
@@ -219,6 +290,8 @@ static int __init fq1216me_init(void)
 
 static void __exit fq1216me_exit(void)
 {
+    pr_info( "%s . \n", __FUNCTION__ );
+
     platform_driver_unregister(&fq1216me_driver);
 }
 
@@ -228,5 +301,4 @@ module_exit(fq1216me_exit);
 MODULE_DESCRIPTION("Amlogic FQ1216ME Driver");
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Bo Yang <bo.yang@amlogic.com>");
-
 

@@ -7,6 +7,7 @@
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
 #include <linux/workqueue.h>
+#include <linux/switch.h>
 
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -28,6 +29,7 @@
 
 #if HP_DET
 static struct timer_list timer;
+static struct switch_dev sdev;
 #endif
 
 static int aml_m1_hw_params(struct snd_pcm_substream *substream,
@@ -146,6 +148,7 @@ static void rt5621_hp_detect_queue(struct work_struct* work)
 	    switch_audio(1);
         snd_soc_jack_report(&hp_jack, SND_JACK_HEADSET, SND_JACK_HEADSET);
         hp_detect_flag = level;
+	switch_set_state(&sdev, 1);
     }else if(level != hp_detect_flag){ // AUX OUT
         printk("Headphone unpluged\n");
 	    snd_soc_dapm_enable_pin(codec, "Ext Spk");
@@ -154,7 +157,8 @@ static void rt5621_hp_detect_queue(struct work_struct* work)
         snd_soc_jack_report(&hp_jack, 0, SND_JACK_HEADSET);
         hp_detect_flag = level;
 	    switch_audio(0);
-    } 
+	switch_set_state(&sdev, 0);
+    }
 }
 
 static void rt5621_hp_detect_timer(unsigned long data)
@@ -190,6 +194,9 @@ static int aml_m1_codec_init(struct snd_soc_codec *codec)
     struct snd_soc_card *card = codec->socdev->card;
 
     int err;
+
+//    if ((rt5621_dai.ac97_pdata) && ((struct rt5621_platform_data *) (rt5621_dai.ac97_pdata))->mute_func)
+//        ((struct rt5621_platform_data *) (rt5621_dai.ac97_pdata))->mute_func(1);
 
     err = snd_soc_dapm_new_controls(codec, aml_m1_dapm_widgets, ARRAY_SIZE(aml_m1_dapm_widgets));
     if(err){
@@ -243,6 +250,10 @@ static int aml_m1_codec_init(struct snd_soc_codec *codec)
 
 //    snd_soc_dapm_sync(codec);
 	Init_Aux_Hp(codec);    
+
+//    if ((rt5621_dai.ac97_pdata) && ((struct rt5621_platform_data *) (rt5621_dai.ac97_pdata))->mute_func)
+//        ((struct rt5621_platform_data *) (rt5621_dai.ac97_pdata))->mute_func(0);
+	
     return 0;
 }
 
@@ -300,14 +311,24 @@ static int aml_m1_audio_probe(struct platform_device *pdev)
     ret = platform_device_add(aml_m1_snd_device);
     if (ret) {
         printk(KERN_ERR "ASoC: Platform device allocation failed\n");
-        goto error;
+        goto error2;
     }
 
     aml_m1_platform_device = platform_device_register_simple("aml_m1_codec", -1, NULL, 0);
+#if HP_DET
+			sdev.name = "h2w";//for report headphone to android
+			ret = switch_dev_register(&sdev);
+			if (ret < 0){
+				printk(KERN_ERR "ASoC: register switch dev failed\n");
+				goto error1;
+			}
+#endif
     return 0;
-error:
-    platform_device_put(aml_m1_snd_device);
-    return ret;
+error1:
+		platform_device_unregister(aml_m1_snd_device);
+error2:
+		platform_device_put(aml_m1_snd_device);
+		return ret;
 }
 
 static int aml_m1_audio_remove(struct platform_device *pdev)
@@ -316,7 +337,7 @@ static int aml_m1_audio_remove(struct platform_device *pdev)
 
 #if HP_DET
     del_timer_sync(&timer);
-    
+    switch_dev_unregister(&sdev);
 #endif
     platform_device_unregister(aml_m1_snd_device);
     return 0;

@@ -16,12 +16,72 @@
 #ifndef __TVIN_GLOBAL_H
 #define __TVIN_GLOBAL_H
 
+//#define VDIN_FIXED_FMT_TEST
+
 // ***************************************************************************
 // *** enum definitions *********************************************
 // ***************************************************************************
+
 #define STATUS_ANTI_SHOCKING    3
 #define MINIMUM_H_CNT       1400
 
+#define ADC_REG_NUM        112
+#define CVD_PART1_REG_NUM   64
+#define CVD_PART1_REG_MIN 0x00
+#define CVD_PART2_REG_NUM  144
+#define CVD_PART2_REG_MIN 0x70
+#define CVD_PART3_REG_NUM    7 // 0x87, 0x93, 0x94, 0x95, 0x96, 0xe6, 0xfa
+#define CVD_PART3_REG_0   0x87
+#define CVD_PART3_REG_1   0x93
+#define CVD_PART3_REG_2   0x94
+#define CVD_PART3_REG_3   0x95
+#define CVD_PART3_REG_4   0x96
+#define CVD_PART3_REG_5   0xe6
+#define CVD_PART3_REG_6   0xfa
+
+#define ACD_REG_MAX       0x32  //0x00-0x32 except 0x1E&0x31
+
+#define CRYSTAL_24M
+
+#ifndef CRYSTAL_24M
+#define CRYSTAL_25M
+#endif
+
+#ifdef CRYSTAL_24M
+#define CVD2_CHROMA_DTO_NTSC_M   0x262e8ba2
+#define CVD2_CHROMA_DTO_NTSC_443 0x2f4abc24
+#define CVD2_CHROMA_DTO_PAL_I    0x2f4abc24
+#define CVD2_CHROMA_DTO_PAL_M    0x2623cd98
+#define CVD2_CHROMA_DTO_PAL_CN   0x263566cf
+#define CVD2_CHROMA_DTO_PAL_60   0x2f4abc24
+#define CVD2_CHROMA_DTO_SECAM    0x2db7a328
+#define CVD2_HSYNC_DTO_NTSC_M    0x24000000
+#define CVD2_HSYNC_DTO_NTSC_443  0x24000000
+#define CVD2_HSYNC_DTO_PAL_I     0x24000000
+#define CVD2_HSYNC_DTO_PAL_M     0x24000000
+#define CVD2_HSYNC_DTO_PAL_CN    0x24000000
+#define CVD2_HSYNC_DTO_PAL_60    0x24000000
+#define CVD2_HSYNC_DTO_SECAM     0x24000000
+#define CVD2_DCRESTORE_ACCUM     0x98       // [5:0] = 24(MHz)
+#endif
+
+#ifdef CRYSTAL_25M
+#define CVD2_CHROMA_DTO_NTSC_M   0x24a7904a
+#define CVD2_CHROMA_DTO_NTSC_443 0x2d66772d
+#define CVD2_CHROMA_DTO_PAL_I    0x2d66772d
+#define CVD2_CHROMA_DTO_PAL_M    0x249d4040
+#define CVD2_CHROMA_DTO_PAL_CN   0x24ae2541
+#define CVD2_CHROMA_DTO_PAL_60   0x2d66772d
+#define CVD2_CHROMA_DTO_SECAM    0x2be37de9
+#define CVD2_HSYNC_DTO_NTSC_M    0x228f5c28
+#define CVD2_HSYNC_DTO_NTSC_443  0x228f5c28
+#define CVD2_HSYNC_DTO_PAL_I     0x228f5c28
+#define CVD2_HSYNC_DTO_PAL_M     0x228f5c28
+#define CVD2_HSYNC_DTO_PAL_CN    0x228f5c28
+#define CVD2_HSYNC_DTO_PAL_60    0x228f5c28
+#define CVD2_HSYNC_DTO_SECAM     0x228f5c28
+#define CVD2_DCRESTORE_ACCUM     0x99       // [5:0] = 25(MHz)
+#endif
 
 typedef enum tvin_sync_pol_e {
 	TVIN_SYNC_POL_NULL = 0,
@@ -71,6 +131,7 @@ typedef struct tvin_format_s {
     unsigned short         pixel_clk;       //(Khz/10)
     unsigned short         vbi_line_start;
     unsigned short         vbi_line_end;
+    unsigned int           duration;
 } tvin_format_t;
 
 
@@ -84,17 +145,18 @@ typedef struct tvin_format_s {
 #define pr_error(fmt, args...) printk(fmt,## args)
 
 
-#define VDIN_START_CANVAS               70U
-#define BT656IN_VF_POOL_SIZE            8
+#define VDIN_START_CANVAS               24  //24~35 used to tvin
+#define BT656IN_VF_POOL_SIZE            6//8
 
-#define TVAFE_VF_POOL_SIZE              8
-#define VDIN_VF_POOL_MAX_SIZE           8
+#define TVAFE_VF_POOL_SIZE              6//8
+#define VDIN_VF_POOL_MAX_SIZE           6//8
+#define TVHDMI_VF_POOL_SIZE              6//8
 
 #define BT656IN_ANCI_DATA_SIZE          0x4000 //save anci data from bt656in
 #define CAMERA_IN_ANCI_DATA_SIZE        0x4000 //save anci data from bt656in
 
 
-#define TVIN_MAX_PIXS					1920*1080
+#define TVIN_MAX_PIXS					1600*1200
 
 #endif // __TVIN_GLOBAL_H
 

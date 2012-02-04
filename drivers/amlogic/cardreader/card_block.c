@@ -23,6 +23,7 @@
 #include <linux/kthread.h>
 #include <linux/cardreader/card_block.h>
 #include <linux/cardreader/cardreader.h>
+#include <linux/aml_uevent_msg.h>
 #include <asm/system.h>
 #include <asm/uaccess.h>
 
@@ -78,7 +79,9 @@ void card_cleanup_queue(struct card_queue *cq)
 {
 	struct card_queue_list *cq_node_current = card_queue_head;
 	struct card_queue_list *cq_node_prev = NULL;
-
+	struct request_queue *q = cq->queue;
+	unsigned long flags;
+	
 	while (cq_node_current != NULL){
 		if (cq_node_current->cq == cq)
 			break;
@@ -103,7 +106,13 @@ void card_cleanup_queue(struct card_queue *cq)
 
 	kfree(cq->sg);
 	cq->sg = NULL;
-
+	
+	/* Empty the queue */   
+	spin_lock_irqsave(q->queue_lock, flags);
+	q->queuedata = NULL;
+	blk_start_queue(q);
+	spin_unlock_irqrestore(q->queue_lock, flags);
+	
 	//blk_cleanup_queue(cq->queue);
 
 	cq->card = NULL;
@@ -233,7 +242,16 @@ static void card_request(struct request_queue *q)
 {
 	struct card_queue *cq = q->queuedata;
 	struct card_queue_list *cq_node_current = card_queue_head;
+    struct request* req; 
 
+	if (!cq) {
+		while ((req = blk_fetch_request(q)) != NULL) {
+			req->cmd_flags |= REQ_QUIET;
+			__blk_end_request_all(req, -EIO);
+		}
+		return;
+	}
+	
 	WARN_ON(!cq);
 	WARN_ON(!cq_node_current);
 	WARN_ON(!cq_node_current->cq);
@@ -307,7 +325,7 @@ static int card_queue_thread(void *d)
 	do {
 		struct request *req = NULL;
 
-		spin_lock_irq(q->queue_lock);
+		//spin_lock_irq(q->queue_lock);
 		cq_node_current = card_queue_head;
 		WARN_ON(!card_queue_head);
 		while (cq_node_current != NULL) {
@@ -317,7 +335,11 @@ static int card_queue_thread(void *d)
 				/*wait sdio handle irq & xfer data*/
 				for(rewait=3;(!sdio_irq_handled)&&(rewait--);)
 					schedule();
-				req = blk_fetch_request(q);
+				if (!blk_queue_plugged(q)) {
+					spin_lock_irq(q->queue_lock);
+					req = blk_fetch_request(q);
+					spin_unlock_irq(q->queue_lock);
+				}
 				if (req)
 					break;
 
@@ -328,7 +350,7 @@ static int card_queue_thread(void *d)
 		}
 
 		cq->req = req;
-		spin_unlock_irq(q->queue_lock);
+		//spin_unlock_irq(q->queue_lock);
 
 		if (cq->flags & CARD_QUEUE_EXIT)
 			break;
@@ -549,6 +571,17 @@ int card_init_queue(struct card_queue *cq, struct memory_card *card,
 			blk_cleanup_queue(cq->queue);
 			return ret;
 		}
+	}
+
+	/*change card io scheduler from cfq to deadline*/
+	cq->queue->queuedata = cq;
+	elevator_exit(cq->queue->elevator);
+	cq->queue->elevator = NULL;
+	ret = elevator_init(cq->queue, "deadline");
+	if (ret) {
+             printk("[card_init_queue] elevator_init deadline fail\n");
+		blk_cleanup_queue(cq->queue);
+		return ret;
 	}
 
 	if (card_queue_head == NULL)
@@ -972,7 +1005,14 @@ static int card_blk_probe(struct memory_card *card)
 
 	card_data = card_blk_alloc(card);
 	if (IS_ERR(card_data))
+	{
+		aml_send_msg("PROBE", 1);
 		return PTR_ERR(card_data);
+	}
+	else
+	{
+		aml_send_msg("PROBE", 0);
+	}
 
 	card_set_drvdata(card, card_data);
 

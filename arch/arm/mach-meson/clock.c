@@ -24,28 +24,105 @@
 static DEFINE_SPINLOCK(clockfw_lock);
 
 #ifdef CONFIG_INIT_A9_CLOCK_FREQ
-static unsigned long __initdata init_clock=CONFIG_INIT_A9_CLOCK;
+static unsigned long __initdata init_clock = CONFIG_INIT_A9_CLOCK;
 #else
-static unsigned long __initdata init_clock=0;
+static unsigned long __initdata init_clock = 0;
 #endif
+// -----------------------------------------
+// clk_util_clk_msr
+// -----------------------------------------
+// from twister_core.v
+//
+// .clk0           ( am_ring_osc_clk_out[0]    ),
+// .clk1           ( am_ring_osc_clk_out[1]    ),
+// .clk2           ( ext_clk_to_msr_i          ),
+// .clk3           ( cts_a9_clk                ),
+// .clk4           ( cts_a9_periph_clk         ),
+// .clk5           ( cts_a9_axi_clk            ),
+// .clk6           ( cts_a9_at_clk             ),
+// .clk7           ( cts_a9_apb_clk            ),
+// .clk8           ( cts_arc625_clk            ),
+// .clk9           ( sys_pll_div3              ),
+// .clk10          ( ddr_pll_clk               ),
+// .clk11          ( other_pll_clk             ),
+// .clk12          ( aud_pll_clk               ),
+// .clk13          ( demod_pll_clk240          ),
+// .clk14          ( demod_pll_adc_clk         ),
+// .clk15          ( demod_pll_wifi_adc_clk    ),
+// .clk16          ( demod_pll_adc_clk_57      ),
+// .clk17          ( demod_pll_clk400          ),
+// .clk18          ( demod_pll_wifi_dac_clk    ),
+// .clk19          ( vid_pll_clk               ),
+// .clk20          ( vid_pll_ref_clk           ),
+// .clk21          ( HDMI_CH0_TMDSCLK          ),
+//
+// For Example
+//
+// unsigend long    clk81_clk   = clk_util_clk_msr( 2,      // mux select 2
+//                                                  50 );   // measure for 50uS
+//
+// returns a value in "clk81_clk" in Hz
+//
+// The "uS_gate_time" can be anything between 1uS and 65535 uS, but the limitation is
+// the circuit will only count 65536 clocks.  Therefore the uS_gate_time is limited by
+//
+//   uS_gate_time <= 65535/(expect clock frequency in MHz)
+//
+// For example, if the expected frequency is 400Mhz, then the uS_gate_time should
+// be less than 163.
+//
+// Your measurement resolution is:
+//
+//    100% / (uS_gate_time * measure_val )
+//
+//
+unsigned int clk_util_clk_msr_rl(unsigned int clk_mux)
+{
+    unsigned int regval = 0;
+    WRITE_CBUS_REG(MSR_CLK_REG0, 0);
+    // Set the measurement gate to 64uS
+    CLEAR_CBUS_REG_MASK(MSR_CLK_REG0, 0xffff);
+    SET_CBUS_REG_MASK(MSR_CLK_REG0, (64 - 1)); //64uS is enough for measure the frequence?
+    // Disable continuous measurement
+    // disable interrupts
+    CLEAR_CBUS_REG_MASK(MSR_CLK_REG0, ((1 << 18) | (1 << 17)));
+    CLEAR_CBUS_REG_MASK(MSR_CLK_REG0, (0x1f << 20));
+    SET_CBUS_REG_MASK(MSR_CLK_REG0, (clk_mux << 20) | // Select MUX
+                                    (1 << 19) |       // enable the clock
+									(1 << 16));       //enable measuring
+    // Wait for the measurement to be done
+    regval = READ_CBUS_REG(MSR_CLK_REG0);
+    do {
+        regval = READ_CBUS_REG(MSR_CLK_REG0);
+    } while (regval & (1 << 31));
+
+    // disable measuring
+    CLEAR_CBUS_REG_MASK(MSR_CLK_REG0, (1 << 16));
+    regval = (READ_CBUS_REG(MSR_CLK_REG2) + 31) & 0x000FFFFF;
+    // Return value in MHz*measured_val
+    return (regval >> 6);
+}
 
 long clk_round_rate(struct clk *clk,unsigned long rate)
 {
-	if(rate<clk->min)
-		return clk->min;
-	if(rate>clk->max)
-		return clk->max;
-	return rate;
+    if (rate < clk->min)
+        return clk->min;
+
+    if (rate > clk->max)
+        return clk->max;
+
+    return rate;
 }
 EXPORT_SYMBOL(clk_round_rate);
-
 
 unsigned long clk_get_rate(struct clk *clk)
 {
     if (!clk)
         return 0;
-	if(clk->get_rate)
-		return clk->get_rate(clk);
+
+    if(clk->get_rate)
+        return clk->get_rate(clk);
+
     return clk->rate;
 }
 EXPORT_SYMBOL(clk_get_rate);
@@ -53,10 +130,10 @@ EXPORT_SYMBOL(clk_get_rate);
 int clk_set_rate(struct clk *clk, unsigned long rate)
 {
     unsigned long flags;
-    int ret = -EINVAL;
+    int ret;
 
     if (clk == NULL || clk->set_rate==NULL)
-        return ret;
+        return -EINVAL;
 
     spin_lock_irqsave(&clockfw_lock, flags);
 
@@ -70,139 +147,140 @@ EXPORT_SYMBOL(clk_set_rate);
 
 static unsigned long xtal_get_rate(struct clk *clk)
 {
-	unsigned long rate;
-	rate=get_xtal_clock();/*refresh from register*/
-	clk->rate=rate;
-	return rate;
+    unsigned long rate;
+
+    rate = get_xtal_clock();/*refresh from register*/
+    clk->rate = rate;
+
+    return rate;
 }
 
 static int clk_set_rate_sys_pll(struct clk *clk, unsigned long rate)
 {
     unsigned long r = rate;
-	int ret=-EINVAL;
+    int ret;
 	
     if (r < 1000)
         r = r * 1000000;
-	ret=sys_clkpll_setting(0,r );
+
+    ret = sys_clkpll_setting(0, r);
+
+    if (ret == 0)
+         clk->rate = r;
+
     return ret;
 }
 
 static int clk_set_rate_other_pll(struct clk *clk, unsigned long rate)
 {
     unsigned long r = rate;
-	int ret=-EINVAL;
+    int ret;
 	
     if (r < 1000)
         r = r * 1000000;
-	ret=other_pll_setting(0,r );
+
+    ret = other_pll_setting(0, r);
+
+    if (ret == 0)
+        clk->rate = r;
+
     return ret;
 }
 
 static int clk_set_rate_clk81(struct clk *clk, unsigned long rate)
 {
     unsigned long r = rate;
-	struct clk *father_clk;
-	unsigned long r1;
-	int ret=-1;
+    struct clk *father_clk;
+    unsigned long r1;
+    int ret;
+    int divider = 4;
 	
     if (r < 1000)
         r = r * 1000000;
 
-	father_clk = clk_get_sys("clk_other_pll", NULL);
-	r1=clk_get_rate(father_clk);
-	if(r1!=r*4)
-		{
-			ret=father_clk->set_rate(father_clk,r*2);
-			if(ret!=0)
-				return ret;
-		}
-	clk->rate=r;
-	/*for current it is alway equal=otherclk/2*/
-	WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL,   // MPEG clk81 set to other/4
-						(1 << 12) |                     // select other PLL
-						((4 - 1) << 0 ) |    // div1
-						(1 << 7 ) |                     // cntl_hi_mpeg_div_en, enable gating
-						(1 << 8 )                    // Connect clk81 to the PLL divider output
-					);
+    if (r < 100000000)
+        divider = 8;
+
+    father_clk = clk_get_sys("clk_other_pll", NULL);
+
+    r1 = clk_get_rate(father_clk);
+
+    if (r1 != r*divider) {
+        ret = father_clk->set_rate(father_clk, r*divider);
+
+        if (ret != 0)
+            return ret;
+    }
+
+    clk->rate = r;
+
+    WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL,
+              (1 << 12) |          // select other PLL
+              ((divider - 1) << 0 ) |    // div1
+              (1 << 7 ) |          // cntl_hi_mpeg_div_en, enable gating
+              (1 << 8 ));          // Connect clk81 to the PLL divider output
+
     return 0;
 }
-
 
 static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
 {
     unsigned long r = rate;
-	struct clk *father_clk;
-	unsigned long r1;
-	int ret=-1;
+    struct clk *father_clk;
+    unsigned long r1;
+    int ret;
 	
     if (r < 1000)
         r = r * 1000000;
-	father_clk = clk_get_sys("clk_sys_pll", NULL);
-	r1=clk_get_rate(father_clk);
-	if(!r1)
-		return -1;
-	if(r1!=r*2 && r!=0)
-		{
-			ret=father_clk->set_rate(father_clk,r*2);
-			if(ret!=0)
-				return ret;
-		}
-	clk->rate=r;
-	/*for current it is alway equal=sys_pll/2*/
-	 WRITE_MPEG_REG(HHI_A9_CLK_CNTL,					// A9 clk set to system clock/2
-		(0 << 10) |						// 0 - sys_pll_clk, 1 - audio_pll_clk
-		(1 << 0 ) |						// 1 - sys/audio pll clk, 0 - XTAL
-		(1 << 4 ) |						// APB_CLK_ENABLE
-		(1 << 5 ) |						// AT_CLK_ENABLE
-		(0 << 2 ) |						// div1
-		(1 << 7 ));						// Connect A9 to the PLL divider output
-    return 0;
-}
-static int clk_set_rate_audio_clk(struct clk *clk, unsigned long rate)
-{
-    unsigned long r = rate;
-	int ret=-EINVAL;
-	
-    if (r < 1000)
-        r = r * 1000000;
-	ret=audio_pll_setting(0,r );
-    return ret;
-}
 
-static int clk_set_rate_video_clk(struct clk *clk, unsigned long rate)
-{
-    unsigned long r = rate;
-	int ret=-EINVAL;
-	
-    if (r < 1000)
-        r = r * 1000000;
-	ret=video_pll_setting(0,r ,0,0);
-    return ret;
+    father_clk = clk_get_sys("clk_sys_pll", NULL);
+
+    r1 = clk_get_rate(father_clk);
+
+    if (!r1)
+        return -1;
+
+    if (r1!=r*2 && r!=0) {
+        ret = father_clk->set_rate(father_clk, r*2);
+
+        if (ret != 0)
+            return ret;
+    }
+
+    clk->rate = r;
+
+    WRITE_MPEG_REG(HHI_A9_CLK_CNTL,
+              (0 << 10) |          // 0 - sys_pll_clk, 1 - audio_pll_clk
+              (1 << 0 ) |          // 1 - sys/audio pll clk, 0 - XTAL
+              (1 << 4 ) |          // APB_CLK_ENABLE
+              (1 << 5 ) |          // AT_CLK_ENABLE
+              (0 << 2 ) |          // div1
+              (1 << 7 ));          // Connect A9 to the PLL divider output
+    return 0;
 }
 
 static struct clk xtal_clk = {
     .name       = "clk_xtal",
     .rate       = 24000000,
-    .get_rate	= xtal_get_rate,
+    .get_rate   = xtal_get_rate,
     .set_rate   = NULL,
 };
 
 static struct clk clk_sys_pll = {
     .name       = "clk_sys_pll",
     .rate       = 1200000000,
-    .min		=  200000000,
-    .max		= 2000000000,
+    .min        = 200000000,
+    .max        = 2000000000,
     .set_rate   = clk_set_rate_sys_pll,
 };
 
 static struct clk clk_other_pll = {
     .name       = "clk_other_pll",
-    .rate       = 540000000,
-    .min		= 200000000,
-    .max		= 800000000,
+    .rate       = 750000000,
+    .min        = 200000000,
+    .max        = 800000000,
     .set_rate   = clk_set_rate_other_pll,
 };
-
 
 static struct clk clk_ddr_pll = {
     .name       = "clk_ddr",
@@ -210,38 +288,26 @@ static struct clk clk_ddr_pll = {
     .set_rate   = NULL,
 };
 
-
 static struct clk clk81 = {
     .name       = "clk81",
-    .rate       = 180000000,
-    .min		= 100000000,
-    .max		= 400000000,
+    .rate       = 187500000,
+    .min        = 100000000,
+    .max        = 400000000,
     .set_rate   = clk_set_rate_clk81,
 };
-
 
 static struct clk a9_clk = {
     .name       = "a9_clk",
     .rate       = 600000000,
-    .min		= 100000000,
-    .max		=1000000000,
+    .min        = 200000000,
+#if defined(CONFIG_MACH_MESON_8726M_REFC03) || defined(CONFIG_MACH_MESON_8726M_REFC06)
+    .max        =  750000000,
+#elif defined(CONFIG_MACH_MESON_8726M_REFC08)
+    .max        =  800000000,
+#else
+    .max        =  850000000,
+#endif
     .set_rate   = clk_set_rate_a9_clk,
-};
-
-static struct clk audio_clk = {
-    .name       = "audio_clk",
-    .rate       = 300000000,
-    .min		= 200000000,
-    .max		=1000000000,
-    .set_rate   = clk_set_rate_audio_clk,
-};
-
-static struct clk video_clk = {
-    .name       = "video_clk",
-    .rate       = 300000000,
-    .min		= 100000000,
-    .max		= 750000000,
-    .set_rate   = clk_set_rate_video_clk,
 };
 
 REGISTER_CLK(AHB_BRIDGE);
@@ -268,7 +334,6 @@ REGISTER_CLK(BT656_IN);
 REGISTER_CLK(DEMUX);
 REGISTER_CLK(MMC_DDR);
 REGISTER_CLK(DDR);
-REGISTER_CLK(DIG_VID_IN);
 REGISTER_CLK(ETHERNET);
 REGISTER_CLK(GE2D);
 REGISTER_CLK(HDMI_MPEG_DOMAIN);
@@ -335,43 +400,30 @@ REGISTER_CLK(VCLK1_VENC_BIST);
 REGISTER_CLK(VIDEO_IN);
 REGISTER_CLK(WIFI);
 
-
-/*
- * Here we only define clocks that are meaningful to
- * look up through clockdevice.
- */
 static struct clk_lookup lookups[] = {
-	{
-			.dev_id = "clk_xtal",
-			.clk	= &xtal_clk,
-	},
-	{
-			.dev_id = "clk_sys_pll",
-			.clk	= &clk_sys_pll,
-	},	
-	{
-			.dev_id = "clk_other_pll",
-			.clk	= &clk_other_pll,
-	},
-	{
-			.dev_id = "clk_ddr_pll",
-			.clk	= &clk_ddr_pll,
-	},
-	{
-	        .dev_id = "clk81",
-	        .clk    = &clk81,
+    {
+        .dev_id = "clk_xtal",
+        .clk    = &xtal_clk,
     },
     {
-	        .dev_id = "a9_clk",
-	        .clk    = &a9_clk,
+        .dev_id = "clk_sys_pll",
+        .clk    = &clk_sys_pll,
+    },	
+    {
+        .dev_id = "clk_other_pll",
+        .clk    = &clk_other_pll,
     },
     {
-	        .dev_id = "audio_clk",
-	        .clk    = &audio_clk,
+        .dev_id = "clk_ddr_pll",
+        .clk    = &clk_ddr_pll,
     },
     {
-	        .dev_id = "video_clk",
-	        .clk    = &video_clk,
+        .dev_id = "clk81",
+        .clk    = &clk81,
+    },
+    {
+        .dev_id = "a9_clk",
+        .clk    = &a9_clk,
     },
     CLK_LOOKUP_ITEM(AHB_BRIDGE),
     CLK_LOOKUP_ITEM(AHB_SRAM),
@@ -397,7 +449,6 @@ static struct clk_lookup lookups[] = {
     CLK_LOOKUP_ITEM(DEMUX),
     CLK_LOOKUP_ITEM(MMC_DDR),
     CLK_LOOKUP_ITEM(DDR),
-    CLK_LOOKUP_ITEM(DIG_VID_IN),
     CLK_LOOKUP_ITEM(ETHERNET),
     CLK_LOOKUP_ITEM(GE2D),
     CLK_LOOKUP_ITEM(HDMI_MPEG_DOMAIN),
@@ -467,17 +518,16 @@ static struct clk_lookup lookups[] = {
 
 static int __init meson_clock_init(void)
 {
-	if(init_clock && init_clock!=a9_clk.rate)
-	{
-		if(sys_clkpll_setting(0,init_clock<<1)==0)
-		{
-			a9_clk.rate=init_clock;
-			clk_sys_pll.rate=init_clock<<1;
-		}
-	}
+    if (init_clock && init_clock!=a9_clk.rate) {
+        if (sys_clkpll_setting(0,init_clock<<1)==0) {
+            a9_clk.rate = init_clock;
+            clk_sys_pll.rate = init_clock<<1;
+        }
+    }
 
     /* Register the lookups */
-	clkdev_add_table(lookups,ARRAY_SIZE(lookups));
+    clkdev_add_table(lookups,ARRAY_SIZE(lookups));
+
     return 0;
 }
 
@@ -486,99 +536,105 @@ core_initcall(meson_clock_init);
 
 unsigned long long clkparse(const char *ptr, char **retptr)
 {
-	char *endptr;	/* local pointer to end of parsed string */
+    char *endptr;	/* local pointer to end of parsed string */
 
-	unsigned long long ret = simple_strtoull(ptr, &endptr, 0);
+    unsigned long long ret = simple_strtoull(ptr, &endptr, 0);
 
-	switch (*endptr) {
-	case 'G':
-	case 'g':
-		ret *= 1000;
-	case 'M':
-	case 'm':
-		ret *= 1000;
+    switch (*endptr) {
+        case 'G':
+        case 'g':
+            ret *= 1000;
+        case 'M':
+        case 'm':
+            ret *= 1000;
 	case 'K':
 	case 'k':
-		ret *= 1000;
-		endptr++;
-	default:
-		break;
-	}
+            ret *= 1000;
+            endptr++;
+        default:
+            break;
+    }
 
-	if (retptr)
-		*retptr = endptr;
+    if (retptr)
+        *retptr = endptr;
 
-	return ret;
+    return ret;
 }
 
 static int __init a9_clock_setup(char *ptr)
 {
-	init_clock=clkparse(ptr,0);
-	if(sys_clkpll_setting(0,init_clock<<1)==0)
-	{
-		a9_clk.rate=init_clock;
-		clk_sys_pll.rate=init_clock<<1;
-	}
-	return 0;
+    init_clock = clkparse(ptr, 0);
+
+    if (sys_clkpll_setting(0, init_clock<<1) == 0) {
+        a9_clk.rate = init_clock;
+        clk_sys_pll.rate=init_clock<<1;
+    }
+
+    return 0;
 }
-__setup("a9_clk=",a9_clock_setup);
+__setup("a9_clk=", a9_clock_setup);
 
 static int __init clk81_clock_setup(char *ptr)
 {
-	int clock=clkparse(ptr,0);
-    if (other_pll_setting(0, clock*4) == 0) {
+    int clock = clkparse(ptr,0);
+    int divider = 4;
+
+    if (clock<100000000)
+        divider = 8;
+    if (other_pll_setting(0, clock*divider) == 0) {
+        /* todo: uart baudrate depends on clk81, assume 115200 baudrate */
         int baudrate = (clock / (115200 * 4)) - 1;
 
-        clk_other_pll.rate = clock*4;
+        clk_other_pll.rate = clock * divider;
         clk81.rate = clock;
 
         WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL,   // MPEG clk81 set to other/4
-		    (1 << 12) |                     // select other PLL
-			((4 - 1) << 0 ) |               // div1
-			(1 << 7 ) |                     // cntl_hi_mpeg_div_en, enable gating
-			(1 << 8 ));                     // Connect clk81 to the PLL divider output
+                  (1 << 12) |               // select other PLL
+                  ((divider - 1) << 0 ) |         // div1
+                  (1 << 7 ) |               // cntl_hi_mpeg_div_en, enable gating
+                  (1 << 8 ));               // Connect clk81 to the PLL divider output
 
         CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
         SET_CBUS_REG_MASK(UART0_CONTROL, (baudrate & 0xfff));
+
         CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
         SET_CBUS_REG_MASK(UART1_CONTROL, (baudrate & 0xfff));
-	}
+    }
 
-	return 0;
+    return 0;
 }
-__setup("clk81=",clk81_clock_setup);
+__setup("clk81=", clk81_clock_setup);
 
 int clk_enable(struct clk *clk)
 {
-	unsigned long	flags;
+    unsigned long flags;
 
-	spin_lock_irqsave(&clockfw_lock, flags);
-  if(clk->clock_index>=0 && clk->clock_index<GCLK_IDX_MAX && clk->clock_gate_reg_adr!=0 ){
-    if(GCLK_ref[clk->clock_index]++ == 0){ 
-        SET_CBUS_REG_MASK(clk->clock_gate_reg_adr, clk->clock_gate_reg_mask); 
+    spin_lock_irqsave(&clockfw_lock, flags);
+
+    if (clk->clock_index>=0 && clk->clock_index<GCLK_IDX_MAX && clk->clock_gate_reg_adr!=0) {
+        if (GCLK_ref[clk->clock_index]++ == 0) { 
+            SET_CBUS_REG_MASK(clk->clock_gate_reg_adr, clk->clock_gate_reg_mask); 
+        }
     }
-  }
-	spin_unlock_irqrestore(&clockfw_lock, flags);
-	return 0;
+
+    spin_unlock_irqrestore(&clockfw_lock, flags);
+
+    return 0;
 }
 EXPORT_SYMBOL(clk_enable);
 
 void clk_disable(struct clk *clk)
 {
-	unsigned long	flags;
+    unsigned long flags;
 
-	spin_lock_irqsave(&clockfw_lock, flags);
+    spin_lock_irqsave(&clockfw_lock, flags);
 
-  if(clk->clock_index>=0 && clk->clock_index<GCLK_IDX_MAX && clk->clock_gate_reg_adr!=0 ){
-    do{
-        if(GCLK_ref[clk->clock_index] == 0)    
-            break;                  
-        if(--GCLK_ref[clk->clock_index] == 0){ 
+    if (clk->clock_index>=0 && clk->clock_index<GCLK_IDX_MAX && clk->clock_gate_reg_adr!=0) {
+        if ((GCLK_ref[clk->clock_index] != 0) && (--GCLK_ref[clk->clock_index] == 0))
             CLEAR_CBUS_REG_MASK(clk->clock_gate_reg_adr, clk->clock_gate_reg_mask); 
-        } 
-    }while(0);
-  }
+    }
 
-	spin_unlock_irqrestore(&clockfw_lock, flags);
+    spin_unlock_irqrestore(&clockfw_lock, flags);
 }
 EXPORT_SYMBOL(clk_disable);
+

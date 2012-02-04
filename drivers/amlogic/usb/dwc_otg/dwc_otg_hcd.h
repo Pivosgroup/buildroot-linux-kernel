@@ -205,7 +205,6 @@ typedef struct dwc_otg_qh {
 	struct list_head qh_list_entry;
 	uint32_t current_num;
 } dwc_otg_qh_t;
-
 /**
  * This structure holds the state of the HCD, including the non-periodic and
  * periodic schedules.
@@ -307,6 +306,9 @@ typedef struct dwc_otg_hcd {
 	 */
 	uint16_t frame_number;
 
+	uint16_t latest_split_schdule_fn;
+	uint16_t latest_split_fn_inc;
+
 	/**
 	 * Free host channels in the controller. This is a list of
 	 * dwc_hc_t items.
@@ -370,7 +372,11 @@ typedef struct dwc_otg_hcd {
 	struct timer_list nak_timer;
 #endif
 	/* Tasket to do a reset */
-	struct tasklet_struct *reset_tasklet;
+	struct tasklet_struct reset_tasklet;
+
+	/* Tasklet to isoc complete non-interrupt context*/
+	struct tasklet_struct isoc_complete_tasklet;
+	void * isoc_comp_urbs[MAX_EPS_CHANNELS];
 
 #ifdef DEBUG
 	uint32_t frrem_samples;
@@ -393,6 +399,7 @@ typedef struct dwc_otg_hcd {
 	uint32_t split_frm_num;
 
 } dwc_otg_hcd_t;
+
 
 /** Gets the dwc_otg_hcd from a struct usb_hcd */
 static inline dwc_otg_hcd_t *hcd_to_dwc_otg_hcd(struct usb_hcd *hcd)

@@ -1,0 +1,113 @@
+#
+# Input core configuration
+#
+
+config SINTEK_CAPACITIVE_TOUCHSCREEN
+	tristate "Sintek capacitive touch panel"
+	default n
+	help
+	  Say Y here if you want to use the Sintek capacitive panel.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called .
+
+config ITK_CAPACITIVE_TOUCHSCREEN
+	tristate "ITK capacitive touch panel"
+	default n
+	help
+	  Say Y here if you want to use the ITK capacitive panel.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called .
+
+config EETI_CAPACITIVE_TOUCHSCREEN
+	tristate "EETI capacitive touch panel"
+	default n
+	help
+	  Say Y here if you want to use the EETI capacitive panel.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called .
+
+config SIS92XX_CAPACITIVE_TOUCHSCREEN
+	tristate "sis92xx capacitive touch panel"
+	depends on I2C
+	default n
+	help
+	  Say Y here if you want to use the sis92xx capacitive panel.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called .
+	  
+config FOCALTECH_CAPACITIVE_TOUCHSCREEN
+	tristate "focaltech capacitive touch panel"
+	depends on I2C
+	default n
+	help
+	  Say Y here if you want to use the focaltech 5x06 capacitive panel.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called .
+
+config SITRONIX_CAPACITIVE_TOUCHSCREEN
+	tristate "SITRONIX capacitive touch panel"
+	depends on I2C
+	default n
+	help
+	  Say Y here if you want to use the SITRONIX st15xx capacitive panel.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called .
+	  
+config HX8520_CAPACITIVE_TOUCHSCREEN
+	tristate "HX8520 capacitive touch panel"
+	depends on I2C
+	default n
+	help
+	  Say Y here if you want to use the HX8520 capacitive panel.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called .
+	  
+config RAYDIUM_CAPACITIVE_TOUCHSCREEN
+	tristate "Raydium capacitive touch panel"
+	depends on I2C
+	default n
+	help
+	  Say Y here if you want to use the Raydium capacitive panel.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called .
+	  
+config GOODIX_CAPACITIVE_TOUCHSCREEN
+	tristate "Goodix capacitive touch panel"
+	depends on I2C
+	default n
+	help
+	  Say Y here if you want to use the Goodix capacitive panel.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called .
+config UOR7X5X_RESISTIVE_TOUCHSCREEN
+	tristate "UOR7X5X resistive touch panel"
+	default n
+	help
+	  Say Y here if you want to use the UOR7X5X resistive panel.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called .  
+config UOR6X5X_RESISTIVE_TOUCHSCREEN
+	tristate "UOR6X5X resistive touch panel"
+	default n
+	help
+	  Say Y here if you want to use the UOR6X5X resistive panel.
+
+config PIXCIR_CAPACITIVE_TOUCHSCREEN
+	tristate "pixcir capacitive touch panel"
+	depends on I2C
+	default n
+	help
+	  Say Y here if you want to use the pixcir capacitive panel.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called .  

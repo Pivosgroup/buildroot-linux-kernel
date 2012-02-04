@@ -178,10 +178,10 @@
 #define USB_DEV_EP_MAJOR	235
 #define TV_CONF_MAJOR		236
 #define HIDRAW_MAJOR		237
-#define HWJPEGDEC_MAJOR		238
+//#define HWJPEGDEC_MAJOR		238
 #define AMVIDEO_MAJOR		239
-#define MALI_MAJOR		241
 #define AML_DEMOD_MAJOR		242
+#define AMAUDIO_MAJOR		243
 #define BLOCK_EXT_MAJOR		259
 #define SCSI_OSD_MAJOR		260	/* open-osd's OSD scsi device */
 

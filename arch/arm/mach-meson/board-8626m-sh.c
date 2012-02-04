@@ -34,6 +34,7 @@
 #include <asm/mach/map.h>
 #include <mach/am_eth_pinmux.h>
 #include <mach/nand.h>
+#include <mach/card_io.h>
 #include <mach/pinmux.h>
 #include <mach/gpio.h>
 #include <linux/delay.h>
@@ -264,12 +265,41 @@ static struct resource amlogic_card_resource[]  = {
 	}
 };
 
+static struct aml_card_info  amlogic_card_info[] = {
+	[0] = {
+		.name = "sd_card",
+		.work_mode = CARD_HW_MODE,
+		.io_pad_type = SDIO_GPIOA_9_14,
+		.card_ins_en_reg = EGPIO_GPIOA_ENABLE,
+		.card_ins_en_mask = PREG_IO_11_MASK,
+		.card_ins_input_reg = EGPIO_GPIOA_INPUT,
+		.card_ins_input_mask = PREG_IO_11_MASK,
+		.card_power_en_reg = EGPIO_GPIOA_ENABLE,
+		.card_power_en_mask = PREG_IO_9_MASK,
+		.card_power_output_reg = EGPIO_GPIOA_OUTPUT,
+		.card_power_output_mask = PREG_IO_9_MASK,
+		.card_power_en_lev = 0,
+		.card_wp_en_reg = EGPIO_GPIOA_ENABLE,
+		.card_wp_en_mask = PREG_IO_12_MASK,
+		.card_wp_input_reg = EGPIO_GPIOA_INPUT,
+		.card_wp_input_mask = PREG_IO_12_MASK,
+		.card_extern_init = 0,
+	},
+};
+
+static struct aml_card_platform amlogic_card_platform = {
+	.card_num = ARRAY_SIZE(amlogic_card_info),
+	.card_info = amlogic_card_info,
+};
 
 static struct platform_device amlogic_card_device = { 
 	.name = "AMLOGIC_CARD", 
 	.id    = -1,
 	.num_resources = ARRAY_SIZE(amlogic_card_resource),
 	.resource = amlogic_card_resource,
+	.dev = {
+		.platform_data = &amlogic_card_platform,
+	},
 };
 #endif
 
@@ -291,41 +321,115 @@ static struct platform_device audiodsp_device = {
 #endif
 
 #ifdef CONFIG_AM_NAND
-static struct mtd_partition partition_info[] = 
+/*static struct mtd_partition partition_info[] = 
 {
+#ifndef CONFIG_AMLOGIC_SPI_NOR
+        {
+                .name = "ubootenv",
+                .offset = 2*1024*1024,
+                .size = 0x2000,
+        },
+#endif
 	{
-		.name = "U-BOOT",
-		.offset = 0,
+		.name = "boot",
+		.offset = 8*1024*1024,
 		.size=4*1024*1024,
 	},
 	{
-		.name = "Kernel",
-		.offset = 6*1024*1024,
+                .name = "system",
+                .offset = 12*1024*1024,
+                .size = 116*1024*1024,
+        },
+        {
+                .name = "cache",
+                .offset = 128*1024*1024,
+                .size = 16*1024*1024,
+        },
+	{
+		.name = "userdata",
+		.offset=MTDPART_OFS_APPEND,
+		.size=MTDPART_SIZ_FULL,
+	},
+};*/
+
+static struct mtd_partition normal_partition_info[] = 
+{
+#ifndef CONFIG_AMLOGIC_SPI_NOR
+	{
+		.name = "environment",
+		.offset = 4*1024*1024,
+		.size = 8*1024*1024,
+	},
+#endif
+	{
+		.name = "recovery",
+		.offset = 12*1024*1024,
 		.size =   4* 1024*1024,
 	},
 	{
-		.name = "YAFFS2",
+		.name = "uImage",
 		.offset =16*1024*1024,
-		.size =	100*0x100000,
+		.size = 4*1024*1024,
 	},
-	{	.name="FTL_Part",
-		.offset=		MTDPART_OFS_APPEND, 	
-		.size=		MTDPART_SIZ_FULL,	
-	//	.set_flags=MTD_AVNFTL,
-	//	.dual_partnum=1,
+	{
+		.name = "system",
+		.offset = 20*1024*1024,
+		.size = 116*1024*1024,
+	},
+	{
+		.name = "cache",
+		.offset = 136*1024*1024,
+		.size = 16*1024*1024,
+	},
+	{
+		.name = "userdata",
+		.offset = 152*1024*1024,
+		.size = 256*1024*1024,
+	},
+	{
+		.name = "NFTL_Part",
+		.offset = 408*1024*1024,
+		.size = 1024*1024*1024,
+	},
+};
+
+
+static struct aml_nand_platform aml_nand_mid_platform[] = {
+#ifndef CONFIG_AMLOGIC_SPI_NOR
+	{
+		.name = NAND_BOOT_NAME,
+		.chip_enable_pad = AML_NAND_CE0,
+		.ready_busy_pad = AML_NAND_CE0,
+		.platform_nand_data = {
+			.chip =  {
+				.nr_chips = 1,
+				.options = (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE),
+			},
+	},
+		.T_REA = 20,
+		.T_RHOH = 15,
+	},
+#endif
+	{
+		.name = NAND_NORMAL_NAME,
+		.chip_enable_pad = (AML_NAND_CE0 | (AML_NAND_CE1 << 4) | (AML_NAND_CE2 << 8) | (AML_NAND_CE3 << 12)),
+		.ready_busy_pad = (AML_NAND_CE0 | (AML_NAND_CE0 << 4) | (AML_NAND_CE1 << 8) | (AML_NAND_CE1 << 12)),
+		.platform_nand_data = {
+			.chip =  {
+				.nr_chips = 4,
+				.nr_partitions = ARRAY_SIZE(normal_partition_info),
+				.partitions = normal_partition_info,
+				.options = (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE | NAND_TWO_PLANE_MODE),
+			},
+    	},
+		.T_REA = 20,
+		.T_RHOH = 15,
 	}
 };
 
-static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
-	.page_size = 2048,
-	.spare_size= 64,		
-	.erase_size= 128*1024,
-	.bch_mode  =  1,		//BCH8
-	.encode_size= 528,				
-	.timing_mode= 5,
-	.ce_num     = 1,
-	.partitions = partition_info,
-	.nr_partitions = ARRAY_SIZE(partition_info),
+struct aml_nand_device aml_nand_mid_device = {
+	.aml_nand_platform = aml_nand_mid_platform,
+	.dev_num = ARRAY_SIZE(aml_nand_mid_platform),
 };
 
 static struct resource aml_nand_resources[] = {
@@ -342,7 +446,7 @@ static struct platform_device aml_nand_device = {
 	.num_resources = ARRAY_SIZE(aml_nand_resources),
 	.resource = aml_nand_resources,
 	.dev = {
-		.platform_data = &aml_2kpage128kblocknand_platform,
+		.platform_data = &aml_nand_mid_device,
 	},
 };
 #endif
@@ -374,7 +478,7 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_VIRTUAL_REMOTE)||defined(CONFIG_KEYPADS_AM_MODULE) 
 		&input_device,
     #endif	
-    #if defined(CONFIG_AM_NAND)
+    #ifdef CONFIG_AM_NAND
 		&aml_nand_device,
     #endif		
 	

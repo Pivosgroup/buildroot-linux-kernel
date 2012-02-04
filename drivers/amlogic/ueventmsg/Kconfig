@@ -1,0 +1,14 @@
+#
+# AMLOGIC uevent message configuration
+#
+
+menu "Amlogic Uevent Message Support"
+
+config AML_UEVENT_MSG
+	bool "Amlogic Uevent Message"
+	default y
+	help
+		Amlogic Uevent Message Sending
+
+endmenu
+

@@ -132,7 +132,10 @@ static inline void kbd_software_mode_remote_send_key(unsigned long data)
                     input_dbg("Wrong custom code is 0x%08x\n", kp_data->cur_keycode);
                     return ;
                     }
-                kp_send_key(kp_data->input, kp_data->cur_keycode>>(kp_data->bit_count - 8), 1);                
+                if(kp_data->bit_count == 32)
+                    kp_send_key(kp_data->input, 0x100|(kp_data->cur_keycode>>(kp_data->bit_count - 8)), 1);
+                else
+                    kp_send_key(kp_data->input, kp_data->cur_keycode>>(kp_data->bit_count - 8), 1);                
                 break;
             default :
                 if(kp_data->custom_code != (kp_data->cur_keycode&0xffff )){

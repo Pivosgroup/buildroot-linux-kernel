@@ -9,7 +9,7 @@ endif
 config AML_RTC
 		bool "Amlogic RTC support"
 		default n
-		depends on (ARCH_MESON || ARCH_MESON2) && RTC_CLASS
+		depends on ARCH_MESON && RTC_CLASS
 		
 		help
 		  This is amlogic inernal rtc driver

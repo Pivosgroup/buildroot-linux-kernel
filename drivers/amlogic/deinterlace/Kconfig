@@ -1,0 +1,12 @@
+#
+# Post Process Manager device configuration
+#
+
+menu "AMLOGIC Deinterlace driver"
+
+config DEINTERLACE
+    tristate "DEINTERLACE driver"
+    default y
+	help
+	  Select to enable AMLOGIC DEINTERLACE driver.
+endmenu

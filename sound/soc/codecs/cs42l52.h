@@ -233,6 +233,7 @@ struct soc_codec_cs42l52_data{
 #define	MIC_CTL_SEL_MIC1	(0 << 6)
 #define MIC_CTL_SEL_MIC2	(1 << 6)
 #define MIC_CTL_SEL_DIFF	(1 << 5)
+#define DEFAULT_MIC_GAIN	0x30
 
 #define CODEC_CS42L52_PGAA_CTL	0x12 //0
 #define CODEC_CS42L52_PGAB_CTL 	0x13 //0
@@ -261,19 +262,24 @@ struct soc_codec_cs42l52_data{
 
 
 #define CODEC_CS42L52_BEEP_TONE_CTL	0x1E //0
+#define DEFAULT_BEEP_TONE_CTL_HP	0	//tone ctrl disable
+#define DEFAULT_BEEP_TONE_CTL 0x07	
 
 #define CODEC_CS42L52_TONE_CTL	0x1F //0x88
+#define DEFAULT_TONE_CTL_HP	0x88
+#define DEFAULT_TONE_CTL	0x8F
 
 #define CODEC_CS42L52_MASTERA_VOL	0x20 //0
 #define CODEC_CS42L52_MASTERB_VOL	0x21 //0
+#define DEFAULT_MASTER_VOL	0x0
 
 #define CODEC_CS42L52_HPA_VOL	0x22 //0
 #define CODEC_CS42L52_HPB_VOL	0x23 //0
-#define DEFAULT_HP_VOL	0xF0
+#define DEFAULT_HP_VOL	0xF9 //0xF0
 
 #define CODEC_CS42L52_SPKA_VOL	0x24 //0
 #define CODEC_CS42L52_SPKB_VOL	0x25 //0
-#define DEFAULT_SPK_VOL	0xF0
+#define DEFAULT_SPK_VOL	0xfe //0xF0
 
 #define CODEC_CS42L52_ADC_PCM_MIXER	0x26 //0
 

@@ -358,7 +358,7 @@ static int spi_nor_write(struct mtd_info *mtd, loff_t to, size_t len,
 				*retlen += m.actual_length - CMD_SIZE;
 		}
 	}
-
+	enable_write_protect(spi_nor); // add by LiG
 	mutex_unlock(&spi_nor->lock);
 
 	return 0;

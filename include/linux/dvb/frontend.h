@@ -410,4 +410,6 @@ struct dtv_properties {
 
 #define FE_DISHNETWORK_SEND_LEGACY_CMD _IO('o', 80) /* unsigned int */
 
+#define FE_SET_DELAY               _IO('o', 100)
+
 #endif /*_DVBFRONTEND_H_*/

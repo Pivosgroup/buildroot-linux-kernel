@@ -25,7 +25,9 @@
 #define MIN_CACHE_ALIGN(x)	(((x-4)&(~0x1f)))
 #define MAX_CACHE_ALIGN(x)	((x+0x1f)&(~0x1f))
 
-static int decopt = -1;
+extern unsigned IEC958_mode_raw;
+
+static int decopt = 0x0000ffff;
 
 #define RESET_AUD_ARC	(1<<13)
 static void	enable_dsp(int flag)
@@ -104,14 +106,15 @@ void halt_dsp( struct audiodsp_priv *priv)
 void reset_dsp( struct audiodsp_priv *priv)
 {
     halt_dsp(priv);
+
     //flush_and_inv_dcache_all();
     /* map DSP 0 address so that reset vector points to same vector table as ARC1 */
     CLEAR_MPEG_REG_MASK(AUD_ARC_CTL, (0xfff << 4));
  //   SET_MPEG_REG_MASK(SDRAM_CTL0,1);//arc mapping to ddr memory
     SET_MPEG_REG_MASK(AUD_ARC_CTL, ((AUDIO_DSP_START_PHY_ADDR)>> 20) << 4);
 // decode option    
-    DSP_WD(DSP_DECODE_OPTION, decopt);
-
+    DSP_WD(DSP_DECODE_OPTION, decopt|(IEC958_mode_raw<<31));
+    printk("reset dsp : dec opt=%x\n", DSP_RD(DSP_DECODE_OPTION));
     if(!priv->dsp_is_started){
         DSP_PRNT("dsp reset now\n");
         enable_dsp(1);
@@ -309,7 +312,7 @@ static  int __init decode_option_setup(char *s)
 {
     int value = -1;
     if(strict_strtoul(s, 16, &value)){
-      decopt = -1;
+      decopt = 0x0000ffff;
       return -1;
     }
     decopt = value;

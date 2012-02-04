@@ -15,6 +15,16 @@ unsigned di_pre_underflow = 0, di_pre_overflow = 0;
 unsigned long debug_array[4 * 1024];
 #endif
 
+#if 1
+
+#define RECEIVER_NAME "amvideo"
+
+#else
+
+#define RECEIVER_NAME "deinterlace"
+
+#endif
+
 #define PATTERN32_NUM       2
 #define PATTERN22_NUM       32
 #if (PATTERN22_NUM < 32)
@@ -2035,8 +2045,6 @@ void di_pre_process(void)
     unsigned temp = READ_MPEG_REG(DI_INTR_CTRL);
     unsigned status = READ_MPEG_REG(DI_PRE_CTRL) & 0x2;
 
-    const vframe_provider_t *vfp = get_vfp();
-
 #if defined(CONFIG_ARCH_MESON2)
     int nr_hfilt_en, nr_hfilt_mb_en;
 
@@ -2067,7 +2075,7 @@ void di_pre_process(void)
 
         if (!vdin_en && (prog_field_count == 0) && (buf_recycle_done == 0)) {
             buf_recycle_done = 1;
-            vfp->put(cur_buf);
+            vf_put(cur_buf, RECEIVER_NAME);
         }
 
         if (di_pre_post_done == 0) {
@@ -2095,7 +2103,7 @@ void di_pre_process(void)
             return;
         }
 
-        if (!vdin_en && (prog_field_count == 0) && (!vfp->peek())) {
+        if (!vdin_en && (prog_field_count == 0) && (!vf_peek(RECEIVER_NAME))) {
 #ifdef DEBUG
             di_pre_underflow++;
 #endif
@@ -2112,7 +2120,7 @@ void di_pre_process(void)
             di_pre_recycle_buf = 1;
             cur_buf = &dummy_buf;
         } else {
-            cur_buf = vfp->peek();
+            cur_buf = vf_peek(RECEIVER_NAME);
             if (!cur_buf) {
                 return;
             }
@@ -2127,13 +2135,13 @@ void di_pre_process(void)
             }
 
             di_pre_recycle_buf = 1;
-            cur_buf = vfp->get();
+            cur_buf = vf_get(RECEIVER_NAME);
         }
 
         if (((cur_buf->type & VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_TOP && prev_struct == 1)
             || ((cur_buf->type & VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_BOTTOM && prev_struct == 2)) {
             if (!vdin_en) {
-                vfp->put(cur_buf);
+                vf_put(cur_buf, RECEIVER_NAME);
             }
             return;
         }
@@ -2317,7 +2325,8 @@ void di_pre_process(void)
 
 void di_pre_isr(struct work_struct *work)
 {
-    if (!get_vfp()) {
+
+    if (!vf_get_provider(RECEIVER_NAME)) {
         return;
     }
 

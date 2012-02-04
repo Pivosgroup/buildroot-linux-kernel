@@ -16,6 +16,8 @@ struct aml_demod_i2c {
     u8  retries;
     u8  debug;   // 1:debug
     u8  tmp;     // spare
+    u8 i2c_id;
+    void *i2c_priv;
 };
 
 struct aml_demod_sys {
@@ -83,10 +85,19 @@ struct aml_demod_dvbt {
 }; 
 
 struct aml_demod_reg {
-    u8  mode; // 0: dvbc, 1: demod, 2: dvbt, 3:other
+    u8  mode; // 0: dvbc, 1: demod, 2: dvbt, 3:other, 10:i2c
     u8  rw;   // 0: read, 1: write.
     u32 addr;
     u32 val;
+}; 
+
+struct aml_demod_regs {
+    u8  mode; // 0: dvbc, 1: demod, 2: dvbt, 3:other, 10:i2c
+    u8  rw;   // 0: read, 1: write.
+    u32 addr;
+    u32 addr_len;
+    u32 n;
+    u32 vals[1];/*[mode i2c]: write:n*u32, read:n*u8*/
 }; 
 
 #define AML_DEMOD_SET_SYS        _IOW('D',  0, struct aml_demod_sys)
@@ -105,5 +116,7 @@ struct aml_demod_reg {
 
 #define AML_DEMOD_SET_REG        _IOW('D', 30, struct aml_demod_reg)
 #define AML_DEMOD_GET_REG        _IOR('D', 31, struct aml_demod_reg)
+#define AML_DEMOD_SET_REGS        _IOW('D', 32, struct aml_demod_regs)
+#define AML_DEMOD_GET_REGS        _IOR('D', 33, struct aml_demod_regs)
 
 #endif /* AML_DEMOD_H */

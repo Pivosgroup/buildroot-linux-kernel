@@ -44,6 +44,8 @@ typedef enum {
     TSYNC_MODE_AMASTER,
 } tsync_mode_t;
 
+extern void tsync_avevent_locked(avevent_t event, u32 param);
+
 extern void tsync_avevent(avevent_t event, u32 param);
 
 extern void tsync_audio_break(int audio_break);
@@ -58,9 +60,13 @@ extern void tsync_set_dec_reset(void);
 
 extern void tsync_set_enable(int enable);
 
-extern int tsync_get_syncdiscont(void);
+extern int tsync_get_sync_adiscont(void);
 
-extern void tsync_set_syncdiscont(int syncdiscont);
+extern int tsync_get_sync_vdiscont(void);
+
+extern void tsync_set_sync_adiscont(int syncdiscont);
+
+extern void tsync_set_sync_vdiscont(int syncdiscont);
 
 extern int tsync_set_apts(unsigned pts);
 

@@ -145,7 +145,7 @@
 #ifdef CONFIG_USB_DWC_OTG_HCD
 #define gadget_is_dwc_otg(g)		(!strcmp("dwc_otg_pcd", (g)->name))
 #else
-#define gadget_is_dwc_otg(g)
+#define gadget_is_dwc_otg(g)		0
 #endif
 /**
  * usb_gadget_controller_number - support bcdDevice id convention

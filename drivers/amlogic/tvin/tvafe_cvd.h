@@ -6,7 +6,6 @@
 #ifndef _TVAFE_CVD_H
 #define _TVAFE_CVD_H
 
-#include "tvin_global.h"
 // ***************************************************************************
 // *** enum definitions *********************************************
 // ***************************************************************************
@@ -75,9 +74,9 @@ typedef enum tvafe_cvd2_detect_result_e {
 // *** structure definitions *********************************************
 // ***************************************************************************
 typedef struct tvafe_cvd2_agc_s {
-    unsigned char    cnt;
-    unsigned int     dgain;
-    unsigned int     again;
+    unsigned int        cnt;
+    unsigned int        dgain;
+    unsigned int        again;
 } tvafe_cvd2_agc_t;
 
 //CVD2 status list
@@ -89,8 +88,8 @@ typedef struct tvafe_cvd2_sig_status_s {
     unsigned char  v_nonstd              :1;
     unsigned char  no_color_burst        :1;
     unsigned char  comb3d_off            :1;
-
     unsigned char  hv_lock               :1;
+
     unsigned char  chroma_lock           :1;
     unsigned char  pal                   :1;
     unsigned char  secam                 :1;
@@ -99,26 +98,45 @@ typedef struct tvafe_cvd2_sig_status_s {
     unsigned char  fc_Less               :1;
     unsigned char  noisy                 :1;
     unsigned char  vcr                   :1;
-    unsigned char  vcrtrick              :1;
-    unsigned char  vcrff                 :1;
-    unsigned char  vcrrew                :1;
-    unsigned char  cordic_data_sum;
-    unsigned char cordic_data_min;
-    unsigned char cordic_data_max;
-    unsigned char stable_cnt;
-    unsigned char pali_to_secam_cnt;
+
+    unsigned char  vcrtrick                 :1;
+    unsigned char  vcrff                    :1;
+    unsigned char  vcrrew                   :1;
+
+    unsigned char  cordic_data_min;
+    unsigned char  cordic_data_max;
+    unsigned char  stable_cnt;
+    unsigned char  new_fmt_cnt;
+    unsigned char  chroma_stable_cnt;
+    unsigned char  cvd_fmt_chg_cnt;
+    unsigned char  status_1;
+    unsigned char  status_2;
+    unsigned char  status_3;
+    struct tvafe_cvd2_fmt_cordic_s      cordic;
+
     enum tvafe_cvd2_sd_state_e          cur_sd_state;
     enum tvafe_cvd2_sd_state_e          detected_sd_state;
 
     struct tvafe_cvd2_agc_s             agc;
+    unsigned                            cordic_data_sum;
+    unsigned int                        cvd2_mem_addr;
+    unsigned int                        cvd2_mem_size;
 } tvafe_cvd2_sig_status_t;
 
 // *****************************************************************************
 // ******** GLOBAL FUNCTION CLAIM ********
 // *****************************************************************************
-void tvafe_cvd2_reg_init(void );
-void tvafe_cvd2_state_handler(struct tvafe_info_s *info);
-int tvafe_cvd2_video_agc_handler(struct tvafe_info_s *info);
-void tvafe_cvd2_state_init(void);
-void tvafe_cvd2_video_mode_confiure(enum tvin_sig_fmt_e fmt);
+extern void tvafe_set_cvd2_default(unsigned int mem_addr, unsigned int mem_size, enum tvin_sig_fmt_e fmt);
+extern void tvafe_cvd2_state_handler(struct tvafe_info_s *info);
+extern enum tvafe_cvbs_video_e  tvafe_cvd2_video_locked(void);
+extern bool tvafe_cvd_no_sig(void);
+extern bool tvafe_cvd_fmt_chg(void);
+extern enum tvin_sig_fmt_e tvafe_cvd2_get_format(void);
+extern int tvafe_cvd2_video_agc_handler(struct tvafe_info_s *info);
+extern void tvafe_cvd2_state_init(void);
+extern void tvafe_cvd2_video_mode_confiure(enum tvin_sig_fmt_e fmt, enum tvin_port_e port);
+extern void init_cvd2_reg_module(enum tvafe_cvd2_sd_state_e vvd2_status );
+extern int tvafe_cvd2_get_cordic_para(struct tvafe_cvd2_fmt_cordic_s *info);
+extern int tvafe_cvd2_set_cordic_para(struct tvafe_cvd2_fmt_cordic_s *info);
+
 #endif // _TVAFE_CVD_H

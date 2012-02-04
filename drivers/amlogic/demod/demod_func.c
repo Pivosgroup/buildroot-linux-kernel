@@ -273,6 +273,7 @@ int demod_set_sys(struct aml_demod_sta *demod_sta,
 		  struct aml_demod_sys *demod_sys)
 {
     int ret = 0;
+    struct i2c_adapter *adapter;
 
     if (demod_sys->debug) printk_sys(demod_sys);
 
@@ -289,7 +290,19 @@ int demod_set_sys(struct aml_demod_sta *demod_sta,
     *demod_i2c = *(struct aml_demod_i2c *)demod_sys->i2c;
     if (demod_i2c->debug) printk_i2c(demod_i2c);
 
-    if (demod_i2c->scl_oe ==0 || 
+    /*in debug mode, setup i2c here, i2c_id is in demod_i2c->scl_out*/
+    if ((demod_i2c->scl_oe ==0) && (demod_i2c->sda_oe == 1)) {
+		printk("[amlfe: debug mode, i2c id = %d]\n", demod_i2c->scl_out);
+		adapter = i2c_get_adapter(demod_i2c->scl_out);
+		demod_i2c->i2c_id = demod_i2c->scl_out;
+		demod_i2c->i2c_priv = adapter;
+		if(!adapter){
+			printk("can not get i2c adapter[%d] \n", demod_i2c->scl_out);
+			return -1;
+		}
+	}
+
+/*    if (demod_i2c->scl_oe ==0 || 
 	demod_i2c->scl_out==0 || 
 	demod_i2c->scl_in== 0 ||
 	demod_i2c->sda_oe ==0 || 
@@ -299,10 +312,12 @@ int demod_set_sys(struct aml_demod_sta *demod_sta,
 	ret = -1;
     }
     else {
-	test_bus(demod_i2c, "i2c");
+	//aml_i2c_sw_test_bus(demod_i2c, "i2c");
+*/	
 	if (demod_i2c->tuner == 3)
 	    init_tuner_fj2207(demod_sta, demod_i2c);
-    }
+/*    }
+*/
 
     return ret;
 }

@@ -22,9 +22,27 @@
 
 static void audiodsp_mailbox_work_queue(struct work_struct*);
 static struct audiodsp_work_t{
-char* buf;
+char buf[81];
 struct work_struct audiodsp_workqueue;
 }audiodsp_work;
+
+extern unsigned int IEC958_bpf;
+extern unsigned int IEC958_brst;
+extern unsigned int IEC958_length;
+extern unsigned int IEC958_padsize;
+extern unsigned int IEC958_mode;
+extern unsigned int IEC958_syncword1;
+extern unsigned int IEC958_syncword2;
+extern unsigned int IEC958_syncword3;
+extern unsigned int IEC958_syncword1_mask;
+extern unsigned int IEC958_syncword2_mask;
+extern unsigned int IEC958_syncword3_mask;
+extern unsigned int IEC958_chstat0_l;
+extern unsigned int IEC958_chstat0_r;
+extern unsigned int IEC958_chstat1_l;
+extern unsigned int IEC958_chstat1_r;
+extern unsigned int IEC958_mode_raw;
+extern unsigned int IEC958_mode_codec;
 
 int dsp_mailbox_send(struct audiodsp_priv *priv,int overwrite,int num,int cmd,const char *data,int len)
 {
@@ -95,7 +113,8 @@ static irqreturn_t audiodsp_mailbox_irq(int irq, void *data)
 		SYS_CLEAR_IRQ(M1B_IRQ0_PRINT);
 	//	inv_dcache_range((unsigned  long )msg.data,(unsigned long)msg.data+msg.len);
 	
-	    audiodsp_work.buf = msg.data;
+	    strncpy(audiodsp_work.buf, msg.data, 80);
+        audiodsp_work.buf[80] = '\0';
         schedule_work(&audiodsp_work.audiodsp_workqueue);		
 		}
 	if(status&(1<<M1B_IRQ1_BUF_OVERFLOW))
@@ -163,6 +182,33 @@ static irqreturn_t audiodsp_mailbox_irq(int irq, void *data)
 				}
 			}
 		}
+        if(status & (1<<M1B_IRQ8_IEC958_INFO)){
+            struct digit_raw_output_info* info;
+            SYS_CLEAR_IRQ(M1B_IRQ8_IEC958_INFO);
+            get_mailbox_data(priv, M1B_IRQ8_IEC958_INFO, &msg);
+            info = (void*)msg.data;
+
+            IEC958_bpf = info->bpf;
+            IEC958_brst = info->brst;
+            IEC958_length = info->length;
+            IEC958_padsize = info->padsize;
+            IEC958_mode = info->mode;
+            IEC958_syncword1 = info->syncword1;
+            IEC958_syncword2 = info->syncword2;
+            IEC958_syncword3 = info->syncword3;
+            IEC958_syncword1_mask = info->syncword1_mask;
+            IEC958_syncword2_mask = info->syncword2_mask;
+            IEC958_syncword3_mask = info->syncword3_mask;
+            IEC958_chstat0_l = info->chstat0_l;
+            IEC958_chstat0_r = info->chstat0_r;
+            IEC958_chstat1_l = info->chstat1_l;
+            IEC958_chstat1_r = info->chstat1_r;
+  //          IEC958_mode_codec = info->can_bypass;
+            
+            strcpy(audiodsp_work.buf, "MAILBOX: got IEC958 info\n");
+            schedule_work(&audiodsp_work.audiodsp_workqueue);		
+        }
+
     	if(status& (1<<M1B_IRQ5_STREAM_RD_WD_TEST)){
             DSP_WD((0x84100000-4096+20*20),0);
     		SYS_CLEAR_IRQ(M1B_IRQ5_STREAM_RD_WD_TEST);
@@ -207,14 +253,27 @@ static irqreturn_t audiodsp_mailbox_irq(int irq, void *data)
 static void audiodsp_mailbox_work_queue(struct work_struct*work)
 {
     struct audiodsp_work_t* pwork = container_of(work,struct audiodsp_work_t, audiodsp_workqueue);
-    char* message = pwork->buf;
-    printk(KERN_INFO "%s",message);
+    char* message;
+    if(pwork){
+      message = pwork->buf;
+      if(message)
+        printk(KERN_INFO "%s",message);
+      else
+        printk(KERN_INFO "the message from mailbox is NULL\n");
+    }else{
+      printk(KERN_INFO "the work queue for audiodsp mailbox is empty\n");
+    }
 }
 
 int audiodsp_init_mailbox(struct audiodsp_priv *priv)
 {
-	request_irq(INT_MAILBOX_1B, audiodsp_mailbox_irq,
+    int err;
+	err = request_irq(INT_MAILBOX_1B, audiodsp_mailbox_irq,
                     IRQF_SHARED, "audiodsp_mailbox", (void *)priv);
+    if(err != 0){
+      printk("request IRQ for dsp mailbox failed: errno = %x\n", err);
+      return -1;
+    }
 	//WRITE_MPEG_REG(ASSIST_MBOX0_MASK, 0xffffffff);
 	priv->mailbox_reg=(struct mail_msg *)MAILBOX1_REG(0);
 	priv->mailbox_reg2=(struct mail_msg *)MAILBOX2_REG(0);

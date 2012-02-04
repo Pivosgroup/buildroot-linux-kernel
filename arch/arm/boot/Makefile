@@ -69,7 +69,7 @@ endif
 quiet_cmd_uImage = UIMAGE  $@
       cmd_uImage = $(MKIMAGE) -A arm -O linux -T kernel \
 		   -C lzma -a $(LOADADDR) -e $(STARTADDR) \
-		   -n 'Linux-$(KERNELRELEASE)' -d $< $@
+		   -n '$(UTS_VERSION)' -d $< $@
 
 
 quiet_cmd_uzImage = UZIMAGE  $@

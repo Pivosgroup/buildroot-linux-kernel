@@ -19,6 +19,7 @@
 #include <mach/hardware.h>
 #include <mach/platform.h>
 #include <mach/memory.h>
+#include <mach/clock.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <mach/lm.h>
@@ -157,3 +158,71 @@ int set_usb_phy_clk(int rate)
 }
 
 EXPORT_SYMBOL(set_usb_phy_clk);
+
+
+/*
+ * Don't call this function when usb device is operating.
+ *
+ * por_flg: 
+ *		USB_CTL_POR_ON	-- power on ctl if ctl enabled
+ *		USB_CTL_POR_OFF -- power off ctl if ctl enabled
+ *		USB_CTL_POR_ENABLE -- power on and enable ctl
+ *		USB_CTL_POR_DISABLE -- power off and disable ctl
+ */
+ static char usb_ctl_a_state = USB_CTL_POR_ENABLE;
+ static char usb_ctl_b_state = USB_CTL_POR_ENABLE;
+void set_usb_ctl_por(int index,int por_flag)
+{
+
+	int msk = PREI_USB_PHY_A_POR;
+	char * msg;
+	char * ctl;
+	char * state;
+
+	if(index == USB_CTL_INDEX_B){
+		msk = PREI_USB_PHY_B_POR;
+		ctl = "B";
+		state = &usb_ctl_b_state;
+	}else if(index == USB_CTL_INDEX_A){
+		msk = PREI_USB_PHY_A_POR;
+		ctl = "A";
+		state = &usb_ctl_a_state;
+	}else{
+		printk(KERN_INFO "error usb_ctl index %d\n",index);
+		return;
+	}
+
+
+	switch(por_flag){
+	case USB_CTL_POR_ON:
+		if(*state > USB_CTL_POR_ENABLE)
+			return;
+		msg = "on";
+		CLEAR_CBUS_REG_MASK(PREI_USB_PHY_REG, msk);
+		break;
+	case USB_CTL_POR_OFF:
+		if(*state > USB_CTL_POR_ENABLE)
+			return;
+		msg = "off";
+		SET_CBUS_REG_MASK(PREI_USB_PHY_REG, msk);
+		break;
+	case USB_CTL_POR_ENABLE:
+		msg = "enable";
+		CLEAR_CBUS_REG_MASK(PREI_USB_PHY_REG, msk);
+		*state = USB_CTL_POR_ENABLE;
+		break;
+	case USB_CTL_POR_DISABLE:
+		msg = "disable";
+		SET_CBUS_REG_MASK(PREI_USB_PHY_REG, msk);
+		*state = USB_CTL_POR_DISABLE;
+		break;
+	default:
+		printk(KERN_INFO "error usb_ctl por_flag %d\n",por_flag);
+		return;
+	}
+
+
+	printk(KERN_INFO "usb controller %s %s\n",ctl,msg);
+
+}
+EXPORT_SYMBOL(set_usb_ctl_por);

@@ -151,7 +151,7 @@ static int i2c_inb(struct aml_demod_i2c *adap)
     return indata;
 }
 
-int test_bus(struct aml_demod_i2c *adap, char *name)
+static int aml_i2c_sw_test_bus(struct aml_demod_i2c *adap, char *name)
 {
     int scl, sda;
 
@@ -369,7 +369,7 @@ static int bit_doAddress(struct aml_demod_i2c *adap, struct i2c_msg *msg)
 }
 
 // i2c read/write function
-int bit_xfer(struct aml_demod_i2c *adap, struct i2c_msg msgs[], int num)
+static int aml_i2c_sw_bit_xfer(struct aml_demod_i2c *adap, struct i2c_msg msgs[], int num)
 {
     struct i2c_msg *pmsg;
     int i, ret;
@@ -423,5 +423,24 @@ bailout:
     return ret;
 }
 
+int am_demod_i2c_xfer(struct aml_demod_i2c *adap, struct i2c_msg msgs[], int num)
+{
+    int ret=0;
 
+    //printk("adap->scl_oe[%x], adap->i2c_priv[%p], adap->i2c_id[%x]\n", adap->scl_oe, adap->i2c_priv, adap->i2c_id);
+    if(adap->scl_oe)
+    {
+    	ret = aml_i2c_sw_bit_xfer(adap, msgs, num);
+    }
+    else
+    {
+    	if(adap->i2c_priv){
+		//printk("msgs[%p], num[%x]\n", msgs, num);
+		ret = i2c_transfer((struct i2c_adapter *)adap->i2c_priv, msgs, num);
+	} else {
+    		printk("i2c error, no valid i2c\n");
+    	}
+    }
+    return ret;
+}
 

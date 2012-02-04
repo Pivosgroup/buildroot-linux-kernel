@@ -8,4 +8,11 @@ config AML_HDMI_TX
         help  
                 hdmi output enable,It should be enalbe if board have hdmi out interface
 
+if AM_DEINTERLACE
+config AML_HDMI_TX_HDCP
+        tristate "HDMITX hdcp enable"
+        default n
+        help  
+                hdmitx hdcp enable,It should be enalbe if board have hdmitx hdcp key
+endif        
 endmenu

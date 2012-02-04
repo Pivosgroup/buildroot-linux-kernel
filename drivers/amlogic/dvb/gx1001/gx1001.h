@@ -154,8 +154,16 @@ typedef int GX_STATE;
 //#define CLEAR_PERI_REG_MASK(reg, mask) WRITE_PERI_REG(reg, (READ_PERI_REG(reg)&(~mask)))
 //#define SET_PERI_REG_MASK(reg, mask)   WRITE_PERI_REG(reg, (READ_PERI_REG(reg)|(mask)))
 
+struct gx1001_fe_config {
+	int                   i2c_id;
+	int                 reset_pin;
+	int                 demod_addr;
+	int                 tuner_addr;
+};
+
+
 struct gx1001_state {
-	struct aml_fe_config config;
+	struct gx1001_fe_config config;
 	struct i2c_adapter *i2c;
 	u32                 freq;
         fe_modulation_t     mode;
@@ -288,7 +296,7 @@ AM_ErrorCode_t demod_get_signal_strength(struct gx1001_state *state, unsigned in
 AM_ErrorCode_t demod_get_signal_quality(struct gx1001_state *state, unsigned int* quality);
 uint demod_get_signal_errorate(struct gx1001_state *state, unsigned int* errorrate);
 
-extern struct dvb_frontend* gx1001_attach(const struct aml_fe_config* config);
+extern struct dvb_frontend* gx1001_attach(const struct gx1001_fe_config* config);
 
 #endif
 

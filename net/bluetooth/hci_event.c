@@ -579,7 +579,7 @@ static inline void hci_cs_create_conn(struct hci_dev *hdev, __u8 status)
 		}
 	} else {
 		if (!conn) {
-			conn = hci_conn_add(hdev, ACL_LINK, &cp->bdaddr);
+			conn = hci_conn_add(hdev, ACL_LINK, 0, &cp->bdaddr);
 			if (conn) {
 				conn->out = 1;
 				conn->link_mode |= HCI_LM_MASTER;
@@ -964,7 +964,9 @@ static inline void hci_conn_request_evt(struct hci_dev *hdev, struct sk_buff *sk
 
 		conn = hci_conn_hash_lookup_ba(hdev, ev->link_type, &ev->bdaddr);
 		if (!conn) {
-			if (!(conn = hci_conn_add(hdev, ev->link_type, &ev->bdaddr))) {
+			/* pkt_type not yet used for incoming connections */
+			if (!(conn = hci_conn_add(hdev, ev->link_type, 0,
+							&ev->bdaddr))) {
 				BT_ERR("No memmory for new connection");
 				hci_dev_unlock(hdev);
 				return;
@@ -1213,6 +1215,12 @@ static inline void hci_cmd_complete_evt(struct hci_dev *hdev, struct sk_buff *sk
 		break;
 
 	case HCI_OP_EXIT_PERIODIC_INQ:
+#ifdef CONFIG_BT_DEVICE
+        if(hdev->inquiry_state){
+            hdev->inquiry_state = 0;
+            tasklet_enable(&hdev->tx_task);
+        }
+#endif
 		hci_cc_exit_periodic_inq(hdev, skb);
 		break;
 
@@ -1311,6 +1319,16 @@ static inline void hci_cmd_complete_evt(struct hci_dev *hdev, struct sk_buff *sk
 	case HCI_OP_READ_BD_ADDR:
 		hci_cc_read_bd_addr(hdev, skb);
 		break;
+
+#ifdef CONFIG_BT_DEVICE
+    case HCI_OP_INQUIRY:
+    case 0x0403:
+        if(!hdev->inquiry_state){
+            hdev->inquiry_state = 1;
+            tasklet_disable(&hdev->tx_task);
+        }
+        break;
+#endif
 
 	default:
 		BT_DBG("%s opcode 0x%x", hdev->name, opcode);
@@ -1698,6 +1716,7 @@ static inline void hci_sync_conn_complete_evt(struct hci_dev *hdev, struct sk_bu
 		hci_conn_add_sysfs(conn);
 		break;
 
+	case 0x10:	/* Connection Accept Timeout */
 	case 0x11:	/* Unsupported Feature or Parameter Value */
 	case 0x1c:	/* SCO interval rejected */
 	case 0x1a:	/* Unsupported Remote Feature */
@@ -1829,6 +1848,12 @@ void hci_event_packet(struct hci_dev *hdev, struct sk_buff *skb)
 
 	switch (event) {
 	case HCI_EV_INQUIRY_COMPLETE:
+#ifdef CONFIG_BT_DEVICE
+        if(hdev->inquiry_state){
+            hdev->inquiry_state = 0;
+            tasklet_enable(&hdev->tx_task);
+        }
+#endif
 		hci_inquiry_complete_evt(hdev, skb);
 		break;
 

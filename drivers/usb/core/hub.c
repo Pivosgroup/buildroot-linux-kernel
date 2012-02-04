@@ -1221,6 +1221,7 @@ static int hub_probe(struct usb_interface *intf, const struct usb_device_id *id)
 	/* Hubs have proper suspend/resume support */
 	usb_enable_autosuspend(hdev);
 
+	aml_send_msg("HUBLVL", hdev->level);
 	if (hdev->level == MAX_TOPO_LEVEL) {
 		dev_err(&intf->dev,
 			"Unsupported bus topology: hub nested too deep\n");

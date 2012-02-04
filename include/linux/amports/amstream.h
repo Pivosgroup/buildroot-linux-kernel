@@ -22,7 +22,7 @@
 #ifndef AMSTREAM_H
 #define AMSTREAM_H
 
-#include <linux/interrupt.h>
+//#include <linux/interrupt.h>
 #include "ve.h"
 
 #ifdef __KERNEL__
@@ -86,8 +86,10 @@
 #define AMSTREAM_IOC_VPTS             _IOR(AMSTREAM_IOC_MAGIC, 0x41, unsigned long)
 #define AMSTREAM_IOC_PCRSCR           _IOR(AMSTREAM_IOC_MAGIC, 0x42, unsigned long)
 #define AMSTREAM_IOC_SYNCENABLE      _IOW(AMSTREAM_IOC_MAGIC, 0x43, unsigned long)
-#define AMSTREAM_IOC_GET_SYNCDISCON  _IOR(AMSTREAM_IOC_MAGIC, 0x44, unsigned long)
-#define AMSTREAM_IOC_SET_SYNCDISCON  _IOW(AMSTREAM_IOC_MAGIC, 0x45, unsigned long)
+#define AMSTREAM_IOC_GET_SYNC_ADISCON  _IOR(AMSTREAM_IOC_MAGIC, 0x44, unsigned long)
+#define AMSTREAM_IOC_SET_SYNC_ADISCON  _IOW(AMSTREAM_IOC_MAGIC, 0x45, unsigned long)
+#define AMSTREAM_IOC_GET_SYNC_VDISCON  _IOR(AMSTREAM_IOC_MAGIC, 0x46, unsigned long)
+#define AMSTREAM_IOC_SET_SYNC_VDISCON  _IOW(AMSTREAM_IOC_MAGIC, 0x47, unsigned long)
 
 // VPP.VE IOCTL command list
 #define AMSTREAM_IOC_VE_BEXT   _IOW(AMSTREAM_IOC_MAGIC, 0x20, struct ve_bext_s  )
@@ -107,6 +109,9 @@
 #define AMSTREAM_IOC_CM_DEBUG  _IOWR(AMSTREAM_IOC_MAGIC, 0x33, unsigned long long)
 #define AMSTREAM_IOC_CM_REGMAP  _IOW(AMSTREAM_IOC_MAGIC, 0x34, struct cm_regmap_s)
 
+#define AMSTREAM_IOC_SUB_NUM	_IOR(AMSTREAM_IOC_MAGIC, 0x50, unsigned long)
+#define AMSTREAM_IOC_SUB_INFO	_IOR(AMSTREAM_IOC_MAGIC, 0x51, unsigned long)
+#define AMSTREAM_IOC_VF_STATUS  _IOR(AMSTREAM_IOC_MAGIC, 0x60, unsigned long)
 #define AMSTREAM_IOC_CLEAR_VBUF _IO(AMSTREAM_IOC_MAGIC, 0x80)
 
 #define TRICKMODE_NONE       0x00
@@ -116,7 +121,8 @@
 #define TRICK_STAT_DONE     0x01
 #define TRICK_STAT_WAIT     0x00
 
-#define AUDIO_EXTRA_DATA_SIZE   (2048)
+#define AUDIO_EXTRA_DATA_SIZE   (4096)
+#define MAX_SUB_NUM		32
 
 enum VIDEO_DEC_TYPE
 {
@@ -196,7 +202,26 @@ struct dec_sysinfo {
     unsigned int    status;
     unsigned int    ratio;
     void *          param;
+	unsigned long long    ratio64;
 };
+
+struct subtitle_info
+{
+    unsigned char id;      
+    unsigned char width;
+    unsigned char height;
+    unsigned char type;    
+};
+
+struct codec_profile_t
+{
+	char *name;		// video codec short name 
+	char *profile;	// Attributes,seperated by commas 
+};
+#define SUPPORT_VDEC_NUM	(8)
+
+int vcodec_profile_register(const struct codec_profile_t *vdec_profile);
+ssize_t vcodec_profile_read(const char *buf,int size);
 
 #ifdef __KERNEL__
 #ifdef ENABLE_DEMUX_DRIVER

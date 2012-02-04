@@ -44,6 +44,8 @@
 #include <net/bluetooth/bluetooth.h>
 #include <net/bluetooth/hci_core.h>
 
+#include <mach/am_regs.h>
+
 #include "hci_uart.h"
 
 #define VERSION "2.2"
@@ -457,6 +459,7 @@ static int hci_uart_tty_ioctl(struct tty_struct *tty, struct file * file,
 
 	switch (cmd) {
 	case HCIUARTSETPROTO:
+	
 		if (!test_and_set_bit(HCI_UART_PROTO_SET, &hu->flags)) {
 			err = hci_uart_set_proto(hu, arg);
 			if (err) {
@@ -511,7 +514,7 @@ static int __init hci_uart_init(void)
 	static struct tty_ldisc_ops hci_uart_ldisc;
 	int err;
 
-	BT_INFO("HCI UART driver ver %s", VERSION);
+	printk("HCI UART driver ver %s\n", VERSION);
 
 	/* Register the tty discipline */
 

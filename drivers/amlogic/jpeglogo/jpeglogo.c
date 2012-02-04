@@ -477,7 +477,7 @@ static int jpeglogo_probe(struct platform_device *pdev)
 				break;
 		}
 
-		vf_unreg_provider();
+		vf_unreg_provider(&jpeglogo_vf_provider);
 	}
 	
 	iounmap(logo_vaddr);

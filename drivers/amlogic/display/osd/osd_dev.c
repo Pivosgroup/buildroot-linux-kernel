@@ -142,14 +142,60 @@ void osddev_free_scale_height(u32 index ,u32 height)
 	osd_free_scale_height_hw(index,height);
 	
 }
+
+void osddev_get_free_scale_axis(u32 index, s32 *x0, s32 *y0, s32 *x1, s32 *y1)
+{
+	//at present we only support osd1 & osd2 have the same random scale mode.
+	osd_get_free_scale_axis_hw(index, x0, y0, x1, y1);
+
+}
+
+void osddev_set_free_scale_axis(u32 index, s32 x0, s32 y0, s32 x1, s32 y1)
+{
+	//at present we only support osd1 & osd2 have the same random scale mode.
+	osd_set_free_scale_axis_hw(index, x0, y0, x1, y1);
+}
+
 void osddev_enable_3d_mode(u32 index ,u32 enable)
 {
 	osd_enable_3d_mode_hw(index,enable);
 }
+
+void osddev_set_scale_axis(u32 index, s32 x0, s32 y0, s32 x1, s32 y1)
+{
+	osd_set_scale_axis_hw(index, x0, y0, x1, y1);
+}
+
+void osddev_get_scale_axis(u32 index, s32 *x0, s32 *y0, s32 *x1, s32 *y1)
+{
+	osd_get_scale_axis_hw(index, x0, y0, x1, y1);
+}
+
 void osddev_set_2x_scale(u32 index,u16 h_scale_enable,u16 v_scale_enable)
 {
 	osd_set_2x_scale_hw(index,h_scale_enable,v_scale_enable);
 }
+
+void osddev_set_block_windows(u32 index, u32 *block_windows)
+{
+	osd_set_block_windows_hw(index, block_windows);
+}
+
+void osddev_get_block_windows(u32 index, u32 *block_windows)
+{
+	osd_get_block_windows_hw(index, block_windows);
+}
+
+void osddev_set_block_mode(u32 index, u32 mode)
+{
+	osd_set_block_mode_hw(index, mode);
+}
+
+void osddev_get_block_mode(u32 index, u32 *mode)
+{
+	osd_get_block_mode_hw(index, mode);
+}
+
 void osddev_enable(int enable,int  index)
 {
     osd_enable_hw(enable,index);

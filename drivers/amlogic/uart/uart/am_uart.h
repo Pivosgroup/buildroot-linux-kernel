@@ -65,6 +65,7 @@ struct am_uart{
        
     struct mutex    info_mutex;
 
+    struct tasklet_struct	tlet;
     struct work_struct  tqueue;
     struct work_struct  tqueue_hangup;
 

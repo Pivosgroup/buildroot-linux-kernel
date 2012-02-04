@@ -59,9 +59,31 @@ unsigned long READ_APB_REG(unsigned long addr)
 
 #endif
 
+// In order to prevent system hangup, add check_cts_hdmi_sys_clk_status() to check 
+// clock gate status . If status == 0, turn on gate first and then access HDMI port.
+static void check_cts_hdmi_sys_clk_status(void)
+{
+    int status;
+    status = READ_MPEG_REG(HHI_HDMI_CLK_CNTL) & (1<<8);
+    
+    if(status == 0){
+        // turn on clock gate
+        printk("HDMI System Clock is off, turn on now\n");
+        WRITE_MPEG_REG(HHI_HDMI_CLK_CNTL, READ_MPEG_REG(HHI_HDMI_CLK_CNTL)|(1<<8));
+        //delay some time
+        status = 100;
+        while(status--)
+            ;
+    }
+    else{
+        //do nothing
+    }
+}
+
 unsigned long hdmi_rd_reg(unsigned long addr)
 {
     unsigned long data;
+    check_cts_hdmi_sys_clk_status();
     WRITE_APB_REG(HDMI_ADDR_PORT, addr);
     WRITE_APB_REG(HDMI_ADDR_PORT, addr);
     
@@ -73,6 +95,7 @@ unsigned long hdmi_rd_reg(unsigned long addr)
 
 void hdmi_wr_only_reg(unsigned long addr, unsigned long data)
 {
+    check_cts_hdmi_sys_clk_status();
     WRITE_APB_REG(HDMI_ADDR_PORT, addr);
     WRITE_APB_REG(HDMI_ADDR_PORT, addr);
     
@@ -83,6 +106,7 @@ void hdmi_wr_reg(unsigned long addr, unsigned long data)
 {
     unsigned long rd_data;
     
+    check_cts_hdmi_sys_clk_status();
     WRITE_APB_REG(HDMI_ADDR_PORT, addr);
     WRITE_APB_REG(HDMI_ADDR_PORT, addr);
     

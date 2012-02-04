@@ -27,7 +27,10 @@
 #include "vpp.h"
 
 #include <linux/amports/vframe_provider.h>
+
+#ifdef CONFIG_AM_DEINTERLACE
 #include "deinterlace.h"
+#endif
 
 #include "videolog.h"
 //#define CONFIG_VIDEO_LOG
@@ -125,6 +128,7 @@ static u32 vpp_zoom_ratio = 100;
 static s32 vpp_zoom_center_x, vpp_zoom_center_y;
 static u32 osd_layer_preblend=0;
 static s32 video_layer_top, video_layer_left, video_layer_width, video_layer_height;
+static s32 video_layer_global_offset_x, video_layer_global_offset_y;
 static s32 osd_layer_top,osd_layer_left,osd_layer_width,osd_layer_height;
 
 #define ZOOM_BITS       18
@@ -260,7 +264,9 @@ vpp_set_filters2(u32 width_in,
     u32 aspect_factor;
     s32 ini_vphase;
 
+#ifdef CONFIG_AM_DEINTERLACE
     int deinterlace_mode = get_deinterlace_mode();
+#endif
 
     next_frame_par->vscale_skip_count = 0;
 
@@ -276,14 +282,20 @@ RESTART:
     aspect_factor = (vpp_flags & VPP_FLAG_AR_MASK) >> VPP_FLAG_AR_BITS;
 
     /* keep 8 bits resolution for aspect conversion */
-	if (wide_mode == VIDEO_WIDEOPTION_4_3) {
-        aspect_factor = 0xc0;
+    if (wide_mode == VIDEO_WIDEOPTION_4_3) {
+        if(vpp_flags & VPP_FLAG_PORTRAIT_MODE)
+            aspect_factor = 0x155;
+        else
+            aspect_factor = 0xc0;
         wide_mode = VIDEO_WIDEOPTION_NORMAL;
     }
     else if (wide_mode == VIDEO_WIDEOPTION_16_9) {
-        aspect_factor = 0x90;
+        if(vpp_flags & VPP_FLAG_PORTRAIT_MODE)
+            aspect_factor = 0x1c7;
+        else
+            aspect_factor = 0x90;
         wide_mode = VIDEO_WIDEOPTION_NORMAL;
-	}
+    }
 
     if ((aspect_factor == 0) || (wide_mode == VIDEO_WIDEOPTION_FULL_STRETCH)) {
         aspect_factor = 0x100;
@@ -291,6 +303,9 @@ RESTART:
         aspect_factor = (width_in * height_out * aspect_factor << 3) /
                         ((width_out * height_in * aspect_ratio_out) >> 5);
     }
+    
+    if(osd_layer_preblend)
+    aspect_factor=0x100;
 
     height_after_ratio = (height_in * aspect_factor) >> 8;
 
@@ -301,34 +316,38 @@ RESTART:
      */
     if(osd_layer_preblend){
 	 if ((osd_layer_width == 0) || (osd_layer_height == 0)) {
-        video_top = 0;
-        video_left = 0;
-        video_width = width_out;
-        video_height = height_out;
+             video_top = 0;
+             video_left = 0;
+             video_width = width_out;
+             video_height = height_out;
 
     	 } else {
-        video_top = osd_layer_top;
-        video_left = osd_layer_left;
-        video_width = osd_layer_width;
-        video_height = osd_layer_height;
-    }	
-    	
-    }else {
-    	 if ((video_layer_width == 0) || (video_layer_height == 0)) {
-        video_top = 0;
-        video_left = 0;
-        video_width = width_out;
-        video_height = height_out;
-
-    	} else {
+             video_top = osd_layer_top;
+             video_left = osd_layer_left;
+             video_width = osd_layer_width;
+             video_height = osd_layer_height;
+         }	
+    } else {
         video_top = video_layer_top;
         video_left = video_layer_left;
         video_width = video_layer_width;
         video_height = video_layer_height;
-    	}
+
+        if ((video_top == 0) && (video_left == 0) && (video_width <= 1) && (video_height <= 1)) {
+            /* special case to do full screen display */
+            video_width = width_out;
+            video_height = height_out;
+        } else {
+        	  if ((video_layer_width < 16) && (video_layer_height < 16)) {
+                /* sanity check to move video out when the target size is too small */
+                video_width = width_out;
+                video_height = height_out;
+                video_left = width_out * 2;
+            }
+            video_top += video_layer_global_offset_y;
+            video_left+= video_layer_global_offset_x;
+        }
     }
-     
-   
 
     screen_width = video_width * vpp_zoom_ratio / 100;
     screen_height = video_height * vpp_zoom_ratio / 100;
@@ -428,10 +447,11 @@ RESTART:
         filter->vpp_vert_coeff = filter_table[COEF_BICUBIC];
     }
 
+#ifdef CONFIG_AM_DEINTERLACE
     if (deinterlace_mode) {
         filter->vpp_vert_coeff = filter_table[COEF_3POINT_TRIANGLE];
     }
-
+#endif
     filter->vpp_vsc_start_phase_step = ratio_y << 6;
 
     f2v_get_vertical_phase(ratio_y, ini_vphase,
@@ -571,6 +591,10 @@ vpp_set_filters(u32 wide_mode,
         vpp_flags = VPP_FLAG_INTERLACE_IN;
     }
 
+    if(vf->ratio_control & DISP_RATIO_PORTRAIT_MODE){
+        vpp_flags |= VPP_FLAG_PORTRAIT_MODE;
+    }
+
     src_width = vf->width;
     src_height = vf->height;
 
@@ -630,6 +654,18 @@ void vpp_get_video_layer_position(s32 *x, s32 *y, s32 *w, s32 *h)
     *y = video_layer_top;
     *w = video_layer_width;
     *h = video_layer_height;
+}
+
+void vpp_set_global_offset(s32 x, s32 y)
+{
+    video_layer_global_offset_x = x;
+    video_layer_global_offset_y = y;
+}
+
+void vpp_get_global_offset(s32 *x, s32 *y)
+{
+    *x = video_layer_global_offset_x;
+    *y = video_layer_global_offset_y;
 }
 
 void vpp_set_zoom_ratio(u32 r)

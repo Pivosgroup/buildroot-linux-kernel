@@ -103,6 +103,9 @@ void  change_vdac_setting(unsigned int  vdec_setting,vmode_t  mode)
 		idx=vdec_setting>>(bit<<2)&0xf;
 		printk("dac index:%d ,signal:%s\n",idx,signal_table[signal_set[signal_set_index][i]]);
 		SET_VDAC(idx,signal_set[signal_set_index][i]);
+        if(signal_set[signal_set_index][i] == VIDEO_SIGNAL_TYPE_INTERLACE_Y) {
+          SET_VDAC(idx,(signal_set[signal_set_index][i] | 0xf000));
+        }
 		bit--;
 	}
 	curr_vdac_setting=vdec_setting;
@@ -213,8 +216,11 @@ int tvoutc_setclk(tvmode_t mode)
 			  //clk_set_rate(clk,540);
 			  break;
 		case TVMODE_720P:
+		case TVMODE_720P_50HZ:
 		case TVMODE_1080I:
+		case TVMODE_1080I_50HZ:
 		case TVMODE_1080P:
+		case TVMODE_1080P_50HZ:
 			  setreg(&hd[xtal]);
 			  if(xtal == 1)
 			  {

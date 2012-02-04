@@ -28,6 +28,7 @@
 #include <linux/fs.h>
 #include <linux/amports/ptsserv.h>
 #include <linux/amports/amstream.h>
+#include <linux/amports/vframe_provider.h>
 #include <linux/device.h>
 
 #include <asm/uaccess.h>
@@ -562,8 +563,6 @@ err1:
     return -ENOENT;
 }
 
-extern void vf_unreg_provider();
-
 void tsdemux_release(void)
 {
 
@@ -590,7 +589,7 @@ void tsdemux_release(void)
     pts_stop(PTS_TYPE_AUDIO);
 
 #ifdef ENABLE_DEMUX_DRIVER
-    vf_unreg_provider();
+    //vf_unreg_provider(NULL);
 #endif
 }
 

@@ -32,6 +32,16 @@ YUV709F: HDTV BT.709 Full_Range YCbCr ( 0~255,  0~255,  0~255)
 RGBS:                       StudioRGB (16~235, 16~235, 16~235)
 RGB:                              RGB ( 0~255,  0~255,  0~255)
 */
+
+typedef enum vdin_format_convert_e {
+    VDIN_FORMAT_CONVERT_YUV_YUV422 = 0,
+    VDIN_FORMAT_CONVERT_YUV_YUV444,
+    VDIN_FORMAT_CONVERT_YUV_RGB,
+    VDIN_FORMAT_CONVERT_RGB_YUV422,
+    VDIN_FORMAT_CONVERT_RGB_YUV444,
+    VDIN_FORMAT_CONVERT_RGB_RGB,
+} vdin_format_convert_t;
+
 typedef enum vdin_matrix_csc_e {
 	VDIN_MATRIX_NULL = 0,
     VDIN_MATRIX_RGB_YUV601,
@@ -100,21 +110,21 @@ typedef struct vdin_hist_cfg_s {
 // ******** GLOBAL FUNCTION CLAIM ********
 // *****************************************************************************
 //for vdin
-extern void vdin_set_vframe_prop_info(vframe_t *vf, struct vdin_dev_s *devp);
+extern void vdin_set_vframe_prop_info(vframe_t *vf, unsigned int offset);
 extern void vdin_set_regs(struct vdin_regs_s *p, int offset);
 extern void vdin_set_all_regs(struct vdin_dev_s *devp);
-extern void vdin_set_default_regmap(struct vdin_dev_s *devp);
-extern void vdin_set_meas_mux(struct vdin_dev_s *devp);
+extern void vdin_set_default_regmap(unsigned int offset);
+extern void vdin_set_meas_mux(unsigned int offset, enum tvin_port_e port_);
 
 //for decoder
 
 #if defined(CONFIG_ARCH_MESON2)
 extern void vdin_get_meas_timing(struct vdin_dev_s *devp);
 #endif
-extern unsigned int vdin_get_active_h(struct vdin_dev_s *devp);
-extern unsigned int vdin_get_active_v(struct vdin_dev_s *devp);
-extern unsigned int vdin_get_total_v(struct vdin_dev_s *devp);
+extern unsigned int vdin_get_active_h(unsigned int offset);
+extern unsigned int vdin_get_active_v(unsigned int offset);
+extern unsigned int vdin_get_total_v(unsigned int offset);
 
-extern void vdin_set_canvas_id(struct vdin_dev_s *devp, unsigned int canvas_id);
+extern void vdin_set_canvas_id(unsigned int offset, unsigned int canvas_id);
 #endif
 

@@ -53,6 +53,7 @@
 #ifdef FIQ_UART
 #include <asm/fiq.h>
 #endif
+static unsigned long write_lock;
 
 static struct am_uart am_uart_info[NR_PORTS];   //the value of NR_PORTS is given in the .config
 
@@ -161,6 +162,12 @@ static void am_uart_start(struct tty_struct *tty)
     mutex_unlock(&info->info_mutex);
 }
 
+static void uart_tasklet_action(unsigned long data)
+{
+	struct am_uart *info = (struct am_uart *)data;
+	tty_wakeup(info->tty);
+}
+
 /*
  * This routine is used by the interrupt handler to schedule
  * processing in the software interrupt portion of the driver.
@@ -201,11 +208,12 @@ static void receive_chars(struct am_uart *info, struct pt_regs *regs,
 	}
     	do {    
             ch = (rx & 0x00ff);
+            
             tty_insert_flip_char(tty,ch,flag);
                      
     		info->rx_cnt++;
                        
-    		if ((status = __raw_readl(&uart->status) & 0x3f))
+    		if ((status = __raw_readl(&uart->status) & 0xff))
     			rx = __raw_readl(&uart->rdata);
     		/* keep reading characters till the RxFIFO becomes empty */
     	} while (status);
@@ -229,15 +237,15 @@ static void BH_receive_chars(struct am_uart *info)
 	status = info->rx_error;
     if (status & UART_OVERFLOW_ERR) {
         printk
-            ("Uart  Driver: Overflow Error while receiving a character\n");
+            ("Uart %d Driver: Overflow Error while receiving a character\n", tty->index);
         flag = TTY_OVERRUN;
     } else if (status & UART_FRAME_ERR) {
         printk
-            ("Uart  Driver: Framing Error while receiving a character\n");
+            ("Uart %d Driver: Framing Error while receiving a character\n", tty->index);
         flag = TTY_FRAME;
     } else if (status & UART_PARITY_ERR) {
         printk
-            ("Uart  Driver: Parity Error while receiving a character\n");
+            ("Uart %d Driver: Parity Error while receiving a character\n", tty->index);
         flag = TTY_PARITY;
     }
 
@@ -272,7 +280,8 @@ static void transmit_chars(struct am_uart *info)
 
     if ((info->xmit_cnt <= 0) || info->tty->stopped)
         goto clear_and_return;
-
+    //clear_mask(&uart->mode, UART_TXINT_EN);
+    set_bit(0, &write_lock);
     while (info->xmit_cnt > 0) {
         if (((__raw_readl(&uart->status) & 0xff00) < 0x3f00)) {
             ch = info->xmit_buf[info->xmit_rd];
@@ -280,8 +289,11 @@ static void transmit_chars(struct am_uart *info)
             info->xmit_rd = (info->xmit_rd+1) & (SERIAL_XMIT_SIZE - 1);
             info->xmit_cnt--;
         }
+        else
+            break;
     }
-
+    clear_bit(0, &write_lock);
+    //set_mask(&uart->mode, UART_TXINT_EN);
 clear_and_return:
     mutex_unlock(&info->info_mutex);
 
@@ -423,7 +435,7 @@ static irqreturn_t am_uart_interrupt(int irq, void *dev, struct pt_regs *regs)
 
     am_uart_t *uart = NULL;
 	struct tty_struct *tty = NULL;
-
+    unsigned int ch;
     if (!info)
        goto out;
 
@@ -436,12 +448,33 @@ static irqreturn_t am_uart_interrupt(int irq, void *dev, struct pt_regs *regs)
     if (!uart)
 		goto out;
 
+    if (__raw_readl(&uart->mode) & UART_TXENB &&
+        (__raw_readl(&uart->mode) & UART_TXINT_EN) && !test_bit(info->line, &write_lock)
+        /*&& (__raw_readl(&uart->status) & UART_TXEMPTY)*/){
+	    //if(1 == info->line)
+            //am_uart_put_char(0,'*');
+        while (info->xmit_cnt > 0) {
+            if (((__raw_readl(&uart->status) & 0xff00) < 0x3f00)) {
+                ch = info->xmit_buf[info->xmit_rd];
+                __raw_writel(ch, &uart->wdata);
+                info->xmit_rd = (info->xmit_rd+1) & (SERIAL_XMIT_SIZE - 1);
+                info->xmit_cnt--;
+            }
+            else
+                break;
+        }
+        if((SERIAL_XMIT_SIZE - info->xmit_cnt - 1) < WAKEUP_CHARS)
+            tasklet_schedule(&info->tlet);
+    }
+
     if ((__raw_readl(&uart->mode) & UART_RXENB)
 	    && !(__raw_readl(&uart->status) & UART_RXEMPTY)) {
+	    //if(1 == info->line)           
+            //am_uart_put_char(0,'&');            
 		receive_chars(info, 0, __raw_readl(&uart->rdata));
 	}
-
-out:	
+  
+out:
     am_uart_sched_event(info, 0);
     return IRQ_HANDLED;
 }
@@ -451,6 +484,7 @@ static void am_uart_workqueue(struct work_struct *work)
     struct am_uart *info=container_of(work,struct am_uart,tqueue);
     am_uart_t *uart = NULL;
     struct tty_struct *tty = NULL;
+    
     if (!info)
         goto out;
     tty = info->tty;
@@ -462,12 +496,13 @@ static void am_uart_workqueue(struct work_struct *work)
 
     if (info->rx_cnt>0)
         BH_receive_chars(info);
-
+#if 0
     if ((__raw_readl(&uart->mode) & UART_TXENB)
-        &&((__raw_readl(&uart->status) & 0xff00) < 0x3f00)) {
-
-        transmit_chars(info);
+        /*&&((__raw_readl(&uart->status) & 0xff00) < 0x3f00)*/) {
+        if(0 == info->line)
+            transmit_chars(info);
     }
+#endif
     if (__raw_readl(&uart->status) & UART_FRAME_ERR)
         __raw_writel(__raw_readl(&uart->status) & ~UART_FRAME_ERR,
                &uart->status);
@@ -495,7 +530,7 @@ static void change_speed(struct am_uart *info, unsigned long newbaud)
     if (!(port = info->port) || newbaud==0)
         return;
     msleep(1);
-    printk("Changing baud to %d\n", (int)newbaud);
+    printk("Changing baud%d to %d\n", info->line, (int)newbaud);
 
     while (!(__raw_readl(&uart->status) & UART_TXEMPTY)) {
     }
@@ -606,7 +641,7 @@ static void am_uart_flush_chars(struct tty_struct *tty)
     if(info->line == 1)
         printk("%s,cnt = %d\n", __FUNCTION__,info->xmit_cnt);
 #endif
-
+    
     mutex_lock(&info->info_mutex);
     if (info->xmit_cnt <= 0 || tty->stopped || tty->hw_stopped ||
         !info->xmit_buf)
@@ -615,8 +650,10 @@ static void am_uart_flush_chars(struct tty_struct *tty)
         tty_wakeup(tty);
         return;
     }
-
+#if 1
     /* Enable transmitter */
+    set_bit(info->line, &write_lock);
+    //clear_mask(&uart->mode, UART_TXINT_EN);
     while (info->xmit_cnt > 0) {
         if (((__raw_readl(&uart->status) & 0xff00) < 0x3f00)) {
             c = info->xmit_buf[info->xmit_rd];
@@ -624,8 +661,12 @@ static void am_uart_flush_chars(struct tty_struct *tty)
             info->xmit_rd = (info->xmit_rd+1)& (SERIAL_XMIT_SIZE - 1);
             info->xmit_cnt--;
         }
+        else
+            break;
     }
-
+    //set_mask(&uart->mode, UART_TXINT_EN);
+    clear_bit(info->line, &write_lock);
+#endif
 
 
     mutex_unlock(&info->info_mutex);
@@ -639,12 +680,13 @@ static int am_uart_write(struct tty_struct *tty, const unsigned char *buf,
     struct am_uart *info = (struct am_uart *)tty->driver_data;
     am_uart_t *uart = uart_addr[info->line];
     unsigned int ch;
-
+    //if(info->line == 1)
+        //printk("%s,cnt = %d\n", __FUNCTION__,info->xmit_cnt);
     if (!tty || !info->xmit_buf || (count <= 0))
         return 0;
 
     //mutex_lock(&info->info_mutex);
-
+    set_bit(info->line, &write_lock);
     total = min_t(int, count, (SERIAL_XMIT_SIZE - info->xmit_cnt - 1));
     c = min_t(int, total, (SERIAL_XMIT_SIZE - info->xmit_wr));
     memcpy(&info->xmit_buf[info->xmit_wr], buf, c);
@@ -655,6 +697,8 @@ static int am_uart_write(struct tty_struct *tty, const unsigned char *buf,
     info->xmit_wr = (info->xmit_wr + total) & (SERIAL_XMIT_SIZE - 1);
     info->xmit_cnt += total;
 
+    //clear_mask(&uart->mode, UART_TXINT_EN);
+    
     while (info->xmit_cnt > 0) {
         if (((__raw_readl(&uart->status) & 0xff00) < 0x3f00)) {
             ch = info->xmit_buf[info->xmit_rd];
@@ -662,7 +706,11 @@ static int am_uart_write(struct tty_struct *tty, const unsigned char *buf,
             info->xmit_rd = (info->xmit_rd+1) & (SERIAL_XMIT_SIZE - 1);
             info->xmit_cnt--;
         }
+        else
+            break;
     }
+    clear_bit(info->line, &write_lock);
+    //set_mask(&uart->mode, UART_TXINT_EN);
 
     //mutex_unlock(&info->info_mutex);
 
@@ -1043,7 +1091,6 @@ int am_uart_open(struct tty_struct *tty, struct file *filp)
 	//retval = block_til_ready(tty, filp, info);
 	//if (retval)
 	//	return retval;
-
     am_uart_sched_event(info,0);
     return 0;
 }
@@ -1140,6 +1187,9 @@ static int __init am_uart_init(void)
         mutex_init(&info->info_mutex);
         INIT_WORK(&info->tqueue,am_uart_workqueue);
 
+        tasklet_init(&info->tlet, uart_tasklet_action,
+			     (unsigned long)info);
+
         set_mask(&uart->mode, UART_RXRST);
         clear_mask(&uart->mode, UART_RXRST);
 
@@ -1151,7 +1201,7 @@ static int __init am_uart_init(void)
 		__raw_writel(/*1 << 7 | */0x1, &uart->intctl);
 #else
         set_mask(&uart->mode, UART_RXINT_EN | UART_TXINT_EN);
-        __raw_writel(1 << 7 | 1, &uart->intctl);
+        __raw_writel(0x1f << 7 | 1, &uart->intctl);
 #endif
 
         clear_mask(&uart->mode, (1 << 19)) ;
@@ -1450,3 +1500,25 @@ void raw_printk5(const char *str, uint n1, uint n2, uint n3, uint n4)
 }
 
 EXPORT_SYMBOL(raw_printk5);
+
+int get_baud(int line)
+{
+    struct am_uart *info;
+
+    info = &am_uart_info[line];
+
+    printk("uart%d %s %d\n", line, __FUNCTION__, info->baud);
+    return info->baud ? info->baud : 115200;
+}
+EXPORT_SYMBOL(get_baud);
+
+void set_baud(int line, unsigned long newbaud)
+{
+    struct am_uart *info;
+
+    info = &am_uart_info[line];
+
+    change_speed(info, newbaud);
+    printk("uart%d %s %d\n", line, __FUNCTION__, info->baud);
+}
+EXPORT_SYMBOL(set_baud);

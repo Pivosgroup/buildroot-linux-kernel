@@ -30,6 +30,7 @@
 #include <linux/amports/canvas.h>
 #include <linux/amports/vframe.h>
 #include <linux/amports/vframe_provider.h>
+#include <linux/amports/vframe_receiver.h>
 #include <mach/am_regs.h>
 
 #include "amvdec.h"
@@ -73,20 +74,22 @@
 #define STAT_TIMER_ARM      0x10
 #define STAT_VDEC_RUN       0x20
 
-static vframe_t *vvc1_vf_peek(void);
-static vframe_t *vvc1_vf_get(void);
-static void vvc1_vf_put(vframe_t *);
-static int  vvc1_vf_states(vframe_states_t *states);
+static vframe_t *vvc1_vf_peek(void*);
+static vframe_t *vvc1_vf_get(void*);
+static void vvc1_vf_put(vframe_t *, void*);
+static int  vvc1_vf_states(vframe_states_t *states, void*);
 
 static const char vvc1_dec_id[] = "vvc1-dev";
 
-static const struct vframe_provider_s vvc1_vf_provider = {
+#define PROVIDER_NAME   "decoder.vc1"
+static const struct vframe_operations_s vvc1_vf_provider = {
     .peek = vvc1_vf_peek,
     .get = vvc1_vf_get,
     .put = vvc1_vf_put,
     .vf_states = vvc1_vf_states,
 };
-static const struct vframe_receiver_op_s *vf_receiver;
+static struct vframe_provider_s vvc1_vf_prov;
+
 static struct vframe_s vfpool[VF_POOL_SIZE];
 static u32 vfpool_idx[VF_POOL_SIZE];
 static s32 vfbuf_use[4];
@@ -294,7 +297,7 @@ static void vvc1_isr(void)
             vfbuf_use[buffer_index]++;
 
             INCPTR(fill_ptr);
-
+		vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
             vfpool_idx[fill_ptr] = buffer_index;
             vf = &vfpool[fill_ptr];
             vf->width = vvc1_amstream_dec_info.width;
@@ -321,8 +324,7 @@ static void vvc1_isr(void)
             vfbuf_use[buffer_index]++;
 
             INCPTR(fill_ptr);
-            if (vf_receiver)
-    	        vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL, NULL);	            
+            vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
         } else { // progressive
             vfpool_idx[fill_ptr] = buffer_index;
             vf = &vfpool[fill_ptr];
@@ -361,8 +363,7 @@ static void vvc1_isr(void)
             vfbuf_use[buffer_index]++;
 
             INCPTR(fill_ptr);
-            if (vf_receiver)
-    	        vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL, NULL);	            
+            vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
         }
 
         total_frame++;
@@ -380,7 +381,7 @@ static void vvc1_isr(void)
 #endif
 }
 
-static vframe_t *vvc1_vf_peek(void)
+static vframe_t *vvc1_vf_peek(void* op_arg)
 {
     if (get_ptr == fill_ptr) {
         return NULL;
@@ -389,7 +390,7 @@ static vframe_t *vvc1_vf_peek(void)
     return &vfpool[get_ptr];
 }
 
-static vframe_t *vvc1_vf_get(void)
+static vframe_t *vvc1_vf_get(void* op_arg)
 {
     vframe_t *vf;
 
@@ -404,12 +405,12 @@ static vframe_t *vvc1_vf_get(void)
     return vf;
 }
 
-static void vvc1_vf_put(vframe_t *vf)
+static void vvc1_vf_put(vframe_t *vf, void* op_arg)
 {
     INCPTR(putting_ptr);
 }
 
-static int vvc1_vf_states(vframe_states_t *states)
+static int vvc1_vf_states(vframe_states_t *states, void* op_arg)
 {
     unsigned long flags;
     int i;
@@ -557,7 +558,7 @@ static void vvc1_local_init(void)
     avi_flag = (u32)vvc1_amstream_dec_info.param;
 
     fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
-    vf_receiver = NULL;
+
     frame_width = frame_height = frame_dur = frame_prog = 0;
 
     total_frame = 0;
@@ -576,15 +577,11 @@ static void vvc1_local_init(void)
 #ifdef CONFIG_POST_PROCESS_MANAGER
 static void vvc1_ppmgr_reset(void)
 {
-    const struct vframe_receiver_op_s *vf_receiver_bak = vf_receiver;
+    vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_RESET,NULL);
 
-    vf_ppmgr_reset();
     vvc1_local_init();
 
-    vf_receiver = vf_receiver_bak;
-
-    if ((vf_receiver) && (vf_receiver->event_cb))
-        vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_START, NULL, NULL); 	
+    //vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_START,NULL);
     
     printk("vvc1dec: vf_ppmgr_reset\n");
 }
@@ -604,9 +601,9 @@ static void vvc1_put_timer_func(unsigned long arg)
 #ifdef CONFIG_POST_PROCESS_MANAGER
         vvc1_ppmgr_reset();
 #else 
-        vf_light_unreg_provider();
+        vf_light_unreg_provider(&vvc1_vf_prov);
         vvc1_local_init();
-        vf_reg_provider(&vvc1_vf_provider);
+        vf_reg_provider(&vvc1_vf_prov);
 #endif         
         vvc1_prot_init();
         amvdec_start();
@@ -676,11 +673,12 @@ static s32 vvc1_init(void)
 
     stat |= STAT_ISR_REG;
  #ifdef CONFIG_POST_PROCESS_MANAGER
-	vf_receiver = vf_ppmgr_reg_provider(&vvc1_vf_provider);
-	if ((vf_receiver) && (vf_receiver->event_cb))
-	vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_START, NULL, NULL); 	
+    vf_provider_init(&vvc1_vf_prov, PROVIDER_NAME, &vvc1_vf_provider, NULL);
+    vf_reg_provider(&vvc1_vf_prov);
+    vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_START,NULL);
  #else 
- 	vf_reg_provider(&vvc1_vf_provider);
+    vf_provider_init(&vvc1_vf_prov, PROVIDER_NAME, &vvc1_vf_provider, NULL);
+    vf_reg_provider(&vvc1_vf_prov);
  #endif 
 
     stat |= STAT_VF_HOOK;
@@ -748,13 +746,7 @@ static int amvdec_vc1_remove(struct platform_device *pdev)
         spin_lock_irqsave(&lock, flags);
         fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
         spin_unlock_irqrestore(&lock, flags);
- #ifdef CONFIG_POST_PROCESS_MANAGER
-	vf_ppmgr_unreg_provider();
-	if ((vf_receiver) && (vf_receiver->event_cb))
-	vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_UNREG, NULL, NULL); 	
- #else 
- 	vf_unreg_provider();
- #endif         
+        vf_unreg_provider(&vvc1_vf_prov);
         stat &= ~STAT_VF_HOOK;
     }
 
@@ -782,6 +774,18 @@ static struct platform_driver amvdec_vc1_driver = {
     }
 };
 
+#ifdef CONFIG_ARCH_MESON3
+static struct codec_profile_t amvdec_vc1_profile = {
+	.name = "vc1",
+	.profile = "progressive, interlace, wmv3"
+};
+#else
+static struct codec_profile_t amvdec_vc1_profile = {
+	.name = "vc1",
+	.profile = "progressive, wmv3"
+};
+#endif
+
 static int __init amvdec_vc1_driver_init_module(void)
 {
     printk("amvdec_vc1 module init\n");
@@ -790,7 +794,7 @@ static int __init amvdec_vc1_driver_init_module(void)
         printk("failed to register amvdec_vc1 driver\n");
         return -ENODEV;
     }
-
+	vcodec_profile_register(&amvdec_vc1_profile);
     return 0;
 }
 

@@ -23,6 +23,7 @@
 #include <linux/delay.h>
 #include <linux/jiffies.h>
 #include <linux/slab.h>
+#include <linux/platform_device.h>
 #ifdef ARC_700
 #include <asm/arch/am_regs.h>
 #else
@@ -33,16 +34,52 @@
 #include "gx1001.h"
 
 #if 1
-#define pr_dbg(fmt, args...) printk(KERN_DEBUG "DVB: " fmt, ## args)
+#define pr_dbg(fmt, args...) printk( KERN_DEBUG"DVB: " fmt, ## args)
 #else
 #define pr_dbg(fmt, args...)
 #endif
 
-#define pr_error(fmt, args...) printk(KERN_ERR "DVB: " fmt, ## args)
+#define pr_error(fmt, args...) printk( KERN_ERR"DVB: " fmt, ## args)
+
+MODULE_PARM_DESC(frontend0_reset, "\n\t\t Reset GPIO of frontend0");
+static int frontend0_reset = -1;
+module_param(frontend0_reset, int, S_IRUGO);
+
+MODULE_PARM_DESC(frontend0_i2c, "\n\t\t IIc adapter id of frontend0");
+static int frontend0_i2c = -1;
+module_param(frontend0_i2c, int, S_IRUGO);
+
+MODULE_PARM_DESC(frontend0_tuner_addr, "\n\t\t Tuner IIC address of frontend0");
+static int frontend0_tuner_addr = -1;
+module_param(frontend0_tuner_addr, int, S_IRUGO);
+
+MODULE_PARM_DESC(frontend0_demod_addr, "\n\t\t Demod IIC address of frontend0");
+static int frontend0_demod_addr = -1;
+module_param(frontend0_demod_addr, int, S_IRUGO);
+
+static struct aml_fe gx1001_fe[FE_DEV_COUNT];
+
+MODULE_PARM_DESC(frontend_reset, "\n\t\t Reset GPIO of frontend");
+static int frontend_reset = -1;
+module_param(frontend_reset, int, S_IRUGO);
+
+MODULE_PARM_DESC(frontend_i2c, "\n\t\t IIc adapter id of frontend");
+static int frontend_i2c = -1;
+module_param(frontend_i2c, int, S_IRUGO);
+
+MODULE_PARM_DESC(frontend_tuner_addr, "\n\t\t Tuner IIC address of frontend");
+static int frontend_tuner_addr = -1;
+module_param(frontend_tuner_addr, int, S_IRUGO);
+
+MODULE_PARM_DESC(frontend_demod_addr, "\n\t\t Demod IIC address of frontend");
+static int frontend_demod_addr = -1;
+module_param(frontend_demod_addr, int, S_IRUGO);
+
+static struct aml_fe gx1001_fe[FE_DEV_COUNT];
 
 static int gx1001_i2c_gate_ctrl(struct dvb_frontend *fe, int enable)
 {
-	struct gx1001_state *state = fe->demodulator_priv;
+	//struct gx1001_state *state = fe->demodulator_priv;
 
 	return 0;
 }
@@ -154,7 +191,7 @@ static void gx1001_release(struct dvb_frontend *fe)
 
 static struct dvb_frontend_ops gx1001_ops;
 
-struct dvb_frontend *gx1001_attach(const struct aml_fe_config *config)
+struct dvb_frontend *gx1001_attach(const struct gx1001_fe_config *config)
 {
 	struct gx1001_state *state = NULL;
 
@@ -174,7 +211,6 @@ struct dvb_frontend *gx1001_attach(const struct aml_fe_config *config)
 	return &state->fe;
 }
 
-EXPORT_SYMBOL(gx1001_attach);
 static struct dvb_frontend_ops gx1001_ops = {
 
 	.info = {
@@ -204,17 +240,151 @@ static struct dvb_frontend_ops gx1001_ops = {
 	.read_ucblocks = gx1001_read_ucblocks,
 };
 
+static void gx1001_fe_release(struct aml_dvb *advb, struct aml_fe *fe)
+{
+	if(fe && fe->fe) {
+		pr_dbg("release GX1001 frontend %d\n", fe->id);
+		dvb_unregister_frontend(fe->fe);
+		dvb_frontend_detach(fe->fe);
+		if(fe->cfg){
+			kfree(fe->cfg);
+			fe->cfg = NULL;
+		}
+		fe->id = -1;
+	}
+}
+
+static int gx1001_fe_init(struct aml_dvb *advb, struct platform_device *pdev, struct aml_fe *fe, int id)
+{
+	struct dvb_frontend_ops *ops;
+	int ret;
+	struct resource *res;
+	struct gx1001_fe_config *cfg;
+	char buf[32];
+	
+	pr_dbg("init GX1001 frontend %d\n", id);
+
+
+	cfg = kzalloc(sizeof(struct gx1001_fe_config), GFP_KERNEL);
+	if (!cfg)
+		return -ENOMEM;
+	
+	cfg->reset_pin = frontend_reset;
+	if(cfg->reset_pin==-1) {
+		snprintf(buf, sizeof(buf), "frontend%d_reset", id);
+		res = platform_get_resource_byname(pdev, IORESOURCE_MEM, buf);
+		if (!res) {
+			pr_error("cannot get resource \"%s\"\n", buf);
+			ret = -EINVAL;
+			goto err_resource;
+		}
+		cfg->reset_pin = res->start;		
+	}
+	
+	cfg->i2c_id = frontend_i2c;
+	if(cfg->i2c_id==-1) {
+		snprintf(buf, sizeof(buf), "frontend%d_i2c", id);
+		res = platform_get_resource_byname(pdev, IORESOURCE_MEM, buf);
+		if (!res) {
+			pr_error("cannot get resource \"%s\"\n", buf);
+			ret = -EINVAL;
+			goto err_resource;
+		}
+		cfg->i2c_id = res->start;
+	}
+	
+	cfg->tuner_addr = frontend_tuner_addr;
+	
+	if(cfg->tuner_addr==-1) {
+		snprintf(buf, sizeof(buf), "frontend%d_tuner_addr", id);
+		res = platform_get_resource_byname(pdev, IORESOURCE_MEM, buf);
+		if (!res) {
+			pr_error("cannot get resource \"%s\"\n", buf);
+			ret = -EINVAL;
+			goto err_resource;
+		}
+		cfg->tuner_addr = res->start>>1;
+	}
+	
+	cfg->demod_addr = frontend_demod_addr;
+	if(cfg->demod_addr==-1) {
+		snprintf(buf, sizeof(buf), "frontend%d_demod_addr", id);
+		res = platform_get_resource_byname(pdev, IORESOURCE_MEM, buf);
+		if (!res) {
+			pr_error("cannot get resource \"%s\"\n", buf);
+			ret = -EINVAL;
+			goto err_resource;
+		}
+		cfg->demod_addr = res->start>>1;
+	}
+	
+	fe->fe = gx1001_attach(cfg);
+	if (!fe->fe) {
+		ret = -ENOMEM;
+		goto err_resource;
+	}
+
+	if ((ret=dvb_register_frontend(&advb->dvb_adapter, fe->fe))) {
+		pr_error("frontend registration failed!");
+		ops = &fe->fe->ops;
+		if (ops->release != NULL)
+			ops->release(fe->fe);
+		fe->fe = NULL;
+		goto err_resource;
+	}
+	
+	fe->id = id;
+	fe->cfg = cfg;
+	
+	return 0;
+
+err_resource:
+	kfree(cfg);
+	return ret;
+}
+
+static int gx1001_fe_probe(struct platform_device *pdev)
+{
+	struct aml_dvb *dvb = aml_get_dvb_device();
+	
+	if(gx1001_fe_init(dvb, pdev, &gx1001_fe[0], 0)<0)
+		return -ENXIO;
+
+	platform_set_drvdata(pdev, &gx1001_fe[0]);
+	
+	return 0;
+}
+
+static int gx1001_fe_remove(struct platform_device *pdev)
+{
+	struct aml_fe *drv_data = platform_get_drvdata(pdev);
+	struct aml_dvb *dvb = aml_get_dvb_device();
+
+	platform_set_drvdata(pdev, NULL);
+	
+	gx1001_fe_release(dvb, drv_data);
+	
+	return 0;
+}
+
+static struct platform_driver aml_fe_driver = {
+	.probe		= gx1001_fe_probe,
+	.remove		= gx1001_fe_remove,	
+	.driver		= {
+		.name	= "gx1001",
+		.owner	= THIS_MODULE,
+	}
+};
+
 static int __init gxfrontend_init(void)
 {
-
-	pr_dbg("gxfrontend_init\n");
-	return 0;
+	return platform_driver_register(&aml_fe_driver);
 }
 
 
 static void __exit gxfrontend_exit(void)
 {
-	pr_dbg("gxfrontend_exit");
+	platform_driver_unregister(&aml_fe_driver);
 }
 
 module_init(gxfrontend_init);

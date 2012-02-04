@@ -16,6 +16,8 @@ obj-$(CONFIG_AML_TCON_W10)  += w10.o
 
 obj-$(CONFIG_AML_TCON_W7)  += w7.o
 
+obj-$(CONFIG_AML_TCON_W7CPT)  += w7_CPT.o
+
 obj-$(CONFIG_AML_TCON_W7NEW)  += w7new.o
 
 obj-$(CONFIG_AML_TCON_W8)  += w8.o

@@ -16,24 +16,36 @@
 #include <linux/platform_device.h>
 #include <linux/io.h>
 #include <linux/dma-mapping.h>
+#include <linux/mtd/mtd.h>
+#include <linux/mtd/nand.h>
+#include <linux/mtd/nand_ecc.h>
+#include <linux/mtd/partitions.h>
+#include <linux/device.h>
+#include <linux/spi/flash.h>
 #include <mach/hardware.h>
 #include <mach/platform.h>
 #include <mach/memory.h>
-#include <mach/memory.h>
-#include <mach/pinmux.h>
-#include <mach/lm.h>
 #include <mach/clock.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
+#include <asm/setup.h>
+#include <mach/lm.h>
+#include <asm/memory.h>
 #include <asm/mach/map.h>
 #include <mach/am_regs.h>
 #include <mach/am_eth_pinmux.h>
-#include <asm/setup.h>
-#include <linux/delay.h>
+#include <mach/nand.h>
+#include <mach/card_io.h>
+#include <linux/i2c.h>
+#include <linux/i2c-aml.h>
+#ifdef CONFIG_AM_UART_WITH_S_CORE 
+#include <linux/uart-aml.h>
+#endif
 #include <mach/pinmux.h>
 #include <mach/gpio.h>
-#include "board-6236m.h"
+#include <linux/delay.h>
 #include <mach/clk_set.h>
+#include "board-6236m.h"
 #if defined(CONFIG_TOUCHSCREEN_ADS7846)
 #include <linux/spi/spi.h>
 #include <linux/spi/spi_gpio.h>
@@ -88,18 +100,20 @@ static struct platform_device input_device = {
 };
 #endif
 
-#ifdef CONFIG_FB_AM
+#if defined(CONFIG_FB_AM)
 static struct resource fb_device_resources[] = {
     [0] = {
         .start = OSD1_ADDR_START,
         .end   = OSD1_ADDR_END,
         .flags = IORESOURCE_MEM,
     },
+#if defined(CONFIG_FB_OSD2_ENABLE)
     [1] = {
         .start = OSD2_ADDR_START,
-        .end   =OSD2_ADDR_END,
+        .end   = OSD2_ADDR_END,
         .flags = IORESOURCE_MEM,
     },
+#endif
 };
 
 static struct platform_device fb_device = {
@@ -262,12 +276,41 @@ static struct resource amlogic_card_resource[]  = {
 	}
 };
 
+static struct aml_card_info  amlogic_card_info[] = {
+	[0] = {
+		.name = "sd_card",
+		.work_mode = CARD_HW_MODE,
+		.io_pad_type = SDIO_GPIOA_9_14,
+		.card_ins_en_reg = EGPIO_GPIOA_ENABLE,
+		.card_ins_en_mask = PREG_IO_3_MASK,
+		.card_ins_input_reg = EGPIO_GPIOA_INPUT,
+		.card_ins_input_mask = PREG_IO_3_MASK,
+		.card_power_en_reg = JTAG_GPIO_ENABLE,
+		.card_power_en_mask = PREG_IO_16_MASK,
+		.card_power_output_reg = JTAG_GPIO_OUTPUT,
+		.card_power_output_mask = PREG_IO_20_MASK,
+		.card_power_en_lev = 0,
+		.card_wp_en_reg = EGPIO_GPIOA_ENABLE,
+		.card_wp_en_mask = PREG_IO_11_MASK,
+		.card_wp_input_reg = EGPIO_GPIOA_INPUT,
+		.card_wp_input_mask = PREG_IO_11_MASK,
+		.card_extern_init = 0,
+	},
+};
+
+static struct aml_card_platform amlogic_card_platform = {
+	.card_num = ARRAY_SIZE(amlogic_card_info),
+	.card_info = amlogic_card_info,
+};
 
 static struct platform_device amlogic_card_device = { 
 	.name = "AMLOGIC_CARD", 
 	.id    = -1,
 	.num_resources = ARRAY_SIZE(amlogic_card_resource),
 	.resource = amlogic_card_resource,
+	.dev = {
+		.platform_data = &amlogic_card_platform,
+	},
 };
 #endif
 
@@ -409,7 +452,7 @@ int ads7846_init_gpio(void)
 }
 #endif
 
-#if defined(CONFIG_AM_NAND)
+#if defined(CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE)
 static struct mtd_partition partition_info[] = 
 {
 	{
@@ -499,6 +542,34 @@ static struct platform_device aml_nand_device =
 };
 #endif
 
+#define PINMUX_UART_A   UART_A_GPIO_C21_D22
+#define PINMUX_UART_B	UART_B_GPIO_E18_E19
+
+#if defined(CONFIG_AM_UART_WITH_S_CORE)
+
+#if defined(CONFIG_AM_UART0_SET_PORT_A)
+#define UART_0_PORT		UART_A
+#define UART_1_PORT		UART_B
+#elif defined(CONFIG_AM_UART0_SET_PORT_B)
+#define UART_0_PORT		UART_B
+#define UART_1_PORT		UART_A
+#endif
+
+static struct aml_uart_platform aml_uart_plat = {
+    .uart_line[0]		=	UART_0_PORT,
+    .uart_line[1]		=	UART_1_PORT
+};
+
+static struct platform_device aml_uart_device = {	
+    .name         = "am_uart",  
+    .id       = -1, 
+    .num_resources    = 0,  
+    .resource     = NULL,   
+    .dev = {        
+                .platform_data = &aml_uart_plat,  
+           },
+};
+#endif
 
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_JPEGLOGO)
@@ -512,6 +583,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif		
     #if defined(CONFIG_AM_STREAMING)
 		&codec_device,
+    #endif
+    #if defined(CONFIG_AM_UART_WITH_S_CORE)
+        &aml_uart_device,
     #endif
     #if defined(CONFIG_TVIN_VDIN)
         &vdin_device,
@@ -530,7 +604,7 @@ static struct platform_device __initdata *platform_devs[] = {
 #if defined(CONFIG_TOUCHSCREEN_ADS7846)
 	&spi_gpio,
 #endif
-	 #if defined(CONFIG_AM_NAND)
+	 #if defined(CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE)
 		&aml_nand_device,
     #endif		
 };
@@ -559,17 +633,8 @@ static void __init device_pinmux_init(void )
 	/*GPIOA_200e_bit4..usb/eth/YUV power on*/
 	set_gpio_mode(PREG_EGPIO,1<<4,GPIO_OUTPUT_MODE);
 	set_gpio_val(PREG_EGPIO,1<<4,1);
-	uart_set_pinmux(UART_PORT_A,UART_A_GPIO_C21_D22);
-#if 0
-#define GPIO_LED_BL_PWM	((GPIOA_bank_bit(8) << 16) | GPIOA_bit_bit0_14(8))	//pin31
-#define GPIO_EN_5V		((GPIOA_bank_bit(6) << 16) | GPIOA_bit_bit0_14(6))	//pin28
-#define GPIO_LCD_PWR_EN	((GPIOC_bank_bit0_26(4) << 16) | GPIOC_bit_bit0_26(4)) //pin165
-	gpio_direction_output(GPIO_LED_BL_PWM, 1);
-	// enable 5v
-	gpio_direction_output(GPIO_EN_5V, 1);
-	// lcd power on
-	gpio_direction_output(GPIO_LCD_PWR_EN, 0);
-#endif	
+	uart_set_pinmux(UART_PORT_A,PINMUX_UART_A);
+	uart_set_pinmux(UART_PORT_B,PINMUX_UART_B);
 	/*pinmux of eth*/
 	eth_pinmux_init();
 }

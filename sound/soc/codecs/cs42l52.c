@@ -29,9 +29,8 @@
 #include <sound/soc-dapm.h>
 #include <sound/initval.h>
 #include <sound/tlv.h>
-
+#include <sound/cs42l52.h>
 #include "cs42l52.h"
-
 #define DEBUG
 #ifdef DEBUG
 #define SOCDBG(fmt, arg...)	printk(KERN_ERR "%s: %s() " fmt, SOC_CS42L52_NAME, __FUNCTION__, ##arg)
@@ -59,6 +58,7 @@ struct cs42l52_priv {
 	unsigned int sysclk;
 	struct snd_soc_codec codec;
 	struct snd_pcm_hw_constraint_list *sysclk_constraints;
+	struct cs42l52_platform_data *pdata;
 	u16 reg_cache[53];
 };
 static struct snd_soc_device *soc_cs42l52_pdev;
@@ -89,6 +89,16 @@ static int cs42l52_i2c_read(struct i2c_client *client, char *buf, int count)
 	return i2c_master_recv(client, buf, count);
 }
 
+int cs42l52_read_register(struct i2c_client *client, u8 addr)
+{
+	u8 val;
+	if (i2c_master_send(client, &addr, 1) == 1) {
+		if (i2c_master_recv(client, &val, 1) == 1)
+			return val;
+	}
+	return -1;
+}
+
  static int ascii2int(char code)
 {
 	int val = 0;
@@ -103,7 +113,9 @@ static int cs42l52_i2c_read(struct i2c_client *client, char *buf, int count)
 
 static ssize_t cs42l52_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
-	struct snd_soc_codec *codec = dev_get_drvdata(dev);	
+	  struct i2c_client *client = container_of(dev, struct i2c_client, dev);
+		struct cs42l52_priv *cs42l52 = i2c_get_clientdata(client);
+	  struct snd_soc_codec *codec = &cs42l52->codec;
     u8 reg_addr, reg_data;
     
     if (!strcmp(attr->attr.name, "reg")) {
@@ -355,7 +367,7 @@ static const char *cs42l52_hpmux[] = {"Off", "On"};
 
 static const struct soc_enum soc_cs42l52_enum[] = {
 SOC_ENUM_DOUBLE(CODEC_CS42L52_ANALOG_HPF_CTL, 4, 6, 2, cs42l52_hpf_freeze), /*0*/
-SOC_ENUM_SINGLE(CODEC_CS42L52_ADC_HPF_FREQ, 0, 4, cs42l52_hpf_corner_freq),
+SOC_ENUM_SINGLE(CODEC_CS42L52_ADC_HPF_FREQ, 3, 4, cs42l52_hpf_corner_freq),
 SOC_ENUM_SINGLE(CODEC_CS42L52_ADC_MISC_CTL, 4, 4, cs42l52_adc_sum),
 SOC_ENUM_DOUBLE(CODEC_CS42L52_ADC_MISC_CTL, 2, 3, 2, cs42l52_sig_polarity),
 SOC_ENUM_DOUBLE(CODEC_CS42L52_PB_CTL1, 2, 3, 2, cs42l52_sig_polarity),
@@ -515,17 +527,17 @@ static const struct snd_soc_dapm_widget soc_cs42l52_dapm_widgets[] = {
 	SND_SOC_DAPM_MUX("ADC Mux Right Capture Switch", SND_SOC_NOPM, 2, 1, &cs42l52_adcb_mux),
 
 	/* Sum switches */
-	SND_SOC_DAPM_PGA("AIN1A Switch", CODEC_CS42L52_ADC_PGA_A, 0, 0, NULL, 0),
-	SND_SOC_DAPM_PGA("AIN2A Switch", CODEC_CS42L52_ADC_PGA_A, 1, 0, NULL, 0),
-	SND_SOC_DAPM_PGA("AIN3A Switch", CODEC_CS42L52_ADC_PGA_A, 2, 0, NULL, 0),
-	SND_SOC_DAPM_PGA("AIN4A Switch", CODEC_CS42L52_ADC_PGA_A, 3, 0, NULL, 0),
-	SND_SOC_DAPM_PGA("MICA Switch" , CODEC_CS42L52_ADC_PGA_A, 4, 0, NULL, 0),
+//	SND_SOC_DAPM_PGA("AIN1A Switch", CODEC_CS42L52_ADC_PGA_A, 0, 0, NULL, 0),
+//	SND_SOC_DAPM_PGA("AIN2A Switch", CODEC_CS42L52_ADC_PGA_A, 1, 0, NULL, 0),
+//	SND_SOC_DAPM_PGA("AIN3A Switch", CODEC_CS42L52_ADC_PGA_A, 2, 0, NULL, 0),
+//	SND_SOC_DAPM_PGA("AIN4A Switch", CODEC_CS42L52_ADC_PGA_A, 3, 0, NULL, 0),
+//	SND_SOC_DAPM_PGA("MICA Switch" , CODEC_CS42L52_ADC_PGA_A, 4, 0, NULL, 0),
 
-	SND_SOC_DAPM_PGA("AIN1B Switch", CODEC_CS42L52_ADC_PGA_B, 0, 0, NULL, 0),
-	SND_SOC_DAPM_PGA("AIN2B Switch", CODEC_CS42L52_ADC_PGA_B, 1, 0, NULL, 0),
-	SND_SOC_DAPM_PGA("AIN3B Switch", CODEC_CS42L52_ADC_PGA_B, 2, 0, NULL, 0),
-	SND_SOC_DAPM_PGA("AIN4B Switch", CODEC_CS42L52_ADC_PGA_B, 3, 0, NULL, 0),
-	SND_SOC_DAPM_PGA("MICB Switch" , CODEC_CS42L52_ADC_PGA_B, 4, 0, NULL, 0),
+//	SND_SOC_DAPM_PGA("AIN1B Switch", CODEC_CS42L52_ADC_PGA_B, 0, 0, NULL, 0),
+//	SND_SOC_DAPM_PGA("AIN2B Switch", CODEC_CS42L52_ADC_PGA_B, 1, 0, NULL, 0),
+//	SND_SOC_DAPM_PGA("AIN3B Switch", CODEC_CS42L52_ADC_PGA_B, 2, 0, NULL, 0),
+//	SND_SOC_DAPM_PGA("AIN4B Switch", CODEC_CS42L52_ADC_PGA_B, 3, 0, NULL, 0),
+//	SND_SOC_DAPM_PGA("MICB Switch" , CODEC_CS42L52_ADC_PGA_B, 4, 0, NULL, 0),
 
 	/* MIC PGA Power */
 	SND_SOC_DAPM_PGA("PGA MICA", CODEC_CS42L52_PWCTL2, PWCTL2_PDN_MICA_SHIFT, 1, NULL, 0),
@@ -783,26 +795,19 @@ unsigned int tca_cs42L52_initcodec(struct snd_soc_codec *codec)
 	printk("%s\n",__FUNCTION__);
   	snd_soc_write(codec, CODEC_CS42L52_PWCTL1,0x1F);   
  	snd_soc_write(codec, CODEC_CS42L52_PWCTL2, 0x07);
- 	snd_soc_write(codec, CODEC_CS42L52_PWCTL3, 0x50); 
-	//snd_soc_write(codec, CODEC_CS42L52_CLK_CTL, 0x80);
+ 	//snd_soc_write(codec, CODEC_CS42L52_PWCTL3, 0x05); //current low vaild,previous is high vaild0x50
     snd_soc_write(codec, CODEC_CS42L52_CLK_CTL, 0xa0);
-	//snd_soc_write(codec, CODEC_CS42L52_IFACE_CTL1, 0x04);
     snd_soc_write(codec, CODEC_CS42L52_IFACE_CTL1, 0x24);
 	snd_soc_write(codec, CODEC_CS42L52_IFACE_CTL2, 0x00);			
 	snd_soc_write(codec, CODEC_CS42L52_PB_CTL1, 0x60); 
-	//snd_soc_write(codec, CODEC_CS42L52_PB_CTL1, 0x00);
-    /*
-	snd_soc_write(codec, 0x00, 0x99);	
-	snd_soc_write(codec, 0x3E, 0xBA);	
-	snd_soc_write(codec, 0x00, 0x00);
-	*/
+
 	return 0;
 }
 
 static int soc_cs42l52_set_fmt(struct snd_soc_dai *codec_dai,
 			u_int fmt)
 {
-	printk("%s\n",__FUNCTION__);
+	printk("%s:fmt=%d\n",__FUNCTION__,fmt);
 	struct snd_soc_codec *soc_codec = codec_dai->codec;
 	int ret = 0;
 	u8 iface = 0;
@@ -913,7 +918,7 @@ static int soc_cs42l52_pcm_hw_params(struct snd_pcm_substream *substream,
 
 static int soc_cs42l52_digital_mute(struct snd_soc_dai *dai, int mute)
 {
-	printk("%s\n",__FUNCTION__);
+	printk("%s,%s\n",__FUNCTION__, mute ? "on" : "off");
 #if defined CS42L52_SPEAK_IN_ONE
 	struct snd_soc_codec *soc_codec = dai->codec;
 	u8 mute_val = snd_soc_read(soc_codec, CODEC_CS42L52_PB_CTL1) & PB_CTL1_MUTE_MASK;
@@ -938,27 +943,35 @@ int soc_cs42l52_set_bias_level(struct snd_soc_codec *codec, enum snd_soc_bias_le
 	u8 pwctl2 = snd_soc_read(codec, CODEC_CS42L52_PWCTL2) & 0x07;
 
 	switch (level) {
-        case SND_SOC_BIAS_ON: /* full On */
-		SOCDBG("full on\n");
-		break;
-        case SND_SOC_BIAS_PREPARE: /* partial On */
-		SOCDBG("partial on\n");
-		pwctl1 &= ~(PWCTL1_PDN_CHRG | PWCTL1_PDN_CODEC);
-                snd_soc_write(codec, CODEC_CS42L52_PWCTL1, pwctl1);
-                break;
-        case SND_SOC_BIAS_STANDBY: /* Off, with power */
-		SOCDBG("off with power\n");
-		pwctl1 &= ~(PWCTL1_PDN_CHRG | PWCTL1_PDN_CODEC);
-                snd_soc_write(codec, CODEC_CS42L52_PWCTL1, pwctl1);
-                break;
-        case SND_SOC_BIAS_OFF: /* Off, without power */
-		SOCDBG("off without power\n");
-                snd_soc_write(codec, CODEC_CS42L52_PWCTL1, pwctl1 | 0x9f);
-		snd_soc_write(codec, CODEC_CS42L52_PWCTL2, pwctl2 | 0x07);
-                break;
-        }
-        codec->bias_level = level;
-        return 0;
+		case SND_SOC_BIAS_ON: /* full On */
+			SOCDBG("full on\n");
+			snd_soc_write(codec, CODEC_CS42L52_PWCTL1, 0x00);
+			snd_soc_write(codec, CODEC_CS42L52_PWCTL2, 0x00);
+			break;
+			
+		case SND_SOC_BIAS_PREPARE: /* partial On */
+			SOCDBG("partial on\n");
+			pwctl1 &= ~(PWCTL1_PDN_CHRG | PWCTL1_PDN_CODEC);
+			snd_soc_write(codec, CODEC_CS42L52_PWCTL1, pwctl1);
+			break;
+		
+		case SND_SOC_BIAS_STANDBY: /* Off, with power */
+			SOCDBG("off with power\n");
+			//pwctl1 &= ~(PWCTL1_PDN_CHRG | PWCTL1_PDN_CODEC);
+			//snd_soc_write(codec, CODEC_CS42L52_PWCTL1, pwctl1);
+			snd_soc_write(codec, CODEC_CS42L52_PWCTL1, 0x00);
+			snd_soc_write(codec, CODEC_CS42L52_PWCTL2, 0x00);
+			break;
+		
+		case SND_SOC_BIAS_OFF: /* Off, without power */
+			SOCDBG("off without power\n");
+			snd_soc_write(codec, CODEC_CS42L52_PWCTL1, pwctl1 | 0x9f);
+			snd_soc_write(codec, CODEC_CS42L52_PWCTL2, pwctl2 | 0x07);
+			break;
+	}
+	
+	codec->bias_level = level;
+	return 0;
 }
 
 #define SOC_CS42L52_RATES ( SNDRV_PCM_RATE_8000  | SNDRV_PCM_RATE_11025 | \
@@ -1006,10 +1019,17 @@ static int soc_cs42l52_suspend(struct platform_device *pdev, pm_message_t state)
 	printk("%s\n",__FUNCTION__);
 	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
 	struct snd_soc_codec *soc_codec = socdev->card->codec;
-	
+	struct cs42l52_platform_data *pdata = pdev->dev.platform_data;
+
 	snd_soc_write(soc_codec, CODEC_CS42L52_PWCTL1, PWCTL1_PDN_CODEC);
 	soc_cs42l52_set_bias_level(soc_codec, SND_SOC_BIAS_OFF);
-
+	if(pdata&&pdata->cs42l52_power_down_io){
+		printk("***cs42l52 power down***\n");
+		pdata->cs42l52_power_down_io();
+	}
+	else{
+		printk("***cs42l52 power down failt***\n");
+	    }
 	return 0;
 }
 
@@ -1135,21 +1155,28 @@ static int cs42l52_register(struct cs42l52_priv *cs42l52,
 	{
 		SOCINF("Cirrus CS42L52 codec , revision %d\n", snd_soc_read(codec, CODEC_CS42L52_CHIP) & CHIP_REV_MASK);
 		/*set hp default volume*/
-		snd_soc_write(codec, CODEC_CS42L52_HPA_VOL, DEFAULT_HP_VOL);
-        dev_info(codec->dev, "CODEC_CS42L52_HPA_VOL(%02x): %02x\n", CODEC_CS42L52_HPA_VOL, snd_soc_read(codec, CODEC_CS42L52_HPA_VOL));
-		snd_soc_write(codec, CODEC_CS42L52_HPB_VOL, DEFAULT_HP_VOL);
-        dev_info(codec->dev, "CODEC_CS42L52_HPB_VOL(%02x): %02x\n", CODEC_CS42L52_HPB_VOL, snd_soc_read(codec, CODEC_CS42L52_HPB_VOL));
+		reg = cs42l52_get_setting(cs42l52->pdata->hp_vol, DEFAULT_HP_VOL);
+		snd_soc_write(codec, CODEC_CS42L52_HPA_VOL, reg);
+		snd_soc_write(codec, CODEC_CS42L52_HPB_VOL, reg);
 	
 		/*set spk default volume*/
-		snd_soc_write(codec, CODEC_CS42L52_SPKA_VOL, DEFAULT_SPK_VOL);
-        dev_info(codec->dev, "CODEC_CS42L52_SPKA_VOL(%02x): %02x\n", CODEC_CS42L52_SPKA_VOL, snd_soc_read(codec, CODEC_CS42L52_SPKA_VOL));
-		snd_soc_write(codec, CODEC_CS42L52_SPKB_VOL, DEFAULT_SPK_VOL);
-        dev_info(codec->dev, "CODEC_CS42L52_SPKB_VOL(%02x): %02x\n", CODEC_CS42L52_SPKB_VOL, snd_soc_read(codec, CODEC_CS42L52_SPKB_VOL));
+		reg = cs42l52_get_setting(cs42l52->pdata->spk_vol, DEFAULT_SPK_VOL);
+		snd_soc_write(codec, CODEC_CS42L52_SPKA_VOL, reg);
+		snd_soc_write(codec, CODEC_CS42L52_SPKB_VOL, reg);
 
 		/*set output default powerstate*/
-		//snd_soc_write(codec, CODEC_CS42L52_PWCTL3, DEFAULT_OUTPUT_STATE);
-		snd_soc_write(codec, CODEC_CS42L52_PWCTL3, 0x50);
-        dev_info(codec->dev, "CODEC_CS42L52_PWCTL3(%02x): %02x\n", CODEC_CS42L52_PWCTL3, snd_soc_read(codec, CODEC_CS42L52_PWCTL3));
+		if (cs42l52->pdata->is_hp_pluged > 1) {
+			reg = 0xff;
+		}
+		else if ((!cs42l52->pdata->hp_pwr_ctrl) && (!cs42l52->pdata->spk_pwr_ctrl)) {
+			reg = DEFAULT_OUTPUT_STATE;
+		}
+		else {
+			reg = (cs42l52->pdata->hp_pwr_ctrl<<4) | cs42l52->pdata->spk_pwr_ctrl;
+			reg |= reg << 2;
+		}		
+		snd_soc_write(codec, CODEC_CS42L52_PWCTL3, reg); 
+
 #ifdef CONFIG_MANUAL_CLK
 		snd_soc_write(codec, CODEC_CS42L52_CLK_CTL, 
 				(snd_soc_read(codec, CODEC_CS42L52_CLK_CTL) 
@@ -1159,82 +1186,63 @@ static int cs42l52_register(struct cs42l52_priv *cs42l52,
 				(snd_soc_read(codec, CODEC_CS42L52_CLK_CTL)
 				 |CLK_CTL_AUTODECT_ENABLE));
 #endif
-        dev_info(codec->dev, "CODEC_CS42L52_CLK_CTL(%02x): %02x\n", CODEC_CS42L52_CLK_CTL, snd_soc_read(codec, CODEC_CS42L52_CLK_CTL));
 	
 		/*default output stream configure*/
 		snd_soc_write(codec, CODEC_CS42L52_PB_CTL1,0x60);
-        dev_info(codec->dev, "CODEC_CS42L52_PB_CTL1(%02x): %02x\n", CODEC_CS42L52_PB_CTL1, snd_soc_read(codec, CODEC_CS42L52_PB_CTL1));
-		snd_soc_write(codec, CODEC_CS42L52_MISC_CTL,
-				(snd_soc_read(codec, CODEC_CS42L52_MISC_CTL))
-				| (MISC_CTL_DEEMPH | MISC_CTL_DIGZC | MISC_CTL_DIGSFT));
-        dev_info(codec->dev, "CODEC_CS42L52_MISC_CTL(%02x): %02x\n", CODEC_CS42L52_MISC_CTL, snd_soc_read(codec, CODEC_CS42L52_MISC_CTL));
+//		snd_soc_write(codec, CODEC_CS42L52_MISC_CTL,
+//				(snd_soc_read(codec, CODEC_CS42L52_MISC_CTL))
+//				| (MISC_CTL_DEEMPH | MISC_CTL_DIGZC | MISC_CTL_DIGSFT));
+		snd_soc_write(codec, CODEC_CS42L52_MISC_CTL, 0x02);
 	
 		/*default input stream configure*/
-        snd_soc_write(codec, CODEC_CS42L52_ADC_PGA_A, 0x81);
-        dev_info(codec->dev, "CODEC_CS42L52_ADC_PGA_A(%02x): %02x\n", CODEC_CS42L52_ADC_PGA_A, snd_soc_read(codec, CODEC_CS42L52_ADC_PGA_A));
-        snd_soc_write(codec, CODEC_CS42L52_ADC_PGA_B, 0x81);
-        dev_info(codec->dev, "CODEC_CS42L52_ADC_PGA_B(%02x): %02x\n", CODEC_CS42L52_ADC_PGA_B, snd_soc_read(codec, CODEC_CS42L52_ADC_PGA_B));
-
-		snd_soc_write(codec, CODEC_CS42L52_MICA_CTL,0x00);/*pre-amplifer 16db*/
-        dev_info(codec->dev, "CODEC_CS42L52_MICA_CTL(%02x): %02x\n", CODEC_CS42L52_MICA_CTL, snd_soc_read(codec, CODEC_CS42L52_MICA_CTL));
-		snd_soc_write(codec, CODEC_CS42L52_MICB_CTL,0x00);
-        dev_info(codec->dev, "CODEC_CS42L52_MICB_CTL(%02x): %02x\n", CODEC_CS42L52_MICB_CTL, snd_soc_read(codec, CODEC_CS42L52_MICB_CTL));
 	
 		/*default input stream path configure*/
 		snd_soc_write(codec, CODEC_CS42L52_ANALOG_HPF_CTL, 
 				 (snd_soc_read(codec, CODEC_CS42L52_ANALOG_HPF_CTL)
 				 | HPF_CTL_ANLGSFTB | HPF_CTL_ANLGSFTA));
-        dev_info(codec->dev, "CODEC_CS42L52_ANALOG_HPF_CTL(%02x): %02x\n", CODEC_CS42L52_ANALOG_HPF_CTL, snd_soc_read(codec, CODEC_CS42L52_ANALOG_HPF_CTL));
-		snd_soc_write(codec, CODEC_CS42L52_PGAA_CTL, PGAX_CTL_VOL_6DB);
-        dev_info(codec->dev, "CODEC_CS42L52_PGAA_CTL(%02x): %02x\n", CODEC_CS42L52_PGAA_CTL, snd_soc_read(codec, CODEC_CS42L52_PGAA_CTL));
-		snd_soc_write(codec, CODEC_CS42L52_PGAB_CTL, PGAX_CTL_VOL_6DB); /*PGA volume*/
-        dev_info(codec->dev, "CODEC_CS42L52_PGAB_CTL(%02x): %02x\n", CODEC_CS42L52_PGAB_CTL, snd_soc_read(codec, CODEC_CS42L52_PGAB_CTL));
+		snd_soc_write(codec, CODEC_CS42L52_PGAA_CTL, 0x10);
+		snd_soc_write(codec, CODEC_CS42L52_PGAB_CTL, 0x10); /*PGA volume*/
 
-		snd_soc_write(codec, CODEC_CS42L52_ADCA_VOL, ADCX_VOL_12DB);
-        dev_info(codec->dev, "CODEC_CS42L52_ADCA_VOL(%02x): %02x\n", CODEC_CS42L52_ADCA_VOL, snd_soc_read(codec, CODEC_CS42L52_ADCA_VOL));
-		snd_soc_write(codec, CODEC_CS42L52_ADCB_VOL, ADCX_VOL_12DB); /*ADC volume*/
-        dev_info(codec->dev, "CODEC_CS42L52_ADCB_VOL(%02x): %02x\n", CODEC_CS42L52_ADCB_VOL, snd_soc_read(codec, CODEC_CS42L52_ADCB_VOL));
+		snd_soc_write(codec, CODEC_CS42L52_ADCA_VOL, 0);
+		snd_soc_write(codec, CODEC_CS42L52_ADCB_VOL, 0); /*ADC volume*/
 
 		snd_soc_write(codec, CODEC_CS42L52_ALC_CTL,
-				 (ALC_CTL_ALCB_ENABLE | ALC_CTL_ALCA_ENABLE)); /*enable ALC*/
-        dev_info(codec->dev, "CODEC_CS42L52_ALC_CTL(%02x): %02x\n", CODEC_CS42L52_ALC_CTL, snd_soc_read(codec, CODEC_CS42L52_ALC_CTL));
+				 0); /*enable ALC*/
 
 		snd_soc_write(codec, CODEC_CS42L52_ALC_THRESHOLD,
 				 ((ALC_RATE_0DB << ALC_MAX_RATE_SHIFT)
 				  | (ALC_RATE_3DB << ALC_MIN_RATE_SHIFT)));/*ALC max and min threshold*/
-        dev_info(codec->dev, "CODEC_CS42L52_ALC_THRESHOLD(%02x): %02x\n", CODEC_CS42L52_ALC_THRESHOLD, snd_soc_read(codec, CODEC_CS42L52_ALC_THRESHOLD));
 
 		snd_soc_write(codec, CODEC_CS42L52_NOISE_GATE_CTL,
-				 (NG_ENABLE | (NG_MIN_70DB << NG_THRESHOLD_SHIFT)
+				 (/*NG_ENABLE |*/ (NG_MIN_70DB << NG_THRESHOLD_SHIFT)
 				  | (NG_DELAY_100MS << NG_DELAY_SHIFT))); /*Noise Gate enable*/
-        dev_info(codec->dev, "CODEC_CS42L52_NOISE_GATE_CTL(%02x): %02x\n", CODEC_CS42L52_NOISE_GATE_CTL, snd_soc_read(codec, CODEC_CS42L52_NOISE_GATE_CTL));
 
 		snd_soc_write(codec, CODEC_CS42L52_BEEP_VOL, BEEP_VOL_12DB);
-        dev_info(codec->dev, "CODEC_CS42L52_BEEP_VOL(%02x): %02x\n", CODEC_CS42L52_BEEP_VOL, snd_soc_read(codec, CODEC_CS42L52_BEEP_VOL));
 
-		snd_soc_write(codec, CODEC_CS42L52_ADCA_MIXER_VOL, 0x80 | ADC_MIXER_VOL_12DB);
-        dev_info(codec->dev, "CODEC_CS42L52_ADCA_MIXER_VOL(%02x): %02x\n", CODEC_CS42L52_ADCA_MIXER_VOL, snd_soc_read(codec, CODEC_CS42L52_ADCA_MIXER_VOL));
-		snd_soc_write(codec, CODEC_CS42L52_ADCB_MIXER_VOL, 0x80 | ADC_MIXER_VOL_12DB);
-        dev_info(codec->dev, "CODEC_CS42L52_ADCB_MIXER_VOL(%02x): %02x\n", CODEC_CS42L52_ADCB_MIXER_VOL, snd_soc_read(codec, CODEC_CS42L52_ADCB_MIXER_VOL));
+		snd_soc_write(codec, CODEC_CS42L52_ADCA_MIXER_VOL, 0x80 /*| ADC_MIXER_VOL_12DB*/);
+		snd_soc_write(codec, CODEC_CS42L52_ADCB_MIXER_VOL, 0x80 /*| ADC_MIXER_VOL_12DB*/);
 
-		snd_soc_write(codec, CODEC_CS42L52_MASTERA_VOL, 0);
-		snd_soc_write(codec, CODEC_CS42L52_MASTERB_VOL, 0);
-		snd_soc_write(codec, CODEC_CS42L52_HPA_VOL, 0);
-		snd_soc_write(codec, CODEC_CS42L52_HPB_VOL, 0);
-		snd_soc_write(codec, CODEC_CS42L52_SPKA_VOL, 0);
-		snd_soc_write(codec, CODEC_CS42L52_SPKB_VOL, 0);
-		snd_soc_write(codec, CODEC_CS42L52_PB_CTL1, 0x68);
-		snd_soc_write(codec, CODEC_CS42L52_MISC_CTL, 0x02);
-		snd_soc_write(codec, CODEC_CS42L52_ADCA_MIXER_VOL, 0x80);
-		snd_soc_write(codec, CODEC_CS42L52_ADCB_MIXER_VOL, 0x80);
-		
-		//for record
-		snd_soc_write(codec, CODEC_CS42L52_PWCTL2, 0x00); //0x03
-		snd_soc_write(codec, CODEC_CS42L52_ADC_PGA_A, 0x90); //0x08
-		snd_soc_write(codec, CODEC_CS42L52_ADC_PGA_B, 0x90); //0x09
-		snd_soc_write(codec, CODEC_CS42L52_ANALOG_HPF_CTL, 0xAF); //0x0a
-		snd_soc_write(codec, CODEC_CS42L52_MICA_CTL, 0x4F); //0x10
-		snd_soc_write(codec, CODEC_CS42L52_MICB_CTL, 0x4F); //0x11
+		reg = cs42l52_get_setting(cs42l52->pdata->master_vol, DEFAULT_MASTER_VOL);
+		snd_soc_write(codec, CODEC_CS42L52_MASTERA_VOL, reg);
+		snd_soc_write(codec, CODEC_CS42L52_MASTERB_VOL, reg);
+		snd_soc_write(codec, CODEC_CS42L52_ADC_HPF_FREQ, 0x0f);
+
+		//mono speaker output
+		reg = cs42l52->pdata->spk_mono ? 0x02 : 0;
+		snd_soc_write(codec, CODEC_CS42L52_PB_CTL2, reg);
+
+		snd_soc_write(codec, CODEC_CS42L52_PWCTL1, 0x00);
+		snd_soc_write(codec, CODEC_CS42L52_PWCTL2, 0x00);
+		reg = cs42l52_get_setting(cs42l52->pdata->mic_ctrl, DEFAULT_MIC_GAIN);
+		snd_soc_write(codec, CODEC_CS42L52_MICA_CTL, reg);
+		snd_soc_write(codec, CODEC_CS42L52_MICB_CTL, reg);
+		snd_soc_write(codec, CODEC_CS42L52_ADC_PGA_A, 0x90);
+		snd_soc_write(codec, CODEC_CS42L52_ADC_PGA_B, 0x90);
+		reg = cs42l52_get_setting(cs42l52->pdata->beep_tone_ctrl, DEFAULT_BEEP_TONE_CTL);
+		snd_soc_write(codec, CODEC_CS42L52_BEEP_TONE_CTL, reg);
+		reg = cs42l52_get_setting(cs42l52->pdata->tone_ctrl, DEFAULT_TONE_CTL);
+		snd_soc_write(codec, CODEC_CS42L52_TONE_CTL, reg);
+		snd_soc_write(codec, CODEC_CS42L52_LIMITER_CTL2, 0xFF);
 	}
 
 /* ---------------------------------------------------------------------------
@@ -1295,14 +1303,14 @@ static int cs42l52_i2c_probe(struct i2c_client *client, const struct i2c_device_
 	if (cs42l52 == NULL)
 		return -ENOMEM;
 	codec = &cs42l52->codec;
-
+	cs42l52->pdata = pdata;
 	i2c_set_clientdata(client, cs42l52);
 
+	soc_cs42l52_dai.ac97_pdata = pdata;
 	codec->control_data = client;
 	codec->dev = &client->dev;
 	struct device *dev = &client->dev;
 	sysfs_create_group(&dev->kobj, &cs42l52_attr_group);
-	dev_set_drvdata(dev, codec);
 	return cs42l52_register(cs42l52, SND_SOC_I2C);
 
 }
@@ -1315,6 +1323,16 @@ static int cs42l52_i2c_remove(struct i2c_client *client)
 	cs42l52 = i2c_get_clientdata(client);
     cs42l52_unregister(cs42l52);
     return 0;
+}
+
+static int cs42l52_i2c_shutdown(struct i2c_client *client)
+{
+
+	struct cs42l52_priv *cs42l52;
+	printk("%s: client=%x\n", __FUNCTION__, client);
+	cs42l52 = i2c_get_clientdata(client);
+  cs42l52_unregister(cs42l52);
+  return 0;
 }
 
 static const struct i2c_device_id cs42l52_i2c_id[] = {
@@ -1331,6 +1349,7 @@ static struct i2c_driver cs42l52_i2c_drv = {
 	.probe =    cs42l52_i2c_probe,
 	.remove =   __devexit_p(cs42l52_i2c_remove),
 	.id_table = cs42l52_i2c_id,
+	.shutdown = cs42l52_i2c_shutdown,
 
 };
 

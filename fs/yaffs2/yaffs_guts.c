@@ -5314,16 +5314,17 @@ int yaffs_GutsInitialise(yaffs_Device *dev)
 	if (!init_failed && !yaffs_CreateInitialDirectories(dev))
 		init_failed = 1;
 
-
 	if (!init_failed) {
 		/* Now scan the flash. */
 		if (dev->param.isYaffs2) {
+			printk("yaffs2 check point ");
 			if (yaffs2_CheckpointRestore(dev)) {
+				printk("success.\n");
 				yaffs_CheckObjectDetailsLoaded(dev->rootDir);
 				T(YAFFS_TRACE_ALWAYS,
 				  (TSTR("yaffs: restored from checkpoint" TENDSTR)));
 			} else {
-
+				printk("failed.\n");
 				/* Clean up the mess caused by an aborted checkpoint load
 				 * and scan backwards.
 				 */

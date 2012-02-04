@@ -58,6 +58,8 @@
 #define	REMOTE_HW_PATTERN_MASK					(0xf<<4)
 #define	REMOTE_HW_NEC_PATTERN					(0x0<<4)
 #define	REMOTE_HW_TOSHIBA_PATTERN				(0x1<<4)
+#define REMOTE_SW_RC6_PATTERN                   (0x2<<4)
+#define REMOTE_SW_RC5_PATTERN                   (0x3<<4)
 
 #define   REMOTE_WORK_MODE_SW 				(0)
 #define   REMOTE_WORK_MODE_HW					(1)
@@ -68,7 +70,8 @@
 
 #define   REMOTE_TOSHIBA_HW		(REMOTE_HW_TOSHIBA_PATTERN|REMOTE_WORK_MODE_HW)
 #define   REMOTE_NEC_HW				(REMOTE_HW_NEC_PATTERN|REMOTE_WORK_MODE_HW)
-
+#define   REMOTE_WORK_MODE_RC6       (REMOTE_SW_RC6_PATTERN|REMOTE_WORK_MODE_FIQ)
+#define   REMOTE_WORK_MODE_RC5       (REMOTE_SW_RC5_PATTERN|REMOTE_WORK_MODE_FIQ)
 
 #define REMOTE_STATUS_WAIT       0
 #define REMOTE_STATUS_LEADER    1
@@ -118,11 +121,15 @@ struct kp {
 
 extern type_printk input_dbg;
 extern irqreturn_t remote_bridge_isr(int irq, void *dev_id);
+extern irqreturn_t remote_rc5_bridge_isr(int irq, void *dev_id);
+extern irqreturn_t remote_rc6_bridge_isr(int irq, void *dev_id);
 extern int  register_fiq_bridge_handle(bridge_item_t *c_item) ;
 extern int  unregister_fiq_bridge_handle(bridge_item_t *c_item);
 extern int  fiq_bridge_pulse_trigger(bridge_item_t *c_item);
 
 void kp_sw_reprot_key(unsigned long data);
+extern void kp_rc5_reprot_key(unsigned long data);
+extern void kp_rc6_reprot_key(unsigned long data);
 void kp_send_key(struct input_dev *dev, unsigned int scancode, unsigned int type);
 
 #endif   //_AMKBD_REMOTE_H

@@ -33,7 +33,6 @@
 #define OSD1_MAX_MEM		U_ALIGN(OSD_1080_PIX*B32BpP*DOUBLE_BUFFER)
 #define OSD2_MAX_MEM		U_ALIGN(OSD_1080_PIX*B32BpP*DOUBLE_BUFFER)
 
-
 /******** Reserved memory configuration ***************/
 #define OSD1_ADDR_START		U_ALIGN(AUDIODSP_ADDR_END )
 #define OSD1_ADDR_END		(OSD1_ADDR_START+OSD1_MAX_MEM - 1)

@@ -21,6 +21,8 @@
 #include <linux/sched.h>	/* for current && schedule_timeout */
 #include <linux/mutex.h>	/* for struct mutex */
 
+#include <linux/aml_uevent_msg.h>
+
 struct usb_device;
 struct usb_driver;
 struct wusb_dev;

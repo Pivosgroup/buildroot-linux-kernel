@@ -16,7 +16,13 @@ add by zhouzhi 2008-8-18
 #include <mach/pinmux.h>
 #include <mach/gpio.h>
 #include <linux/sched.h>
+#include <linux/aml_eth.h>
 
+#ifdef CONFIG_PM
+#include <linux/pm.h>
+#include <linux/platform_device.h>
+#include <mach/clk_set.h>
+#endif
 #include <linux/crc32.h>
 
 #include "am_net8218.h"
@@ -992,7 +998,7 @@ static int netdev_close(struct net_device *dev)
 	IO_WRITE32(0, (np->base_addr + ETH_DMA_6_Operation_Mode));
 	IO_WRITE32(0, np->base_addr + ETH_DMA_7_Interrupt_Enable);
 	val=IO_READ32((np->base_addr + ETH_DMA_5_Status));	
-	while((val&(7<<17)) || (val&(7<<20)))/*DMA not finished?*/
+	while((val&(7<<17)) || (val&(5<<20)))/*DMA not finished?*/
 	{
 		printk(KERN_ERR "ERROR! MDA is not stoped,val=%lx!\n",val);
 		msleep(1);//waiting all dma is finished!!
@@ -1418,7 +1424,7 @@ static int probe_init(struct net_device *ndev)
 	int phy = 0;
 	int phy_idx = 0;
 	int found = 0;
-	int res;
+	int res = 0;
 	unsigned int val;
 	int k,kk;
 	
@@ -1447,7 +1453,7 @@ static int probe_init(struct net_device *ndev)
 			     kk++)
 				udelay(1);
 			if (kk >= 1000) {
-				printk("error to reset mac!\n");
+				printk("error to reset mac at probe!\n");
 				goto error0;
 			}
 			
@@ -1504,6 +1510,63 @@ static int probe_init(struct net_device *ndev)
 
 	return res;
 }
+#ifdef CONFIG_PM
+static int has_ethernet_pm = 0;
+static struct aml_eth_platform_data *eth_pm_ops;
+typedef void(*reset)(void);
+typedef void(*eth_clk_enable)(int);
+static int ethernet_pm_probe(struct platform_device *pdev)
+{
+        
+    printk("ethernet_pm_driver probe!\n");
+    eth_pm_ops = pdev->dev.platform_data;
+    if (!eth_pm_ops) {
+                printk("\nethernet pm ops resource undefined.\n");
+                return -EFAULT;
+        }
+        return 0;
+}
+
+static int ethernet_pm_remove(struct platform_device *pdev)
+{
+        printk("ethernet_pm_driver remove!\n");
+        return 0;
+}
+
+static int ethernet_suspend(struct platform_device *dev, pm_message_t event)
+{
+    netdev_close(my_ndev);
+    ///unregister_netdev(my_ndev);
+    eth_pm_ops->clock_enable(0);  //eth_clk_set(ETH_CLKSRC_APLL_CLK,400*CLK_1M,0);
+    printk("ethernet_suspend!\n");
+    return 0;
+}
+
+static int ethernet_resume(struct platform_device *dev)
+{
+    int res = 0;
+	eth_pm_ops->clock_enable(1); //eth_clk_set(ETH_CLKSRC_APLL_CLK,400*CLK_1M,50*CLK_1M);
+    eth_pm_ops->reset();
+    printk("\ngot it ?\n");
+   // res = probe_init(my_ndev);
+    res=netdev_open(my_ndev);
+    if (res != 0)
+        printk("nono, it can not be true!\n");
+    printk("ethernet_resume!\n");
+    return 0;
+}
+
+static struct platform_driver ethernet_pm_driver = {
+    .probe   = ethernet_pm_probe,
+    .remove  = ethernet_pm_remove,
+    .suspend = ethernet_suspend,
+    .resume  = ethernet_resume,
+    .driver  = {
+        .name = "ethernet_pm_driver",
+    }
+};
+
+#endif
 
 static int __init am_net_init(void)
 {
@@ -1517,6 +1580,19 @@ static int __init am_net_init(void)
 	res = probe_init(my_ndev);
 	if (res != 0)
 		free_netdev(my_ndev);
+#ifdef CONFIG_PM
+        else 
+	{
+		printk("ethernet_pm_driver init\n");
+
+    		if (platform_driver_register(&ethernet_pm_driver)) {
+        		printk("failed to register ethernet_pm driver\n");
+        		has_ethernet_pm = 0;
+    		}
+		else
+			has_ethernet_pm = 1;
+	}
+#endif
 	return res;
 }
 
@@ -1532,6 +1608,14 @@ static void __exit am_net_exit(void)
 	printk(DRV_NAME "exit\n");
 	am_net_free(my_ndev);
 	free_netdev(my_ndev);
+#ifdef CONFIG_PM
+        if (has_ethernet_pm == 1)
+	{
+        	printk("ethernet_pm driver remove.\n");
+    		platform_driver_unregister(&ethernet_pm_driver);
+		has_ethernet_pm = 0;
+	}
+#endif
 	return;
 }
 

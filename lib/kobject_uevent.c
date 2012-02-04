@@ -101,6 +101,56 @@ int kobject_uevent_env(struct kobject *kobj, enum kobject_action action,
 	int i = 0;
 	int retval = 0;
 
+	if (action > KOBJ_MAX)
+	{
+#if defined(CONFIG_NET)
+	/* send netlink message */
+	if (uevent_sock) 
+	{
+		struct sk_buff *skb;
+		size_t len;
+
+		i = 0;
+		len = 0;
+		while (envp_ext[i])
+		{
+			len += strlen(envp_ext[i]) + 1;
+			i++;
+		}
+
+		if (len == 0)
+			return 0;		
+
+		skb = alloc_skb(len, GFP_KERNEL);
+		if (skb) 
+		{
+			char *scratch;
+			
+			i = 0;
+			while (envp_ext[i])
+			{
+				len = strlen(envp_ext[i]) + 1;
+				scratch = skb_put(skb, len);
+				strcpy(scratch, envp_ext[i]);
+				i++;
+			}
+
+			NETLINK_CB(skb).dst_group = 1;
+			retval = netlink_broadcast(uevent_sock, skb, 0, 1, GFP_KERNEL);		 
+			/* ENOBUFS should be handled in userspace */
+			if (retval == -ENOBUFS)
+				retval = 0;
+		}
+		else
+		{
+			retval = -ENOMEM;
+		}
+	}
+#endif
+		
+		return retval;
+	}
+	
 	pr_debug("kobject: '%s' (%p): %s\n",
 		 kobject_name(kobj), kobj, __func__);
 

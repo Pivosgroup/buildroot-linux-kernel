@@ -32,6 +32,10 @@
 #define VDIN_MUX_HDMI                   5
 #define VDIN_MUX_DVIN                   6
 
+#define VDIN_MAP_Y_G                    0
+#define VDIN_MAP_BPB                    1
+#define VDIN_MAP_RCR                    2
+
 #define MEAS_MUX_NULL                   0
 #define MEAS_MUX_656                    1
 #define MEAS_MUX_TVFE                   2
@@ -226,53 +230,50 @@ static struct vdin_matrix_lup_s vdin_matrix_lup[30] =
 
 /***************************Local function**********************************/
 
-static inline unsigned int vdin_get_write_format444(struct vdin_dev_s *devp)
+static inline enum vdin_format_convert_e vdin_get_format_convert(enum tvin_port_e port_)
 {
-    unsigned int write_format444 = 0;
+    enum vdin_format_convert_e format_convert = VDIN_FORMAT_CONVERT_YUV_YUV422;
 
-    switch ((devp->para.port)>>8)
+    switch ((port_)>>8)
     {
         case 0x01: // mpeg
-            write_format444 = 0;  // YUV422->YUV422
+            format_convert = VDIN_FORMAT_CONVERT_YUV_YUV422;
             break;
         case 0x02: // 656
-            write_format444 = 0;  // YUV422->YUV422
+            format_convert = VDIN_FORMAT_CONVERT_YUV_YUV422;
             break;
         case 0x04: // VGA
-            write_format444 = 1;  // RGB->YUV444
+            format_convert = VDIN_FORMAT_CONVERT_RGB_YUV444;
             break;
         case 0x08: // COMPONENT
-            write_format444 = 0;  // YUV422-YUV422
+            format_convert = VDIN_FORMAT_CONVERT_YUV_YUV422;
             break;
         case 0x10: // CVBS
-            write_format444 = 0;  // YUV422->YUV422
+            format_convert = VDIN_FORMAT_CONVERT_YUV_YUV422;
             break;
         case 0x20: // SVIDEO
-            write_format444 = 0;  // YUV422->YUV422
+            format_convert = VDIN_FORMAT_CONVERT_YUV_YUV422;
             break;
         case 0x40: // hdmi
-            if (devp->hdmi_rgb)
-                write_format444 = 1;  // RGB->YUV444
-            else
-                write_format444 = 0;  // YUV422->YUV422
+            format_convert = VDIN_FORMAT_CONVERT_RGB_YUV444;
             break;
         case 0x80: // dvin
-            write_format444 = 1;  // RGB->YUV444
+            format_convert = VDIN_FORMAT_CONVERT_RGB_YUV444;
             break;
         default:
-            write_format444 = 0;  // YUV422->YUV422
+            format_convert = VDIN_FORMAT_CONVERT_YUV_YUV422;
             break;
     }
-    return write_format444;
+    return format_convert;
 }
 
 #if defined(CONFIG_ARCH_MESON2)
-void vdin_set_meas_mux(struct vdin_dev_s *devp)
+void vdin_set_meas_mux(unsigned int offset, enum tvin_port_e port_)
 {
-    unsigned int offset = devp->addr_offset;
+//    unsigned int offset = devp->addr_offset;
     unsigned int meas_mux = MEAS_MUX_NULL;
 
-    switch ((devp->para.port)>>8)
+    switch ((port_)>>8)
     {
         case 0x01: // mpeg
             meas_mux = MEAS_MUX_NULL;
@@ -313,16 +314,18 @@ void vdin_set_meas_mux(struct vdin_dev_s *devp)
 }
 #endif
 
-static inline void vdin_set_top(struct vdin_dev_s *devp, unsigned int h)
+static inline void vdin_set_top(unsigned int offset, enum tvin_port_e port, unsigned int h)
 {
-    unsigned int offset = devp->addr_offset;
+//    unsigned int offset = devp->addr_offset;
     unsigned int vdin_mux = VDIN_MUX_NULL;
+    unsigned int vdin_data_bus_0 = VDIN_MAP_Y_G;
+    unsigned int vdin_data_bus_1 = VDIN_MAP_BPB;
+    unsigned int vdin_data_bus_2 = VDIN_MAP_RCR;
 
     // [28:16]         top.input_width_m1   = h-1
     // [12: 0]         top.output_width_m1  = h-1
     WRITE_CBUS_REG((VDIN_WIDTHM1I_WIDTHM1O    + offset), ((h-1)<<16)|(h-1));
-
-    switch ((devp->para.port)>>8)
+    switch ((port)>>8)
     {
         case 0x01: // mpeg
             vdin_mux = VDIN_MUX_MPEG;
@@ -332,6 +335,10 @@ static inline void vdin_set_top(struct vdin_dev_s *devp, unsigned int h)
             break;
         case 0x04: // VGA
             vdin_mux = VDIN_MUX_TVFE;
+            // In the order of RGB for further RGB->YUV601 or RGB->YUV709 convertion
+            vdin_data_bus_0 = VDIN_MAP_RCR;
+            vdin_data_bus_1 = VDIN_MAP_Y_G;
+            vdin_data_bus_2 = VDIN_MAP_BPB;
             break;
         case 0x08: // COMPONENT
             vdin_mux = VDIN_MUX_TVFE;
@@ -344,6 +351,10 @@ static inline void vdin_set_top(struct vdin_dev_s *devp, unsigned int h)
             break;
         case 0x40: // hdmi
             vdin_mux = VDIN_MUX_HDMI;
+            // In the order of RGB for further RGB->YUV601 or RGB->YUV709 convertion
+            vdin_data_bus_0 = VDIN_MAP_RCR;
+            vdin_data_bus_1 = VDIN_MAP_Y_G;
+            vdin_data_bus_2 = VDIN_MAP_BPB;
             break;
         case 0x80: // dvin
             vdin_mux = VDIN_MUX_DVIN;
@@ -354,14 +365,20 @@ static inline void vdin_set_top(struct vdin_dev_s *devp, unsigned int h)
     }
     WRITE_CBUS_REG_BITS((VDIN_COM_CTRL0 + offset),
         vdin_mux, VDIN_SEL_BIT, VDIN_SEL_WID);
+    WRITE_CBUS_REG_BITS((VDIN_COM_CTRL0 + offset),
+        vdin_data_bus_0, COMP0_OUT_SWT_BIT, COMP0_OUT_SWT_WID);
+    WRITE_CBUS_REG_BITS((VDIN_COM_CTRL0 + offset),
+        vdin_data_bus_1, COMP1_OUT_SWT_BIT, COMP1_OUT_SWT_WID);
+    WRITE_CBUS_REG_BITS((VDIN_COM_CTRL0 + offset),
+        vdin_data_bus_2, COMP2_OUT_SWT_BIT, COMP2_OUT_SWT_WID);
 }
 
 #if defined(CONFIG_ARCH_MESON2)
-static unsigned int vdin_set_decimation(struct vdin_dev_s *devp)
+static unsigned int vdin_set_decimation(unsigned int offset, struct fmt_info_s fmt)
 {
-    unsigned int offset = devp->addr_offset;
-    unsigned int h = tvin_fmt_tbl[devp->para.fmt].h_active;
-    unsigned int v = tvin_fmt_tbl[devp->para.fmt].v_active;
+//    unsigned int offset = devp->addr_offset;
+    unsigned int h = fmt.h_active;
+    unsigned int v = fmt.v_active;
     unsigned int decimation_ratio = 0;
 
     while (h*v > TVIN_MAX_PIXS) // Decimation on formats bigger than 1080p (1920*1080(
@@ -391,26 +408,54 @@ static unsigned int vdin_set_decimation(struct vdin_dev_s *devp)
 }
 #endif
 
-static inline void vdin_set_color_matrix(struct vdin_dev_s *devp, unsigned int write_format444)
+static inline void vdin_set_color_matrix(unsigned int offset, struct fmt_info_s fmt, enum vdin_format_convert_e format_convert)
 {
-    unsigned int offset = devp->addr_offset;
-    unsigned int v = tvin_fmt_tbl[devp->para.fmt].v_active;
-    enum vdin_matrix_csc_e    matrix_csc;
+//    unsigned int offset = devp->addr_offset;
+    unsigned int v = fmt.v_active;
+    enum vdin_matrix_csc_e    matrix_csc = VDIN_MATRIX_NULL;
     struct vdin_matrix_lup_s *matrix_tbl;
 
-    if (write_format444) // RGB->YUV444
+    switch (format_convert)
     {
-        if (
-            ((tvin_fmt_tbl[devp->para.fmt].scan_mode == TVIN_SCAN_MODE_PROGRESSIVE) && (v >= 720)) //  720p & above
-            ||
-            ((tvin_fmt_tbl[devp->para.fmt].scan_mode == TVIN_SCAN_MODE_INTERLACED) && (v >= 540))  // 1080i & above
-           )
-            matrix_csc = VDIN_MATRIX_RGBS_YUV709; // High-Definition
-        else
-            matrix_csc = VDIN_MATRIX_RGB_YUV601;  // Standard-Definition
+        case VDIN_FORMAT_CONVERT_RGB_YUV422:
+        case VDIN_FORMAT_CONVERT_RGB_YUV444:
+			if(fmt.fmt==TVIN_SIG_FMT_MAX+1){
+				 if (v >= 720)
+				 	matrix_csc = VDIN_MATRIX_RGB_YUV709;
+				 else
+				 	matrix_csc = VDIN_MATRIX_RGB_YUV601;
+				}
+			else{
+            if (
+                ((tvin_fmt_tbl[fmt.fmt].scan_mode == TVIN_SCAN_MODE_PROGRESSIVE) && (v >= 720)) || //  720p & above
+                ((tvin_fmt_tbl[fmt.fmt].scan_mode == TVIN_SCAN_MODE_INTERLACED)  && (v >= 540))    // 1080i & above
+               )
+                matrix_csc = VDIN_MATRIX_RGB_YUV709;
+            else
+                matrix_csc = VDIN_MATRIX_RGB_YUV601;
+				}
+            break;
+        case VDIN_FORMAT_CONVERT_YUV_RGB:
+			if(fmt.fmt==TVIN_SIG_FMT_MAX+1){
+				 if (v >= 720)
+				 	matrix_csc = VDIN_MATRIX_YUV709_RGB;
+            else
+                matrix_csc = VDIN_MATRIX_YUV601_RGB;
+				}
+			else{
+            if (
+                ((tvin_fmt_tbl[fmt.fmt].scan_mode == TVIN_SCAN_MODE_PROGRESSIVE) && (v >= 720)) || //  720p & above
+                ((tvin_fmt_tbl[fmt.fmt].scan_mode == TVIN_SCAN_MODE_INTERLACED)  && (v >= 540))    // 1080i & above
+               )
+                matrix_csc = VDIN_MATRIX_YUV709_RGB;
+            else
+                matrix_csc = VDIN_MATRIX_YUV601_RGB;
+				}
+            break;
+        default:
+            matrix_csc = VDIN_MATRIX_NULL;
+            break;
     }
-    else                 // YUV422->YUV422
-        matrix_csc = VDIN_MATRIX_NULL;
 
     if (matrix_csc == VDIN_MATRIX_NULL)
     {
@@ -434,12 +479,11 @@ static inline void vdin_set_color_matrix(struct vdin_dev_s *devp, unsigned int w
     }
 }
 
-static inline void vdin_set_bbar(struct vdin_dev_s *devp, unsigned int h)
+static inline void vdin_set_bbar(unsigned int offset, struct fmt_info_s fmt, unsigned int h)
 {
-    unsigned int offset = devp->addr_offset;
-    unsigned int v = tvin_fmt_tbl[devp->para.fmt].v_active;
+//    unsigned int offset = devp->addr_offset;
+    unsigned int v = fmt.v_active;
     unsigned int region_width = 1, block_thr = 0, line_thr = 0;
-
     while ((region_width<<1) < h)
     {
         region_width <<= 1;
@@ -470,20 +514,19 @@ static inline void vdin_set_bbar(struct vdin_dev_s *devp, unsigned int h)
     // en
     WRITE_CBUS_REG_BITS((VDIN_BLKBAR_CTRL0 + offset),
         1, BLKBAR_DET_TOP_EN_BIT, BLKBAR_DET_TOP_EN_WID);
-    // manual reset, rst = 1 & 0, raising edge mode
-    WRITE_CBUS_REG_BITS((VDIN_BLKBAR_CTRL0 + offset),
-        1, BLKBAR_DET_SOFT_RST_N_BIT, BLKBAR_DET_SOFT_RST_N_WID);
+    // manual reset, rst = 0 & 1, raising edge mode
     WRITE_CBUS_REG_BITS((VDIN_BLKBAR_CTRL0 + offset),
         0, BLKBAR_DET_SOFT_RST_N_BIT, BLKBAR_DET_SOFT_RST_N_WID);
+    WRITE_CBUS_REG_BITS((VDIN_BLKBAR_CTRL0 + offset),
+        1, BLKBAR_DET_SOFT_RST_N_BIT, BLKBAR_DET_SOFT_RST_N_WID);
 }
 
-static inline void vdin_set_histogram(struct vdin_dev_s *devp, unsigned int h)
+static inline void vdin_set_histogram(unsigned int offset, unsigned int hs, unsigned int he, unsigned int vs, unsigned int ve)
 {
-    unsigned int offset = devp->addr_offset;
-    unsigned int v = tvin_fmt_tbl[devp->para.fmt].v_active;
+//    unsigned int offset = devp->addr_offset;
+	//pr_info("--%s h_active is %d v_active is %d \n",__func__,he,ve);
     unsigned int pixel_sum = 0, record_len = 0, hist_pow = 0;
-
-    pixel_sum = h*v;
+    pixel_sum = (he - hs + 1) * (ve - vs + 1);
     record_len = 0xffff<<3;
     while ((pixel_sum > record_len) && (hist_pow < 3))
     {
@@ -493,25 +536,44 @@ static inline void vdin_set_histogram(struct vdin_dev_s *devp, unsigned int h)
     // pow
     WRITE_CBUS_REG_BITS((VDIN_HIST_CTRL + offset),
         hist_pow, HIST_POW_BIT, HIST_POW_WID);
+    // win_hs
+    WRITE_CBUS_REG_BITS((VDIN_HIST_H_START_END + offset),
+        hs, HIST_HSTART_BIT, HIST_HSTART_WID);
     // win_he
     WRITE_CBUS_REG_BITS((VDIN_HIST_H_START_END + offset),
-        (h -1), HIST_HEND_BIT, HIST_HEND_WID);
+        he, HIST_HEND_BIT, HIST_HEND_WID);
+    // win_vs
+    WRITE_CBUS_REG_BITS((VDIN_HIST_V_START_END + offset),
+        vs, HIST_VSTART_BIT, HIST_VSTART_WID);
     // win_ve
     WRITE_CBUS_REG_BITS((VDIN_HIST_V_START_END + offset),
-        (v -1), HIST_VEND_BIT, HIST_VEND_WID);
+        ve, HIST_VEND_BIT, HIST_VEND_WID);
 }
 
-static inline void vdin_set_wr_ctrl(struct vdin_dev_s *devp, unsigned int h, unsigned int write_format444)
+static inline void vdin_set_wr_ctrl(unsigned int offset, struct fmt_info_s fmt, unsigned int h, enum vdin_format_convert_e format_convert)
 {
-    unsigned int offset = devp->addr_offset;
-    unsigned int v = tvin_fmt_tbl[devp->para.fmt].v_active;
+//    unsigned int offset = devp->addr_offset;
+    unsigned int v = fmt.v_active;
+    unsigned int write_format444 = 0;
+
+    switch (format_convert)
+    {
+        case VDIN_FORMAT_CONVERT_YUV_YUV422:
+        case VDIN_FORMAT_CONVERT_RGB_YUV422:
+            write_format444 = 0;
+            break;
+        default:
+            write_format444 = 1;
+            break;
+    }
 
     // win_he
     WRITE_CBUS_REG_BITS((VDIN_WR_H_START_END + offset),
         (h -1), WR_HEND_BIT, WR_HEND_WID);
     // win_ve
     WRITE_CBUS_REG_BITS((VDIN_WR_V_START_END + offset),
-        (v -1), WR_VEND_BIT, WR_VEND_WID);
+    //    (v -1), WR_VEND_BIT, WR_VEND_WID);
+        (v), WR_VEND_BIT, WR_VEND_WID);
     // format444
     WRITE_CBUS_REG_BITS((VDIN_WR_CTRL + offset),
         write_format444, WR_FMT_BIT, WR_FMT_WID);
@@ -555,42 +617,37 @@ inline void vdin_get_meas_timing(struct vdin_dev_s *devp)
     devp->meas_th = (hs_cnt+32)>>6;
     hi = (unsigned long long)(READ_CBUS_REG_BITS((VDIN_MEAS_VS_COUNT_HI + offset),
                         MEAS_VS_TOTAL_CNT_HI_BIT, MEAS_VS_TOTAL_CNT_HI_WID));
-    lo = (unsigned long long)(READ_CBUS_REG_BITS((VDIN_MEAS_VS_COUNT_LO + offset),
-                        MEAS_VS_TOTAL_CNT_LO_BIT, MEAS_VS_TOTAL_CNT_LO_WID));
+    lo = (unsigned long long)(READ_CBUS_REG((VDIN_MEAS_VS_COUNT_LO + offset)));
     devp->meas_tv = (unsigned int)((hi<<(unsigned long long)32)|lo);
 }
 #endif
 
-inline unsigned int vdin_get_active_h(struct vdin_dev_s *devp)
+inline unsigned int vdin_get_active_h(unsigned int offset)
 {
-    unsigned int offset = devp->addr_offset;
     return (READ_CBUS_REG_BITS(VDIN_ACTIVE_MAX_PIX_CNT_STATUS + offset, ACTIVE_MAX_PIX_CNT_SDW_BIT, ACTIVE_MAX_PIX_CNT_SDW_WID));
 }
 
-inline unsigned int vdin_get_active_v(struct vdin_dev_s *devp)
+inline unsigned int vdin_get_active_v(unsigned int offset)
 {
-    unsigned int offset = devp->addr_offset;
     return (READ_CBUS_REG_BITS(VDIN_LCNT_SHADOW_STATUS + offset, ACTIVE_LN_CNT_SDW_BIT, ACTIVE_LN_CNT_SDW_WID));
 }
 
-inline unsigned int vdin_get_total_v(struct vdin_dev_s *devp)
+inline unsigned int vdin_get_total_v(unsigned int offset)
 {
-    unsigned int offset = devp->addr_offset;
     return (READ_CBUS_REG_BITS(VDIN_LCNT_SHADOW_STATUS + offset, GO_LN_CNT_SDW_BIT, GO_LN_CNT_SDW_WID));
 }
 
-inline void vdin_set_canvas_id(struct vdin_dev_s *devp, unsigned int canvas_id)
+inline void vdin_set_canvas_id(unsigned int offset, unsigned int canvas_id)
 {
-    unsigned int offset = devp->addr_offset;
 
     WRITE_CBUS_REG_BITS((VDIN_WR_CTRL + offset),
         canvas_id, WR_CANVAS_BIT, WR_CANVAS_WID);
 }
 
 
-inline void vdin_set_vframe_prop_info(vframe_t *vf, struct vdin_dev_s *devp)
+inline void vdin_set_vframe_prop_info(vframe_t *vf, unsigned int offset)
 {
-    unsigned int offset = devp->addr_offset;
+//    unsigned int offset = devp->addr_offset;
     unsigned int vs_cnt_hi = 0, vs_cnt_lo = 0, pow = 0;
 
     // fetch hist info
@@ -745,6 +802,9 @@ inline void vdin_set_vframe_prop_info(vframe_t *vf, struct vdin_dev_s *devp)
     vf->prop.bbar.right      = READ_CBUS_REG_BITS((VDIN_BLKBAR_STATUS1 + offset),
                                 BLKBAR_RIGHT_POS_BIT, BLKBAR_RIGHT_POS_WID);
 
+    // Update Histgram windown with detected BlackBar window
+    vdin_set_histogram(offset, vf->prop.bbar.left, vf->prop.bbar.right, vf->prop.bbar.top, vf->prop.bbar.bottom);
+
 #if defined(CONFIG_ARCH_MESON2)
     // fetch meas info - For M2 or further chips only, not for M1 chip
     vf->prop.meas.vs_span_cnt = READ_CBUS_REG_BITS((VDIN_MEAS_VS_COUNT_HI + offset),
@@ -752,8 +812,7 @@ inline void vdin_set_vframe_prop_info(vframe_t *vf, struct vdin_dev_s *devp)
 
     vs_cnt_hi = READ_CBUS_REG_BITS((VDIN_MEAS_VS_COUNT_HI + offset),
                     MEAS_VS_TOTAL_CNT_HI_BIT, MEAS_VS_TOTAL_CNT_HI_WID);
-    vs_cnt_lo = READ_CBUS_REG_BITS((VDIN_MEAS_VS_COUNT_LO + offset),
-                    MEAS_VS_TOTAL_CNT_LO_BIT, MEAS_VS_TOTAL_CNT_LO_WID);
+    vs_cnt_lo = READ_CBUS_REG((VDIN_MEAS_VS_COUNT_LO + offset));
     vf->prop.meas.vs_cnt =
         ((unsigned long long)vs_cnt_hi<<(unsigned long long)32)
         | (unsigned long long)vs_cnt_lo;
@@ -836,34 +895,35 @@ inline void vdin_set_regs(struct vdin_regs_s *p, int offset)
 
 void vdin_set_all_regs(struct vdin_dev_s *devp)
 {
-    unsigned int h = tvin_fmt_tbl[devp->para.fmt].h_active;
-    unsigned int write_format444 = vdin_get_write_format444(devp);
+    pr_info("--%s h_active is %d v_active is %d frame_rate is %d\n",__func__,devp->para.fmt_info.h_active,devp->para.fmt_info.v_active,devp->para.fmt_info.frame_rate);
+    unsigned int h = devp->para.fmt_info.h_active;//tvin_fmt_tbl[devp->para.fmt_info.fmt].h_active;
+    enum vdin_format_convert_e format_convert = vdin_get_format_convert(devp->para.port);
 
 #if defined(CONFIG_ARCH_MESON2)
 //  ** Decimation sub-module **
-    h = vdin_set_decimation(devp);
+    h = vdin_set_decimation(devp->addr_offset, devp->para.fmt_info);
 #endif
-
 //  ** matrix sub-module **
-    vdin_set_color_matrix(devp, write_format444);
+    vdin_set_color_matrix(devp->addr_offset, devp->para.fmt_info, format_convert);
 
 //  ** bbar sub-module **
-    vdin_set_bbar(devp, h);
+    vdin_set_bbar(devp->addr_offset, devp->para.fmt_info, h);
 
 //  ** hist sub-module **
-    vdin_set_histogram(devp, h);
+    vdin_set_histogram(devp->addr_offset, 0, h - 1, 0, devp->para.fmt_info.v_active-1);//;//tvin_fmt_tbl[devp->para.fmt_info.fmt].v_active - 1);
 
 //  ** write sub-module **
-    vdin_set_wr_ctrl(devp, h, write_format444);
+    vdin_set_wr_ctrl(devp->addr_offset, devp->para.fmt_info, h, format_convert);
 
 //  ** top sub-module **
-    vdin_set_top(devp, h);
+    vdin_set_top(devp->addr_offset, devp->para.port,h);
+    return;
 }
 
 
-inline void vdin_set_default_regmap(struct vdin_dev_s *devp)
+inline void vdin_set_default_regmap(unsigned int offset)
 {
-    unsigned int offset = devp->addr_offset;
+//    unsigned int offset = devp->addr_offset;
 
     // [   31]        mpeg.en               = 0 ***sub_module.enable***
     // [   30]        mpeg.even_fld         = 0/(odd, even)
@@ -875,7 +935,7 @@ inline void vdin_set_default_regmap(struct vdin_dev_s *devp)
     // [   27]        mpeg.vs_en            = 0
 #endif
 
-    // [26:20]         top.hold_ln          = 8
+    // [26:20]         top.hold_ln          = 0    //8
     // [   19]      vs_dly.en               = 0 ***sub_module.enable***
     // [18:12]      vs_dly.dly_ln           = 0
     // [11:10]         map.comp2            = 2/(comp0, comp1, comp2)
@@ -888,7 +948,7 @@ inline void vdin_set_default_regmap(struct vdin_dev_s *devp)
 
     // [    4]         top.datapath_en      = 1
     // [ 3: 0]         top.mux              = 0/(null, mpeg, 656, tvfe, cvd2, hdmi, dvin)
-    WRITE_CBUS_REG((VDIN_COM_CTRL0            + offset), 0x00800910);
+    WRITE_CBUS_REG((VDIN_COM_CTRL0            + offset), 0x00000910);
     // [   23] asfifo_tvfe.de_en            = 1
     // [   22] asfifo_tvfe.vs_en            = 1
     // [   21] asfifo_tvfe.hs_en            = 1
@@ -902,10 +962,10 @@ inline void vdin_set_default_regmap(struct vdin_dev_s *devp)
     // [    5]  asfifo_656.hs_en            = 1
     // [    4]  asfifo_656.vs_inv           = 0/(positive-active, negative-active)
     // [    3]  asfifo_656.hs_inv           = 0/(positive-active, negative-active)
-    // [    2]  asfifo_656.rst_on_vs        = 1
+    // [    2]  asfifo_656.rst_on_vs        = 0
     // [    1]  asfifo_656.clr_ov_flag      = 0
     // [    0]  asfifo_656.rst              = 0
-    WRITE_CBUS_REG((VDIN_ASFIFO_CTRL0         + offset), 0x00e400e4);
+    WRITE_CBUS_REG((VDIN_ASFIFO_CTRL0         + offset), 0x00e400e0);
     // [   23] asfifo_hdmi.de_en            = 1
     // [   22] asfifo_hdmi.vs_en            = 1
     // [   21] asfifo_hdmi.hs_en            = 1
@@ -1031,6 +1091,9 @@ inline void vdin_set_default_regmap(struct vdin_dev_s *devp)
     WRITE_CBUS_REG((VDIN_HIST_V_START_END     + offset), 0x00000000);
 
 #if defined(CONFIG_ARCH_MESON2)
+    //set VDIN_MEAS_CLK_CNTL, select XTAL clock
+    WRITE_CBUS_REG(VDIN_MEAS_CLK_CNTL, 0x00000100);
+
     // [   18]        meas.rst              = 0
     // [   17]        meas.widen_hs_vs_en   = 1
     // [   16]        meas.vs_cnt_accum_en  = 0

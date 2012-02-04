@@ -134,7 +134,9 @@ int usb_control_msg(struct usb_device *dev, unsigned int pipe, __u8 request,
 		    __u16 size, int timeout)
 {
 	struct usb_ctrlrequest *dr;
-	int ret;
+	void * buff = NULL;
+	void * p = data;
+	int ret = -ENOMEM;
 
 	dr = kmalloc(sizeof(struct usb_ctrlrequest), GFP_NOIO);
 	if (!dr)
@@ -148,8 +150,25 @@ int usb_control_msg(struct usb_device *dev, unsigned int pipe, __u8 request,
 
 	/* dbg("usb_control_msg"); */
 
-	ret = usb_internal_control_msg(dev, pipe, dr, data, size, timeout);
+	/* Workaround for dwc_otg DMA address alignment */
+	if( (unsigned int)data & (L1_CACHE_BYTES - 1) ){
+		buff = kmalloc(size,GFP_NOIO);
+		if(!buff)
+			goto out;
+		p = buff;
+		if(!(requesttype & USB_DIR_IN))
+			memcpy(p,data,size);
+	}
 
+	ret = usb_internal_control_msg(dev, pipe, dr, p, size, timeout);
+
+	if(buff){
+		if(requesttype & USB_DIR_IN)
+			memcpy(data,p,size);
+		kfree(buff);
+	}
+
+out:
 	kfree(dr);
 
 	return ret;
@@ -1099,6 +1118,7 @@ void usb_disable_endpoint(struct usb_device *dev, unsigned int epaddr,
 {
 	unsigned int epnum = epaddr & USB_ENDPOINT_NUMBER_MASK;
 	struct usb_host_endpoint *ep;
+	struct usb_host_endpoint **pep = NULL;
 
 	if (!dev)
 		return;
@@ -1106,11 +1126,11 @@ void usb_disable_endpoint(struct usb_device *dev, unsigned int epaddr,
 	if (usb_endpoint_out(epaddr)) {
 		ep = dev->ep_out[epnum];
 		if (reset_hardware)
-			dev->ep_out[epnum] = NULL;
+			pep = &dev->ep_out[epnum];
 	} else {
 		ep = dev->ep_in[epnum];
 		if (reset_hardware)
-			dev->ep_in[epnum] = NULL;
+			pep = &dev->ep_in[epnum];
 	}
 	if (ep) {
 		ep->enabled = 0;
@@ -1118,6 +1138,10 @@ void usb_disable_endpoint(struct usb_device *dev, unsigned int epaddr,
 		if (reset_hardware)
 			usb_hcd_disable_endpoint(dev, ep);
 	}
+
+	if(reset_hardware && pep)
+		*pep = NULL;
+
 }
 
 /**
@@ -1852,6 +1876,94 @@ free_interfaces:
 	if (cp->string == NULL &&
 			!(dev->quirks & USB_QUIRK_CONFIG_INTF_STRINGS))
 		cp->string = usb_cache_string(dev, cp->desc.iConfiguration);
+
+#ifdef CONFIG_USB_HOST_ELECT_TEST
+		/* Here we implement the HS Electrical Test support. The
+		 * tester uses a vendor ID of 0x1A0A to indicate we should
+		 * run a special test sequence. The product ID tells us
+		 * which sequence to run. We invoke the test sequence by
+		 * sending a non-standard SetFeature command to our root
+		 * hub port. Our dwc_otg_hcd_hub_control() routine will
+		 * recognize the command and perform the desired test
+		 * sequence.
+		 */
+		if (dev->descriptor.idVendor == 0x1A0A) {
+			/* HSOTG Electrical Test */
+			dev_warn(&dev->dev, "VID from HSOTG Electrical Test Fixture\n");
+
+			if (dev->bus && dev->parent) {
+				struct usb_device *hdev = dev->parent;
+				__u16 index = 0;
+				int timeout;
+				unsigned int pipe = usb_sndctrlpipe(hdev, 0);
+				dev_warn(&dev->dev, "Got PID 0x%x\n", dev->descriptor.idProduct);
+
+				if(hdev != dev->bus->root_hub)
+					index = dev->portnum;
+
+				switch (dev->descriptor.idProduct) {
+				case 0x0101:	/* TEST_SE0_NAK */
+					dev_warn(&dev->dev, "TEST_SE0_NAK\n");
+					index |= 0x300;
+					timeout = HZ;
+					break;
+
+				case 0x0102:	/* TEST_J */
+					dev_warn(&dev->dev, "TEST_J\n");
+					index |= 0x100;
+					timeout = HZ;
+					break;
+
+				case 0x0103:	/* TEST_K */
+					dev_warn(&dev->dev, "TEST_K\n");
+					index |= 0x200;
+					timeout = HZ;
+					break;
+
+				case 0x0104:	/* TEST_PACKET */
+					dev_warn(&dev->dev, "TEST_PACKET\n");
+					index |= 0x400;
+					timeout = HZ;
+					break;
+
+				case 0x0105:	/* TEST_FORCE_ENABLE */
+					dev_warn(&dev->dev, "TEST_FORCE_ENABLE\n");
+					index |= 0x500;
+					timeout = HZ;
+					break;
+
+				case 0x0106:	/* HS_HOST_PORT_SUSPEND_RESUME */
+					dev_warn(&dev->dev, "HS_HOST_PORT_SUSPEND_RESUME\n");
+					index |= 0x600;
+					timeout = 40 * HZ;
+					usb_control_msg(hdev, usb_sndctrlpipe(hdev, 0),
+							USB_REQ_SET_FEATURE, USB_RT_PORT,
+							USB_PORT_FEAT_TEST, index|0x600, NULL, 0, 40 * HZ);
+					break;
+
+				case 0x0107:	/* SINGLE_STEP_GET_DEVICE_DESCRIPTOR setup */
+					dev_warn(&dev->dev, "SINGLE_STEP_GET_DEVICE_DESCRIPTOR setup\n");
+					index |= 0x700;
+					timeout = 40 * HZ;
+					break;
+
+				case 0x0108:	/* SINGLE_STEP_GET_DEVICE_DESCRIPTOR execute */
+					dev_warn(&dev->dev, "SINGLE_STEP_GET_DEVICE_DESCRIPTOR execute\n");
+					index |= 0x800;
+					timeout = 40 * HZ;
+
+				default:
+					dev_warn(&dev->dev, "error PID %X\n",dev->descriptor.idProduct);
+					return 0;
+				}
+
+				usb_control_msg(hdev, pipe,
+							USB_REQ_SET_FEATURE, USB_RT_PORT,
+							USB_PORT_FEAT_TEST, index, NULL, 0, timeout);
+				return 0;
+			}
+		}
+#endif /* CONFIG_USB_HOST_ELECT_TEST */
 
 	/* Now that all the interfaces are set up, register them
 	 * to trigger binding of drivers to interfaces.  probe()

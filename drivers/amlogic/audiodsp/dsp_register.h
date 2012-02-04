@@ -85,6 +85,8 @@ int len;
 #define M1B_IRQ5_STREAM_FMT_CHANGED 			(5+16)
 #define M1B_IRQ5_STREAM_RD_WD_TEST 			(6+16)
 #define M1B_IRQ7_DECODE_FATAL_ERR			(7+16)
+#define M1B_IRQ8_IEC958_INFO                (8+16)
+
 
 #define M2B_IRQ0_DSP_HALT							(0)
 #define M2B_IRQ1_DSP_RESET						(1)

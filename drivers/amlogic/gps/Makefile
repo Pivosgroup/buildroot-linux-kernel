@@ -1,0 +1,1 @@
+obj-$(CONFIG_AR1520_GPS) += ar1520/

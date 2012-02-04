@@ -17,6 +17,7 @@
 #include <sound/tlv.h>
 
 #include <mach/am_regs.h>
+#include <mach/gpio.h> //add by steven for mute gpio.
 #include "aml_audio_hw.h"
 
 #define APB_BASE	0x5000
@@ -248,6 +249,13 @@ static int aml_m1_codec_mute(struct snd_soc_dai *dai, int mute)
 	else{
 		reg &= ~(3|(3<<6));
 	}
+	// GPIOD_10 MUTE by steven
+	if(mute)
+		set_gpio_val(PREG_GGPIO,8,1);
+	else
+		set_gpio_val(PREG_GGPIO,8,0);
+	set_gpio_mode(PREG_GGPIO,8,GPIO_OUTPUT_MODE);	
+	
 	snd_soc_write(codec, ADAC_MUTE_CTRL_REG1, reg);
 
 	snd_soc_write(codec, ADAC_RESET, (0<<1));

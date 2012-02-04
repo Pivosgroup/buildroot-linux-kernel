@@ -6,7 +6,8 @@
 
 enum usb_port_type_e{
     USB_PORT_TYPE_HOST,
-    USB_PORT_TYPE_SLAVE
+    USB_PORT_TYPE_SLAVE,
+    USB_PORT_TYPE_OTG
 };
 
 enum usb_port_speed_e{

@@ -4,6 +4,13 @@
 #include "aml_demod.h"
 #include "demod_func.h"
 
+static int debug_amldvbt;
+module_param(debug_amldvbt, int, 0644);
+MODULE_PARM_DESC(debug_amldvbt, "turn on debugging (default: 0)");
+#define dprintk(args...) do { if (debug_amldvbt) { printk(KERN_DEBUG "AMLDVBT: "); printk(args); printk("\n"); } } while (0)
+
+static int tuner_type = 3;
+
 static void set_ACF_coef(int ADsample, int bandwidth)
 {
     if (ADsample == 45)	{
@@ -744,9 +751,13 @@ static void dvbt_reg_initial(struct aml_demod_sta *demod_sta)
     default : break;
     }
 
+    apb_write_reg(2, 0x0d, 0x00000000);
+    apb_write_reg(2, 0x0e, 0x00000000);
+    dvbt_enable_irq( 8 );
+
     apb_write_reg(2, 0x11, 0x00100002);   // FSM [15:0] TIMER_FEC_LOST
     apb_write_reg(2, 0x12, 0x02100201);   // FSM 
-    apb_write_reg(2, 0x14, 0xf0121385);   // AGC_TARGET f012138e
+    apb_write_reg(2, 0x14, 0xe81c4ff6);   // AGC_TARGET 0xf0121385
     apb_write_reg(2, 0x15, 0x02050ca6);   // AGC_CTRL  
 
     switch (sr) {
@@ -764,6 +775,7 @@ static void dvbt_reg_initial(struct aml_demod_sta *demod_sta)
     apb_write_reg(2, 0x18, 0x00000000);  // AGC_IFGAIN_ACCUM
     apb_write_reg(2, 0x19, 0x00000000);  // AGC_RFGAIN_ACCUM
 
+    /*
     if (ifreq == 0){
     	switch (sr){
 	case 0: apb_write_reg(2, 0x20, 0x00002096);break;  // DDC NORM_PHASE    36.13M IF  For 20.7M sample rate
@@ -782,6 +794,13 @@ static void dvbt_reg_initial(struct aml_demod_sta *demod_sta)
         default : break;  
 	}    	
     }
+    */
+
+    tmp = ch_if * (1<<15) / adc_freq;
+    tmp &= 0x3fff;
+    apb_write_reg(2, 0x20, tmp);
+    if (demod_sta->debug) 
+	printk("IF: %d kHz  ADC: %d kHz  DDC: %04x\n", ch_if, adc_freq, tmp);
 
     apb_write_reg(2, 0x21, 0x001ff000);  // DDC CS_FCFO_ADJ_CTRL
     apb_write_reg(2, 0x22, 0x00000000);  // DDC ICFO_ADJ_CTRL
@@ -833,7 +852,7 @@ static void dvbt_reg_initial(struct aml_demod_sta *demod_sta)
     //apb_write_reg(2, 0x69, apb_read_reg(2, 0x69) | (1<<9));  // set FD coeff
     //apb_write_reg(2, 0x69, apb_read_reg(2, 0x69) | (1<<8));  // set TD coeff
     apb_write_reg(2, 0x6a, 0x9101012d);  // CHAN_EST_CTRL2
-    apb_write_reg(2, 0x6b, 0x00332222);  // CHAN_EST_CTRL2
+    apb_write_reg(2, 0x6b, 0x00442211);  // CHAN_EST_CTRL2
     apb_write_reg(2, 0x6c, 0x01fc040a);  // CHAN_EST_CTRL3 
     apb_write_reg(2, 0x6d, 0x0030303f);  // SET SNR THRESHOLD
     apb_write_reg(2, 0x73, 0xffffffff);  // CCI0_PILOT_UPDATE_CTRL
@@ -921,12 +940,6 @@ int dvbt_set_ch(struct aml_demod_sta *demod_sta,
 	agc_mode = 0;
 	ret = -1;
     }
-    
-    if (ch_freq<1000 || ch_freq>900000) {
-	printk("Error: Invalid Channel Freq option %d\n", ch_freq);
-	ch_freq = 474000;
-	ret = -1;
-    }
 
     // if (ret != 0) return ret;
 
@@ -937,24 +950,44 @@ int dvbt_set_ch(struct aml_demod_sta *demod_sta,
     demod_sta->ch_mode   = 0; // TODO
     demod_sta->agc_mode  = agc_mode;
     demod_sta->ch_freq   = ch_freq;
-    demod_sta->ch_if     = ifreq == 0 ? 36130 : 4570;
+    if (demod_i2c->tuner == 1) 
+	demod_sta->ch_if = 36130; 
+    else if (demod_i2c->tuner == 2) 
+	demod_sta->ch_if = 4570; 
+        
     demod_sta->ch_bw     = (8-bw)*1000; 
     demod_sta->symb_rate = 0; // TODO
 
     // Set Tuner
+    if (ch_freq<1000 || ch_freq>900000) {
+	    printk("Error: Invalid Channel Freq option %d, Skip Set tuner\n", ch_freq);
+	    //ch_freq = 474000;
+	    ret = -1;
+    }
+    else    {
     tuner_set_ch(demod_sta, demod_i2c);
+    }
+    
 
+    if ((ch_freq%100)==2) {
+    	printk("Input frequency is XXX002, Skip initial demod\n");
+    }
+    else{
     dvbt_reg_initial(demod_sta);
+    }
 
+    dvbt_enable_irq(7);// open symbolhead int
+
+    tuner_type = demod_i2c->tuner;
+	
     return ret;
 }
 
-static int dvbt_get_ch_power(void)
+static int dvbt_get_ch_power(struct aml_demod_sta *demod_sta, 
+		struct aml_demod_i2c *demod_i2c)
 {
     u32 ad_power;
-    
-    ad_power = apb_read_reg(2, 0x1b)&0x1ff;
-    
+    ad_power = agc_power_to_dbm((apb_read_reg(2, 0x1c)&0x7ff),apb_read_reg(2, 0x1b)&0x1ff,0,demod_i2c->tuner);
     return ad_power;
 }
 
@@ -974,61 +1007,64 @@ int dvbt_fcfo(void)
     return (fcfo);
 }
 
-int dvbt_total_packet_error(void){	return (apb_read_reg(2, 0xbf));}
-int dvbt_super_frame_counter(void){ return (apb_read_reg(2, 0xc0)&0xfffff);}
-int dvbt_packet_correct_in_sframe(void){ return( apb_read_reg(2, 0xc1)&0xfffff );}
-int dvbt_resync_counter(void){ return ((apb_read_reg(2, 0xc0)>>20)&0xff);}
-int dvbt_read_fft_size(void) { return ((apb_read_reg(2, 0x06))&0x3);}
-int dvbt_read_guard(void) { return ((apb_read_reg(2, 0x06)>>2)&0x3);}
-int dvbt_read_lp_cr(void) { return ((apb_read_reg(2, 0x06)>>4)&0x7);}
-int dvbt_read_hp_cr(void) { return ((apb_read_reg(2, 0x06)>>7)&0x7);}
-int dvbt_read_hier(void) { return ((apb_read_reg(2, 0x06)>>10)&0x7);}
-int dvbt_read_constellation(void) {return ((apb_read_reg(2, 0x06)>>13)&0x3);}
-int dvbt_read_target_hier(void) {return ((apb_read_reg(2, 0x78)>>9)&0x1);}
+static int dvbt_total_packet_error(void){return (apb_read_reg(2, 0xbf));}
+static int dvbt_super_frame_counter(void){return (apb_read_reg(2, 0xc0)&0xfffff);}
+static int dvbt_packet_correct_in_sframe(void){ return( apb_read_reg(2, 0xc1)&0xfffff );}
+//static int dvbt_resync_counter(void){return((apb_read_reg(2, 0xc0)>>20)&0xff);}
 
-static int dvbt_calc_packet_num_in_sframe(void)
+static int dvbt_packets_per_sframe(void)
 {
-    int target_hier;
+    u32 tmp;
     int hier_mode;
-    int constell;
+    int constel;
+    int hp_code_rate;
+    int lp_code_rate;
+    int hier_sel;
     int code_rate;
-    int rsnum_inPeriod;
+    int ret;
+    
+    tmp = apb_read_reg(2, 0x06);
+    constel = tmp>>13&3;
+    hier_mode = tmp>>10&7; 
+    hp_code_rate = tmp>>7&7;
+    lp_code_rate = tmp>>4&7;
 
-    hier_mode = dvbt_read_hier();
     if (hier_mode == 0)	{
-	constell = dvbt_read_constellation();
-	code_rate = dvbt_read_hp_cr();
+	code_rate = hp_code_rate;
     }
     else {
-	target_hier = dvbt_read_target_hier();
-	if (target_hier==0) {
-	    constell = 0; // QPSK;
-	    code_rate = dvbt_read_hp_cr();
+	tmp = apb_read_reg(2, 0x78);
+	hier_sel = tmp>>9&1;
+	if (hier_sel == 0) {
+	    constel = 0; // QPSK;
+	    code_rate = hp_code_rate;
 	}
 	else {
-	    constell = (dvbt_read_constellation()==2)?1:0;
-	    code_rate = dvbt_read_lp_cr();
+	    constel = constel==2 ? 1 : 0;
+	    code_rate = lp_code_rate;
 	}
     }
+    
     switch(code_rate){
-    case 0 : rsnum_inPeriod = (constell==0)?1008:(constell==1)?2016:3024;  
-    case 1 : rsnum_inPeriod = (constell==0)?1344:(constell==1)?2688:4032;  
-    case 2 : rsnum_inPeriod = (constell==0)?1512:(constell==1)?3024:4536;      
-    case 3 : rsnum_inPeriod = (constell==0)?1680:(constell==1)?3360:5040;      
-    case 4 : rsnum_inPeriod = (constell==0)?1764:(constell==1)?3528:5292;      
-    default: rsnum_inPeriod = (constell==0)?1008:(constell==1)?2016:3024;
+    case      0 : ret = (constel==0)?1008:(constel==1)?2016:3024; break;               
+    case      1 : ret = (constel==0)?1344:(constel==1)?2688:4032; break;                
+    case      2 : ret = (constel==0)?1512:(constel==1)?3024:4536; break;                    
+    case      3 : ret = (constel==0)?1680:(constel==1)?3360:5040; break;                    
+    case      4 : ret = (constel==0)?1764:(constel==1)?3528:5292; break;                    
+    default: ret = (constel==0)?1008:(constel==1)?2016:3024; break; 
     }              
-    return (rsnum_inPeriod);
+    return ret;
 }
 
 static int dvbt_get_per(void)
 {
-    int rsnum_in_sframe;
+    int packets_per_sframe;
     int error;
     int per;
-    rsnum_in_sframe = dvbt_calc_packet_num_in_sframe();
-    error = rsnum_in_sframe-dvbt_packet_correct_in_sframe();
-    per = 1000*error/rsnum_in_sframe;
+
+    packets_per_sframe = dvbt_packets_per_sframe();
+    error = packets_per_sframe - dvbt_packet_correct_in_sframe();
+    per = 1000*error/packets_per_sframe;
 
     return (per);
 }
@@ -1042,7 +1078,7 @@ static void dvbt_set_test_bus(u8 sel)
     tmp |= ((1<<15) | (1<<5) | (sel&0x1f));
     apb_write_reg(2, 0x7f, tmp);
 }
-
+/*
 void dvbt_get_test_out(u8 sel, u32 len, u32 *buf)
 {
     int i;
@@ -1053,24 +1089,50 @@ void dvbt_get_test_out(u8 sel, u32 len, u32 *buf)
 	buf[i] = apb_read_reg(2, 0x13);
     }
 }
+*/
+void dvbt_get_test_out(u8 sel, u32 len, u32 *buf)
+{
+    int i, cnt;
+
+    dvbt_set_test_bus(sel);
+
+    for (i=0, cnt=0; i<len-4 && cnt<1000000; i++) {
+	buf[i] = apb_read_reg(2, 0x13);
+	if ((buf[i]>>10)&0x1) {
+	    buf[i++] = apb_read_reg(2, 0x13);
+	    buf[i++] = apb_read_reg(2, 0x13);
+	    buf[i++] = apb_read_reg(2, 0x13);
+	    buf[i++] = apb_read_reg(2, 0x13);
+	    buf[i++] = apb_read_reg(2, 0x13);
+	    buf[i++] = apb_read_reg(2, 0x13);
+	    buf[i++] = apb_read_reg(2, 0x13);
+	    buf[i++] = apb_read_reg(2, 0x13);	    
+	}
+	else {
+	    i--;
+	}
+
+	cnt++;
+    }
+}
 
 static int dvbt_get_avg_per(void)
 {
-    int rsnum_in_sframe;
+    int packets_per_sframe;
     static int err_last;
     static int err_now;
     static int rsnum_now;
     static int rsnum_last;
     int per;
 
-    rsnum_in_sframe = dvbt_calc_packet_num_in_sframe();
+    packets_per_sframe = dvbt_packets_per_sframe();
     rsnum_last = rsnum_now;
     rsnum_now  = dvbt_super_frame_counter();
     err_last   = err_now;
     err_now    = dvbt_total_packet_error();
     if (rsnum_now != rsnum_last)
         per = 1000*(err_now - err_last) /
-	    ((rsnum_now-rsnum_last)*rsnum_in_sframe);
+	    ((rsnum_now-rsnum_last)*packets_per_sframe);
     else
         per = 123;
 
@@ -1086,13 +1148,60 @@ int dvbt_status(struct aml_demod_sta *demod_sta,
     
     demod_sts->ch_snr = apb_read_reg(2, 0x0a);
     demod_sts->ch_per = dvbt_get_per();
-    demod_sts->ch_pow = dvbt_get_ch_power();
+    demod_sts->ch_pow = dvbt_get_ch_power(demod_sta, demod_i2c);
     demod_sts->ch_ber = apb_read_reg(2, 0x0b);
     demod_sts->ch_sts = apb_read_reg(2, 0);
     demod_sts->dat0   = dvbt_get_avg_per();
-    
+    demod_sts->dat1   = apb_read_reg(2, 0x06);    
     return 0;
-} 
+}
+
+
+static int dvbt_get_status(struct aml_demod_sta *demod_sta, 
+		struct aml_demod_i2c *demod_i2c) 
+{
+	return apb_read_reg(2, 0x0)>>12&1;
+}
+
+static int dvbt_ber(void);
+
+static int dvbt_get_ber(struct aml_demod_sta *demod_sta, 
+		struct aml_demod_i2c *demod_i2c) 
+{
+	return dvbt_ber();/*unit: 1e-7*/
+}
+
+static int dvbt_get_snr(struct aml_demod_sta *demod_sta, 
+		struct aml_demod_i2c *demod_i2c) 
+{
+	return apb_read_reg(2,0x0a)&0x3ff;/*dBm: bit0~bit2=decimal*/
+}
+
+static int dvbt_get_strength(struct aml_demod_sta *demod_sta, 
+		struct aml_demod_i2c *demod_i2c) 
+{
+	int dbm = dvbt_get_ch_power(demod_sta, demod_i2c);
+	return dbm;
+}
+
+static int dvbt_get_ucblocks(struct aml_demod_sta *demod_sta, 
+		struct aml_demod_i2c *demod_i2c)
+{
+	return dvbt_get_per();
+}
+
+struct demod_status_ops* dvbt_get_status_ops(void)
+{
+	static struct demod_status_ops ops = {
+		.get_status = dvbt_get_status,
+		.get_ber = dvbt_get_ber,
+		.get_snr = dvbt_get_snr,
+		.get_strength = dvbt_get_strength,
+		.get_ucblocks = dvbt_get_ucblocks,
+	};
+
+	return &ops;
+}
 
 void dvbt_enable_irq(int dvbt_irq)
 {
@@ -1143,6 +1252,347 @@ void dvbt_isr(struct aml_demod_sta *demod_sta)
 }
 
 
+static int demod_monitor_ave(void);
+int dvbt_isr_islock(void)
+{
+#define IN_SYNC_MASK (0x100)
 
+    u32 stat, mask;
+
+    stat = (*OFDM_INT_STS);
+    *OFDM_INT_STS = stat & (~IN_SYNC_MASK);
+
+    mask = (*OFDM_INT_EN);
+    stat &= mask;
+
+    return ((stat&IN_SYNC_MASK)==IN_SYNC_MASK);
+}
+
+
+int dvbt_isr_monitor(void)
+{
+#define SYM_HEAD_MASK (0x80)
+	u32 stat, mask;
+
+	stat = (*OFDM_INT_STS);
+	*OFDM_INT_STS = stat & (~SYM_HEAD_MASK);
+	
+	mask = (*OFDM_INT_EN);
+	stat &= mask;
+
+	if ((stat&SYM_HEAD_MASK) == SYM_HEAD_MASK) // symbol_head int
+		demod_monitor_ave();
+
+	return 0;
+}
+
+int dvbt_isr_cancel(void)
+{
+	*OFDM_INT_STS = 0;
+	return 0;
+}
+
+static int demod_monitor_instant(void)
+{
+     int SNR;	
+     int SNR_SP          = 500;
+     int SNR_TPS         = 0;
+     int SNR_CP          = 0;     
+     int SFO_residual    = 0;
+     int SFO_esti        = 0;
+     int FCFO_esti       = 0;
+     int FCFO_residual   = 0;
+     int AGC_Gain        = 0;
+     int be_vit_error    = 0;
+     int Signal_power    = 0;
+     int FECFlag         = 0;
+     int EQ_seg_ratio    = 0;
+     int tps_0           = 0;
+     int tps_1           = 0;
+     int tps_2           = 0;
+     int cci_blank       = 0;
+
+     int SFO                ;
+     int FCFO               ;
+     int timing_adj         ;
+     int RS_CorrectNum      ;
+     int RS_Error_sum       ;
+     int resync_times       ;
+     int tps_summary        ;
+     
+     int tps_window         ;
+     int tps_guard          ;
+     int tps_constell       ;
+     int tps_Hier_none      ;
+     int tps_Hier_alpha     ;
+     int tps_HP_cr          ;
+     int tps_LP_cr          ;
+     
+
+     int tmpAGCGain;
+     
+     // Read Registers
+     SNR             = apb_read_reg(2,0x0a)              ;
+     FECFlag         = (apb_read_reg(2,0x00)>>11)&0x3     ;
+     SFO             = apb_read_reg(2,0x47)&0xfff        ;
+     SFO_esti        = apb_read_reg(2,0x60)&0xfff        ;
+     FCFO_esti       = (apb_read_reg(2,0x60)>>11)&0xfff   ;
+     FCFO            = (apb_read_reg(2,0x26))&0xffffff    ;
+     be_vit_error    = apb_read_reg(2,0x0c)&0x1fff       ;
+     timing_adj      = apb_read_reg(2,0x6f)&0x1fff       ;
+     RS_CorrectNum   = apb_read_reg(2,0xc1)&0xfffff      ;
+     Signal_power    = (apb_read_reg(2,0x1b))&0x1ff       ;
+     EQ_seg_ratio    = apb_read_reg(2,0x6e)&0x3ffff      ;    
+     tps_0           = apb_read_reg(2,0x64);
+     tps_1           = apb_read_reg(2,0x65);
+     tps_2           = apb_read_reg(2,0x66)&0xf;
+     tps_summary     = apb_read_reg(2,0x04)&0x7fff;
+     cci_blank       = (apb_read_reg(2,0x66)>>16); 
+     RS_Error_sum    = apb_read_reg(2,0xbf)&0x3ffff;
+     resync_times    = (apb_read_reg(2,0xc0)>>20)&0xff;
+     AGC_Gain        = apb_read_reg(2,0x1c)&0x7ff;
+     
+     // Calc 
+     SFO_residual    = (SFO>0x7ff)? (SFO - 0x1000): SFO;
+     FCFO_residual   = (FCFO>0x7fffff)? (FCFO - 0x1000000): FCFO;
+     FCFO_esti       = (FCFO_esti>0x7ff)?(FCFO_esti - 0x1000):FCFO_esti;
+     SNR_CP          = (SNR)&0x3ff;
+     SNR_TPS         = (SNR>>10)&0x3ff;
+     SNR_SP          = (SNR>>20)&0x3ff;
+     SNR_SP          = (SNR_SP  > 0x1ff)? SNR_SP - 0x400: SNR_SP;
+     SNR_TPS         = (SNR_TPS > 0x1ff)? SNR_TPS- 0x400: SNR_TPS; 
+     SNR_CP          = (SNR_CP  > 0x1ff)? SNR_CP - 0x400: SNR_CP;     
+     tmpAGCGain      = AGC_Gain;
+     timing_adj      = (timing_adj > 0xfff)? timing_adj - 0x2000: timing_adj;
+     
+     tps_window      = (tps_summary&0x3);
+     tps_guard       = ((tps_summary>>2)&0x3);
+     tps_constell    = ((tps_summary>>13)&0x3);
+     tps_Hier_none   = (((tps_summary>>10)&0x7)==0)?1:0;
+     tps_Hier_alpha  = (tps_summary>>11)&0x3;
+     tps_Hier_alpha  = (tps_Hier_alpha==3)?4: tps_Hier_alpha;
+     tps_LP_cr       = (tps_summary>>4)&0x7;
+     tps_HP_cr       = (tps_summary>>7)&0x7;
+
+     printk("\n\n");
+     switch(tps_window){
+     case 0: printk("2K ");break;
+     case 1: printk("8K ");break;
+     case 2: printk("4K ");break;
+     default: printk("UnWin ");break;
+    }
+     switch(tps_guard){
+     case 0: printk("1/32 ");break;
+     case 1: printk("1/16 ");break;
+     case 2: printk("1/ 8 ");break;
+     case 3: printk("1/ 4 ");break;
+     default: printk("UnGuard ");break;
+     }
+     switch(tps_constell){
+     case 0: printk(" QPSK ");break;
+     case 1: printk("16QAM ");break;
+     case 2: printk("64QAM ");break;
+     default: printk("UnConstl ");break;
+     }     
+     switch(tps_Hier_none){
+     case 0: printk("Hiera ");break;
+     case 1: printk("non-H ");break;
+     default: printk("UnHier ");break;
+    }
+     printk("%d ",tps_Hier_alpha);
+     printk("HP ");
+     switch(tps_HP_cr){
+     case 0: printk("1/2 ");break;
+     case 1: printk("2/3 ");break;
+     case 2: printk("3/4 ");break;
+     case 3: printk("5/6 ");break;
+     case 4: printk("7/8 ");break;
+     default: printk("UnHCr ");break;
+     }     
+     printk("LP ");
+     switch(tps_LP_cr){
+     case 0: printk("1/2 ");break;
+     case 1: printk("2/3 ");break;
+     case 2: printk("3/4 ");break;
+     case 3: printk("5/6 ");break;
+     case 4: printk("7/8 ");break;
+     default: printk("UnLCr ");break;
+     }       
+     printk("\n");        
+     printk("P %4x ",RS_Error_sum);
+     printk("SP %2d ",SNR_SP);
+     printk("TPS %2d ",SNR_TPS);
+     printk("CP %2d ",SNR_CP);
+     printk("EQS %2x ",EQ_seg_ratio);
+     printk("RSC %4d ",RS_CorrectNum);
+     printk("SFO %3d ",SFO_residual);
+     printk("FCFO %4d ",FCFO_residual);
+     printk("Vit %3x ",be_vit_error);
+     printk("Timing %3d ",timing_adj);
+     printk("SigP %3x ",Signal_power);
+     printk("AGC %d ",tmpAGCGain); 
+     printk("SigP %d ", agc_power_to_dbm(tmpAGCGain,  Signal_power,0, tuner_type));  
+     printk("FEC %x ",FECFlag);
+     printk("ReSyn %x ",resync_times);
+     printk("cciB %x",cci_blank);
+
+     printk("\n");
+
+     return 0;
+
+}
+
+int serial_div(int a, int b)
+{
+	 int c;
+	 int cnt;
+	 int b_buf;
+	 if (b ==0)   return( 0x7fffffff);
+	 if (a ==0)   return( 0);
+	 
+	 c = 0;
+	 cnt = 0;
+	 
+	 a = (a <0)?-1*a:a;
+	 b = (b <0)?-1*b:b;
+	 
+	 b_buf = b;
+	 
+	 while (a >= b){
+	 	 b = b<<1;
+	 	 cnt++;
+ 	}
+ 	while (b > b_buf){
+ 		  b = b >> 1;
+ 		  c = c << 1;
+ 		  if (a > b) {
+ 		  	c = c + 1;
+ 		  	a = a - b;
+ 		  } 		  
+ 	}
+ 	return c;	 
+
+}
+
+static int ave0, bit_unit_L;
+
+static int dvbt_ber(void)
+{
+	int BER_e_n7 = serial_div(ave0 * 40,bit_unit_L);
+	return BER_e_n7;
+}
+
+static int demod_monitor_ave(void)
+{
+  	static int i=0;
+  	static int ave[3]={0,0,0};
+
+ 	 ave[0] = ave[0] + (apb_read_reg(2,0x0b)&0x7ff);
+ 	 ave[1] = ave[1] + (apb_read_reg(2,0x0a)&0x3ff);
+ 	 ave[2] = ave[2] + (apb_read_reg(2,0x0c)&0x1fff);
+ 	 
+ 	 i ++;
+
+	if (i >= 8192)
+	{
+		int tps_mode;
+		int tps_constell;
+		int r_t;
+		int mode_L;
+		int const_L;
+		int SNR_Int;
+		int SNR_fra;
+		
+		if(debug_amldvbt)
+			demod_monitor_instant();
+	    
+		r_t            = apb_read_reg(2,0x04);
+		tps_mode       = r_t&0x3;
+		tps_constell   = (r_t>>13)&0x3;
+		mode_L         = (tps_mode==0)?1: (tps_mode==1)?4 :2;
+		const_L        = (tps_constell==0)?2: (tps_constell==1)?4 :6;
+		bit_unit_L     = 189 * mode_L * const_L;
+		SNR_Int        = (ave[1]>>16);
+		switch((ave[1]>>13)&0x7) {
+		    case 0: SNR_fra = 0;break;
+		    case 1: SNR_fra = 125;break;
+		    case 2: SNR_fra = 250;break;
+		    case 3: SNR_fra = 375;break;
+		    case 4: SNR_fra = 500;break;
+		    case 5: SNR_fra = 625;break;
+		    case 6: SNR_fra = 750;break;
+		    case 7: SNR_fra = 875;break;
+		    default : SNR_fra = 0;break;
+		}
+		
+		ave0 = ave[0];
+		
+		if(debug_amldvbt)
+			printk("RSBi %d Thresh %d SNR %d.%d Vit %x \n\n",(ave[0]>>3)*5,(bit_unit_L*8),SNR_Int,SNR_fra,(ave[2]>>13));
+		i = 0;
+		ave[0]=ave[1]=ave[2]=0;
+	    
+   }
+
+   return i;
+}
+
+int dvbt_switch_to_HP(void)
+{
+	apb_write_reg(2, 0x78, apb_read_reg(2, 0x78) &~ (1<<9));
+	return 0;
+}
+
+int dvbt_switch_to_LP(void)
+{
+	apb_write_reg(2, 0x78, apb_read_reg(2, 0x78) | (1<<9));
+	return 0;
+}
+
+int dvbt_shutdown(void)
+{
+	apb_write_reg(2, 0x02, 0x00800000);  // SW reset bit[23] ; write anything to zero
+	apb_write_reg(2, 0x00, 0x00000000);
+	return 0;
+}
+
+int dvbt_get_params(struct aml_demod_sta *demod_sta, 
+		      struct aml_demod_i2c *adap,
+		      	int  *code_rate_HP,  /* high priority stream code rate */
+			int  *code_rate_LP,  /* low priority stream code rate */
+			int  *constellation, /* modulation type (see above) */
+			int  *transmission_mode,
+			int  *guard_interval,
+			int  *hierarchy_information ) 
+{
+	int tps_summary,tps_window,tps_guard,tps_constell,tps_Hier_none;
+	int tps_Hier_alpha,tps_LP_cr,tps_HP_cr;
+
+	tps_summary     = apb_read_reg(2,0x04)&0x7fff;
+	
+	tps_window      = (tps_summary&0x3);
+	tps_guard       = ((tps_summary>>2)&0x3);
+	tps_constell    = ((tps_summary>>13)&0x3);
+	tps_Hier_none   = (((tps_summary>>10)&0x7)==0)?1:0;
+	tps_Hier_alpha  = (tps_summary>>11)&0x3;
+	tps_Hier_alpha  = (tps_Hier_alpha==3)?4: tps_Hier_alpha;
+	tps_LP_cr       = (tps_summary>>4)&0x7;
+	tps_HP_cr       = (tps_summary>>7)&0x7;
+
+	if(code_rate_HP)
+		*code_rate_HP = tps_HP_cr;/*1/2:2/3:3/4:5/6:7/8*/
+	if(code_rate_LP)
+		*code_rate_LP = tps_LP_cr;/*1/2:2/3:3/4:5/6:7/8*/
+	if(constellation)
+		*constellation = tps_constell;/*QPSK/16QAM/64QAM*/
+	if(transmission_mode)
+		*transmission_mode = tps_window;/*2K/8K/4K*/
+	if(guard_interval)
+		*guard_interval = tps_guard;/*1/32:1/16:1/8:1/4*/
+	if(hierarchy_information)
+		*hierarchy_information = tps_Hier_alpha;/*1/2/4*/
+
+	return 0;
+}
 
 

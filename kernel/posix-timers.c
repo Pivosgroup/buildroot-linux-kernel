@@ -181,6 +181,7 @@ static inline int common_clock_getres(const clockid_t which_clock,
  */
 static int common_clock_get(clockid_t which_clock, struct timespec *tp)
 {
+        //printk("common_clock_get(%d)=(%llu, %llu)\n", which_clock, tp->tv_sec, tp->tv_nsec);
 	ktime_get_real_ts(tp);
 	return 0;
 }
@@ -960,6 +961,7 @@ SYSCALL_DEFINE2(clock_gettime, const clockid_t, which_clock,
 	struct timespec kernel_tp;
 	int error;
 
+        //printk("clock_gettime() clockid=%d\n", which_clock);
 	if (invalid_clockid(which_clock))
 		return -EINVAL;
 	error = CLOCK_DISPATCH(which_clock, clock_get,

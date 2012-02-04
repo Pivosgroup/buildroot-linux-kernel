@@ -1,0 +1,20 @@
+
+menu "Amlogic intenal modem  Support"
+
+config AMLOGIC_MODEM
+	bool "Amlogic intenal modem  support"
+	select IN_3G_SUPPLY
+	default n
+	help
+	  Say Y here if you want to use the amlogic intenal modem management.
+
+config AMLOGIC_MODEM_PM
+	bool "Amlogic intenal modem power on/off when system suspend/resume"
+	depends on AMLOGIC_MODEM
+	help
+	  Say Y here if you want to Amlogic intenal modem power on/off 
+	  when system suspend/resume.
+
+	  If unsure, say N.
+	  
+endmenu
