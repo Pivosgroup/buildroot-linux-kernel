@@ -631,6 +631,10 @@ int snd_pcm_status(struct snd_pcm_substream *substream,
 	snd_pcm_gettime(runtime, &status->tstamp);
  _tstamp_end:
 	status->appl_ptr = runtime->control->appl_ptr;
+#ifdef CONFIG_ANDROID
+    /*   */
+    status->ex_size = runtime->control->ex_size;
+#endif
 	status->hw_ptr = runtime->status->hw_ptr;
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		status->avail = snd_pcm_playback_avail(runtime);
