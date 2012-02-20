@@ -574,6 +574,15 @@ typedef struct
 
 } Hdmi_tx_audio_info_t;
 
+//-----------------Source Physical Address---------------
+typedef struct {
+	unsigned char a:4;
+	unsigned char b:4;
+	unsigned char c:4;
+	unsigned char d:4;
+	unsigned char valid;
+}vsdb_phy_addr_t;
+
 
 typedef struct {
         //Hdmi_tx_video_info_t            video_info;
@@ -581,6 +590,8 @@ typedef struct {
         hdmi_tx_sup_audio_info_t      tv_audio_info;
         hdcp_auth_state_t                  auth_state;
         hdmi_tx_display_type_t          output_state;
+//-----------------Source Physical Address---------------
+	vsdb_phy_addr_t vsdb_phy_addr;
 //-------------------------------------------------------
         unsigned    video_out_changing_flag : 1;
         unsigned    support_underscan_flag : 1;

@@ -52,11 +52,11 @@ struct amlfe_state {
 	struct aml_demod_sta *sta;
 	struct aml_demod_i2c *i2c;
 	
-	u32                       freq;
+	u32                 freq;
 	fe_modulation_t     mode;
-	u32                       symbol_rate;
+	u32                 symbol_rate;
 	struct dvb_frontend fe;
-
+	
 	wait_queue_head_t  lock_wq;
 };
 
@@ -104,10 +104,10 @@ static irqreturn_t amdemod_isr(int irq, void *data)
 	#define dvb_isr_monitor() do { if(frontend_mode==1) dvbt_isr_monitor(); }while(0)
 	#define dvb_isr_cancel()	do { if(frontend_mode==1) dvbt_isr_cancel(); }while(0)
 	
-	/*if(dvb_isr_islock())*/ {
-		if(waitqueue_active(&state->lock_wq))
-			wake_up_interruptible(&state->lock_wq);
-	}
+	dvb_isr_islock();
+
+	if(waitqueue_active(&state->lock_wq))
+		wake_up_interruptible(&state->lock_wq);
 
 	dvb_isr_monitor();
 	
@@ -251,7 +251,8 @@ static int aml_fe_dvbc_init(struct dvb_frontend *fe)
 	sys.pll_m = 50;
 	sys.pll_od = 0;
 	sys.pll_sys_xd = 20;
-	sys.pll_adc_xd = 21;
+	sys.pll_adc_xd = 21;// 28.571M
+  
 	sys.agc_sel = 2;
 	sys.adc_en = 1;
 	sys.i2c = (long)&i2c;
@@ -391,10 +392,11 @@ static int aml_fe_dvbt_init(struct dvb_frontend *fe)
 	sys.clk_src = 0;
 	sys.clk_div = 0;
 	sys.pll_n = 1;
-	sys.pll_m = 50;
+	sys.pll_m = 50;//50 for RDA 45M
 	sys.pll_od = 0;
-	sys.pll_sys_xd = 20;
-	sys.pll_adc_xd = 21;
+	sys.pll_sys_xd = 20;//20;
+	if (state->config.tuner_type ==5)  sys.pll_adc_xd = 14;// 42.857M
+	else	                             sys.pll_adc_xd = 21;// 28.571M
 	sys.agc_sel = 2;
 	sys.adc_en = 1;
 	sys.i2c = (long)&i2c;
@@ -859,6 +861,13 @@ static int amdemod_fe_cfg_get(struct aml_dvb *advb, struct platform_device *pdev
 		frontend_tuner_addr = cfg->tuner_addr;
 	}
 
+	cfg->tuner_power_pin = 0;
+	snprintf(buf, sizeof(buf), "tuner_power_pin");
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, buf);
+	if (res) {
+		cfg->tuner_power_pin = res->start;
+	}
+
 	*pcfg = cfg;
 	
 	return 0;
@@ -1095,9 +1104,40 @@ static int amdemod_fe_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int amdemod_fe_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	struct aml_fe *fe = platform_get_drvdata(pdev);
+	struct amlfe_config *cfg = (struct amlfe_config*)fe->cfg;
+
+	printk("amdemod suspend\n");
+	if(cfg->tuner_power_pin){
+		gpio_request(cfg->tuner_power_pin, "tuner:POWER");
+		gpio_direction_output(cfg->tuner_power_pin, 0);
+	}
+
+	return 0;
+}
+
+static int amdemod_fe_resume(struct platform_device *pdev)
+{
+	struct aml_fe *fe = platform_get_drvdata(pdev);
+	struct amlfe_config *cfg = (struct amlfe_config*)fe->cfg;
+
+	printk("amdemod resume\n");
+
+	if(cfg->tuner_power_pin){
+		gpio_request(cfg->tuner_power_pin, "tuner:POWER");
+		gpio_direction_output(cfg->tuner_power_pin, 1);
+	}
+
+	return 0;
+}
+
 static struct platform_driver aml_fe_driver = {
 	.probe		= amdemod_fe_probe,
-	.remove		= amdemod_fe_remove,	
+	.remove		= amdemod_fe_remove,
+	.suspend        = amdemod_fe_suspend,
+	.resume         = amdemod_fe_resume,
 	.driver		= {
 		.name	= "amlfe",
 		.owner	= THIS_MODULE,

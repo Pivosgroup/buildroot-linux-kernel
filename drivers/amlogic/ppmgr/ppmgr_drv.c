@@ -262,7 +262,7 @@ static ssize_t disp_write(struct device *dev,
     return 0;
 }
 
-#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+#ifdef CONFIG_MIX_FREE_SCALE
 extern int video_scaler_notify(int flag);
 extern void amvideo_set_scaler_para(int x, int y, int w, int h,int flag);
 
@@ -375,7 +375,7 @@ static struct class_attribute ppmgr_class_attrs[] = {
            S_IRUGO | S_IWUSR,
            orientation_read,
            orientation_write),           
-#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+#ifdef CONFIG_MIX_FREE_SCALE
     __ATTR(ppscaler,
            S_IRUGO | S_IWUSR,
            ppscaler_read,
@@ -507,7 +507,7 @@ int  init_ppmgr_device(void)
     ppmgr_device.angle=0;
     ppmgr_device.videoangle=0;
     ppmgr_device.orientation=0;
-#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+#ifdef CONFIG_MIX_FREE_SCALE
     ppmgr_device.ppscaler_flag = 0;
     ppmgr_device.scale_h_start = 0;
     ppmgr_device.scale_h_end = 0;

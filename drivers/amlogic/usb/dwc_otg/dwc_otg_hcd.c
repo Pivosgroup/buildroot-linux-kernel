@@ -321,7 +321,7 @@ static int32_t dwc_otg_hcd_disconnect_cb(void *_p)
 {
 	gintsts_data_t intr;
 	dwc_otg_hcd_t *dwc_otg_hcd = hcd_to_dwc_otg_hcd(_p);
-
+	unsigned long flags;
 	//DWC_DEBUGPL(DBG_HCDV, "%s(%p)\n", __func__, _p);
 	/* 
 	 * Set status flags for the hub driver.
@@ -416,7 +416,7 @@ static int32_t dwc_otg_hcd_disconnect_cb(void *_p)
 						   channel);
 				list_add_tail(&channel->hc_list_entry,
 					      &dwc_otg_hcd->free_hc_list);
-				
+				local_irq_save(flags);
 				/* Take back a non_periodic_channel */
 				switch (channel->ep_type) {
 					case DWC_OTG_EP_TYPE_CONTROL:
@@ -427,6 +427,7 @@ static int32_t dwc_otg_hcd_disconnect_cb(void *_p)
 					default:
 						break;
 				}
+				local_irq_restore(flags);
 			}
 		}
 	}
@@ -1193,14 +1194,14 @@ int dwc_otg_hcd_urb_dequeue(struct usb_hcd *_hcd, struct urb *_urb)
 	if(unlikely(retval) ){
 		goto EXIT;
 	}
-
+	
 	if(!_ep){
 		DWC_PRINT("dwc_otg_hcd_urb_dequeue: urb(%p) ->ep is NULL!\n",_urb);
 		usb_hcd_unlink_urb_from_ep(_hcd, _urb);
 		local_irq_restore(flags);
 		return 0;
 	}
-	
+
 	dwc_otg_hcd = hcd_to_dwc_otg_hcd(_hcd);
 	urb_qtd = (dwc_otg_qtd_t *) _urb->hcpriv;
 	qh = (dwc_otg_qh_t *) _ep->hcpriv;
@@ -1211,6 +1212,10 @@ int dwc_otg_hcd_urb_dequeue(struct usb_hcd *_hcd, struct urb *_urb)
 		/* The QTD is in process (it has been assigned to a channel). */
 
 			if (dwc_otg_hcd->flags.b.port_connect_status) {
+			/* 
+			 * Waitting for host core halt the channel by itself
+			 */
+			mdelay(1);
 			/*
 			 * If still connected (i.e. in host mode), halt the
 			 * channel so it can be used for other transfers. If
@@ -1218,6 +1223,7 @@ int dwc_otg_hcd_urb_dequeue(struct usb_hcd *_hcd, struct urb *_urb)
 			 * written to halt the channel since the core is in
 			 * device mode.
 			 */
+
 				dwc_otg_hc_halt(dwc_otg_hcd->core_if, qh->channel,
 					DWC_OTG_HC_XFER_URB_DEQUEUE);
 			}
@@ -2424,6 +2430,36 @@ int dwc_otg_hcd_hub_control(struct usb_hcd *_hcd,
 }
 
 /**
+ * Checks that a channel is available for a periodic transfer.
+ *
+ * @return 0 if successful, negative error code otherise.
+ */
+static int periodic_channel_available(dwc_otg_hcd_t * _hcd)
+{
+	/*
+	 * Currently assuming that there is a dedicated host channnel for each
+	 * periodic transaction plus at least one host channel for
+	 * non-periodic transactions.
+	 */
+	int status;
+	int num_channels;
+
+	num_channels = _hcd->core_if->core_params->host_channels;
+	if ((_hcd->periodic_channels + _hcd->non_periodic_channels <
+	     num_channels) && (_hcd->periodic_channels < num_channels - 1)) {
+		status = 0;
+	} else {
+		DWC_WARN
+		    ("%s: Total channels: %d, Periodic: %d, Non-periodic: %d\n",
+		     __func__, num_channels, _hcd->periodic_channels,
+		     _hcd->non_periodic_channels);
+		status = -ENOSPC;
+	}
+
+	return status;
+}
+
+/**
  * Assigns transactions from a QTD to a free host channel and initializes the
  * host channel to perform the transactions. The host channel is removed from
  * the free list.
@@ -2434,9 +2470,13 @@ int dwc_otg_hcd_hub_control(struct usb_hcd *_hcd,
  */
 static int assign_and_init_hc(dwc_otg_hcd_t * _hcd, dwc_otg_qh_t * _qh)
 {
-	dwc_hc_t *hc;
+	dwc_hc_t *hc = NULL;
 	dwc_otg_qtd_t *qtd;
+	int status;
 	struct urb *urb;
+	unsigned long flags;
+	hcchar_data_t hcchar;
+	struct list_head *hc_ptr;
 
 	DWC_DEBUGPL(DBG_HCDV, "%s(%p,%p)\n", __func__, _hcd, _qh);
 
@@ -2462,7 +2502,48 @@ static int assign_and_init_hc(dwc_otg_hcd_t * _hcd, dwc_otg_qh_t * _qh)
 		}
 	}
 
-	hc = list_entry(_hcd->free_hc_list.next, dwc_hc_t, hc_list_entry);
+	/* find a valid hc */
+	hc_ptr = _hcd->free_hc_list.next;
+	while (hc_ptr != &_hcd->free_hc_list) {
+		hc = list_entry(hc_ptr, dwc_hc_t, hc_list_entry);
+
+		hcchar.d32 = dwc_read_reg32(&_hcd->core_if->host_if->hc_regs[hc->hc_num]->hcchar);
+		if(hcchar.b.chdis){
+			hc_ptr = hc_ptr->next;
+			hc = NULL;
+		}
+		else
+			break;		
+	}
+	if(hc == NULL)
+		return -1;
+
+	/* assign ch and lock ssplit */
+	local_irq_save(flags);
+	if(!dwc_qh_is_non_per(_qh)){
+		status = periodic_channel_available(_hcd);
+		if (status) {
+			DWC_NOTICE("%s: No host channel available for periodic "
+				   "transfer.\n", __func__);
+			local_irq_restore(flags);
+			return status;
+		}		
+	}
+	if(_qh->do_split && (_qh->ep_type == USB_ENDPOINT_XFER_INT)){
+		if((_hcd->ssplit_lock == 0) || qtd->complete_split){					
+			_hcd->ssplit_lock = usb_pipedevice(urb->pipe);
+			//printk(KERN_DEBUG "\n%d-%d\n",usb_pipedevice(urb->pipe), qtd->complete_split);	
+
+		}
+		else{
+			//printk(KERN_DEBUG "\n==>%d\n",usb_pipedevice(urb->pipe));	
+			local_irq_restore(flags);
+			return -2;
+		}
+	}
+	if(!dwc_qh_is_non_per(_qh))	
+		_hcd->periodic_channels++;
+	local_irq_restore(flags);
 
 	/* Remove the host channel from the free list. */
 	list_del_init(&hc->hc_list_entry);
@@ -2638,7 +2719,7 @@ dwc_otg_transaction_type_e dwc_otg_hcd_select_transactions(dwc_otg_hcd_t * _hcd)
 	dwc_otg_qh_t *qh;
 	int num_channels;
 	dwc_otg_transaction_type_e ret_val = DWC_OTG_TRANSACTION_NONE;
-
+	unsigned long flags;
 #ifdef DEBUG_SOF
 	DWC_DEBUGPL(DBG_HCD, "  Select Transactions\n");
 #endif
@@ -2649,7 +2730,13 @@ dwc_otg_transaction_type_e dwc_otg_hcd_select_transactions(dwc_otg_hcd_t * _hcd)
 	       !list_empty(&_hcd->free_hc_list)) {
 
 		qh = list_entry(qh_ptr, dwc_otg_qh_t, qh_list_entry);
-		assign_and_init_hc(_hcd, qh);
+//		assign_and_init_hc(_hcd, qh);
+
+		if(assign_and_init_hc(_hcd, qh)){
+			qh_ptr = qh_ptr->next;
+			continue;		
+  		}
+
 
 		/*
 		 * Move the QH from the periodic ready schedule to the
@@ -2668,16 +2755,22 @@ dwc_otg_transaction_type_e dwc_otg_hcd_select_transactions(dwc_otg_hcd_t * _hcd)
 	 */
 	qh_ptr = _hcd->non_periodic_sched_inactive.next;
 	num_channels = _hcd->core_if->core_params->host_channels;
+	if(_hcd->non_periodic_channels > num_channels - _hcd->periodic_channels)
+		DWC_WARN("%s: Total channels: %d, Periodic: %d, Non-periodic: %d\n",
+		     __func__, num_channels, _hcd->periodic_channels, _hcd->non_periodic_channels);
 	while (qh_ptr != &_hcd->non_periodic_sched_inactive &&
 	       (_hcd->non_periodic_channels <
 		num_channels - _hcd->periodic_channels) &&
 	       !list_empty(&_hcd->free_hc_list)) {
 
 		qh = list_entry(qh_ptr, dwc_otg_qh_t, qh_list_entry);
-		if(assign_and_init_hc(_hcd, qh))
-			break;
-
-
+		if(assign_and_init_hc(_hcd, qh)){
+			qh_ptr = qh_ptr->next;
+			continue;		
+		}
+		local_irq_save(flags);
+		_hcd->non_periodic_channels++;
+		local_irq_restore(flags);
 		/*
 		 * Move the QH from the non-periodic inactive schedule to the
 		 * non-periodic active schedule.
@@ -2691,7 +2784,7 @@ dwc_otg_transaction_type_e dwc_otg_hcd_select_transactions(dwc_otg_hcd_t * _hcd)
 			ret_val = DWC_OTG_TRANSACTION_ALL;
 		}
 
-		_hcd->non_periodic_channels++;
+		
 	}
 
 	return ret_val;

@@ -428,7 +428,7 @@ void audio_enable_ouput(int flag)
         WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 3, 1, 2);
 
         if (ENABLE_IEC958) {
-            if(0)//IEC958_MODE == AIU_958_MODE_RAW)   
+            if(IEC958_MODE == AIU_958_MODE_RAW)   
             {
               audio_hw_958_raw();
             }
@@ -548,7 +548,7 @@ static void audio_hw_set_958_pcm24(_aiu_958_raw_setting_t * set)
 
 void audio_set_958_mode(unsigned mode, _aiu_958_raw_setting_t * set)
 {
-    if(mode == AIU_958_MODE_RAW)
+    if(mode == AIU_958_MODE_PCM_RAW)
     	mode = AIU_958_MODE_PCM16; //use 958 raw pcm mode
     if (mode == AIU_958_MODE_RAW) {
         

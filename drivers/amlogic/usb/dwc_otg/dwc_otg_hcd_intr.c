@@ -857,7 +857,7 @@ static void release_channel(dwc_otg_hcd_t * _hcd,
 {
 	dwc_otg_transaction_type_e tr_type;
 	int free_qtd;
-
+	unsigned long flags;
 	DWC_DEBUGPL(DBG_HCDV, "  %s: channel %d, halt_status %d\n",
 		    __func__, _hc->hc_num, _halt_status);
 
@@ -908,13 +908,16 @@ static void release_channel(dwc_otg_hcd_t * _hcd,
 	 */
 	dwc_otg_hc_cleanup(_hcd->core_if, _hc);
 	list_add_tail(&_hc->hc_list_entry, &_hcd->free_hc_list);
-
+	local_irq_save(flags);
 	switch (_hc->ep_type) {
 	case DWC_OTG_EP_TYPE_CONTROL:
 	case DWC_OTG_EP_TYPE_BULK:
 		_hcd->non_periodic_channels--;
 		break;
-
+	case DWC_OTG_EP_TYPE_ISOC:
+	case DWC_OTG_EP_TYPE_INTR:
+		_hcd->periodic_channels--;
+		break;
 	default:
 		/*
 		 * Don't release reservations for periodic channels here.
@@ -923,7 +926,7 @@ static void release_channel(dwc_otg_hcd_t * _hcd,
 		 */
 		break;
 	}
-
+	local_irq_restore(flags);
 #ifdef NAK_IN_TIMER
 
       /* For nak interrupt, we should delay sometime and restart xfer in a timer */
@@ -1103,6 +1106,7 @@ static int32_t handle_hc_xfercomp_intr(dwc_otg_hcd_t * _hcd,
 	 */
 	if (_hc->qh->do_split) {
 		_qtd->complete_split = 0;
+		_hcd->ssplit_lock = 0;
 	}
 
 	/* Update the QTD and URB states. */
@@ -1205,6 +1209,7 @@ static int32_t handle_hc_stall_intr(dwc_otg_hcd_t * _hcd,
 
 	DWC_DEBUGPL(DBG_HCD, "--Host Channel %d Interrupt: "
 		    "STALL Received--\n", _hc->hc_num);
+	_hcd->ssplit_lock = 0;
 
 	if (pipe_type == PIPE_CONTROL) {
 		dwc_otg_hcd_complete_urb(_hcd, _qtd->urb, -EPIPE);
@@ -1288,6 +1293,8 @@ static int32_t handle_hc_nak_intr(dwc_otg_hcd_t * _hcd,
 			_qtd->error_count = 0;
 		}
 		_qtd->complete_split = 0;
+		if(_hcd->ssplit_lock == usb_pipedevice(_qtd->urb->pipe))
+			_hcd->ssplit_lock = 0;
 		halt_channel(_hcd, _hc, _qtd, DWC_OTG_HC_XFER_NAK);
 		goto handle_nak_done;
 	}
@@ -1478,9 +1485,11 @@ static int32_t handle_hc_nyet_intr(dwc_otg_hcd_t * _hcd,
 				 * occurs regularly in Slave mode.
 				 */
 				 if(_hc->speed == DWC_OTG_EP_SPEED_LOW)
-					_qtd->error_count++;
+				_qtd->error_count++;
 #endif
 				_qtd->complete_split = 0;
+				_hcd->ssplit_lock = 0;
+
 				halt_channel(_hcd, _hc, _qtd,
 					     DWC_OTG_HC_XFER_XACT_ERR);
 				/** @todo add support for isoc release */
@@ -1642,6 +1651,7 @@ static int32_t handle_hc_xacterr_intr(dwc_otg_hcd_t * _hcd,
 		_qtd->error_count++;
 		if ((_hc->do_split) && (_hc->complete_split)) {
 			_qtd->complete_split = 0;
+			_hcd->ssplit_lock = 0;
 		}
 		halt_channel(_hcd, _hc, _qtd, DWC_OTG_HC_XFER_XACT_ERR);
 		break;

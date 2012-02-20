@@ -397,6 +397,7 @@ typedef struct dwc_otg_hcd {
 	uint64_t hfnum_other_frrem_accum_b;
 #endif
 	uint32_t split_frm_num;
+	uint8_t  ssplit_lock;
 
 } dwc_otg_hcd_t;
 

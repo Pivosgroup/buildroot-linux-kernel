@@ -167,7 +167,7 @@ static u32 vpts_remainder;
 static bool video_property_changed = false;
 static u32 video_notify_flag = 0;
 
-#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+#ifdef CONFIG_MIX_FREE_SCALE
 static u32 video_scaler_mode = 0;
 static int content_top = 0, content_left = 0, content_w = 0, content_h = 0;
 static int scaler_pos_changed = 0;
@@ -179,7 +179,7 @@ int video_property_notify(int flag)
     return 0;
 }
 
-#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+#ifdef CONFIG_MIX_FREE_SCALE
 int video_scaler_notify(int flag)
 {
     video_scaler_mode  = flag;	
@@ -1115,7 +1115,7 @@ static void vsync_notify(void)
         video_notify_flag &= ~VIDEO_NOTIFY_FRAME_WAIT;
         vf_notify_provider(RECEIVER_NAME, VFRAME_EVENT_RECEIVER_FRAME_WAIT, NULL); 
     }
-#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+#ifdef CONFIG_MIX_FREE_SCALE
     if (video_notify_flag & VIDEO_NOTIFY_POS_CHANGED) {
         video_notify_flag &= ~VIDEO_NOTIFY_POS_CHANGED;
         vf_notify_provider(RECEIVER_NAME, VFRAME_EVENT_RECEIVER_POS_CHANGED, NULL); 
@@ -1458,7 +1458,7 @@ exit:
     if(timer_count > 50){
         timer_count = 0 ;
         video_notify_flag |= VIDEO_NOTIFY_FRAME_WAIT;	
-#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+#ifdef CONFIG_MIX_FREE_SCALE
         if((video_scaler_mode)&&(scaler_pos_changed)){
             video_notify_flag |= VIDEO_NOTIFY_POS_CHANGED;
             scaler_pos_changed = 0;
@@ -1598,7 +1598,7 @@ static void video_vf_unreg_provider(void)
     }
 
     if (blackout) {
-#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+#ifdef CONFIG_MIX_FREE_SCALE
         if(video_scaler_mode)
             DisableVideoLayer_PREBELEND();
         else
@@ -2042,7 +2042,7 @@ static void set_video_window(const char *para)
         w = parsed[2] - parsed[0] + 1;
         h = parsed[3] - parsed[1] + 1;
 
-#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+#ifdef CONFIG_MIX_FREE_SCALE
         if(video_scaler_mode){
             if ((w == 1) && (h == 1)){
                 w= 0;
@@ -2075,7 +2075,7 @@ static void set_video_window(const char *para)
 static ssize_t video_axis_show(struct class *cla, struct class_attribute *attr, char *buf)
 {
     int x, y, w, h;
-#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+#ifdef CONFIG_MIX_FREE_SCALE
     if(video_scaler_mode){
         x = content_left;
         y = content_top;
@@ -2293,7 +2293,7 @@ static ssize_t video_disable_store(struct class *cla, struct class_attribute *at
     disable_video = val;
 
     if (disable_video != VIDEO_DISABLE_NONE) {
-#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+#ifdef CONFIG_MIX_FREE_SCALE
         if(video_scaler_mode)
             DisableVideoLayer_PREBELEND();
         else

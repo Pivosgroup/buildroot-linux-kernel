@@ -43,6 +43,7 @@ obj-y += spi_nor/
 
 obj-$(CONFIG_CMEM) += cmem/
 
+obj-$(CONFIG_FREE_SCALE) += freescale/
 obj-$(CONFIG_DEINTERLACE) += deinterlace/
 obj-$(CONFIG_JPEGLOGO) += jpeglogo/
 

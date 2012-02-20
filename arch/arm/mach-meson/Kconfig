@@ -156,18 +156,6 @@ config MACH_MESON_8726M_REFB13
 	bool "Support M1 8726(refb13) platform(machid=2956)"
 	help
 	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
-	  	  
-config MACH_MESON_8726M_REFB14
-	select GENERIC_ALLOCATOR
-	bool "Support M1 8726(refb14) platform(machid=2956)"
-	help
-	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.   	  
-
-config MACH_MESON_8726M_REFB16
-	select GENERIC_ALLOCATOR
-	bool "Support M1 8726(refb16) platform(machid=2956)"
-	help
-	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
 	  
 config MACH_MESON_8726M_REFB17
 	select GENERIC_ALLOCATOR
@@ -180,19 +168,25 @@ config MACH_MESON_8726M_REFB18
 	bool "Support M1 8726(P10) platform(machid=2956)"
 	help
 	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
-	
+
 config MACH_MESON_8726M_REFB19
 	select GENERIC_ALLOCATOR
 	bool "Support M1 8726(REFB19) platform(machid=2956)"
 	help
 	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
-
-config MACH_MESON_STV_MBX_M3
+	  	  
+config MACH_MESON_8726M_REFB14
 	select GENERIC_ALLOCATOR
-	bool "Support M1 8726(stv mbx m3) platform(machid=2957)"
+	bool "Support M1 8726(refb14) platform(machid=2956)"
 	help
 	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
-
+	  
+config MACH_MESON_8726M_REFB16
+	select GENERIC_ALLOCATOR
+	bool "Support M1 8726(refb16) platform(machid=2956)"
+	help
+	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.	  
+	  	  
 config STV
 	bool "support STV mod"
 	help
@@ -208,13 +202,17 @@ config STV_RECOVERY
 	help
 		Just for M3 Recovery system build. not config for system.
 
+config MACH_MESON_STV_MBX_M3
+	select GENERIC_ALLOCATOR
+	bool "Support M1 8726(stv mbx m3) platform(machid=2957)"
+	help
+	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
 
 config MACH_MESON_STV_MBX_REF
 	select GENERIC_ALLOCATOR
 	bool "Support M1 8726(stv mbx ref) platform(machid=2956)"
 	help
 	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
-
 
 config MACH_MESON_STV_MID_REF
 	select GENERIC_ALLOCATOR

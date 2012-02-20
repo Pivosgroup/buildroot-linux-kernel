@@ -20,7 +20,7 @@ typedef  struct {
 	int bypass;
 	int disp_width;
 	int disp_height;
-#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+#ifdef CONFIG_MIX_FREE_SCALE
 	int ppscaler_flag;
 	int scale_h_start;
 	int scale_h_end;

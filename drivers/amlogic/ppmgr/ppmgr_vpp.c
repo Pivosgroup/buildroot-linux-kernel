@@ -29,7 +29,7 @@
 #include "ppmgr_dev.h"
 
 #define VF_POOL_SIZE 4
-#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+#ifdef CONFIG_MIX_FREE_SCALE
 #define ASS_POOL_SIZE 2
 #else
 #define ASS_POOL_SIZE 1
@@ -64,7 +64,7 @@ typedef struct ppframe_s {
 } ppframe_t;
 
 static int ass_index; 
-#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+#ifdef CONFIG_MIX_FREE_SCALE
 static int backup_index = -1;
 static int backup_content_w = 0, backup_content_h = 0;
 static int scaler_x = 0,scaler_y = 0,scaler_w = 0,scaler_h = 0;
@@ -151,7 +151,7 @@ static int ppmgr_event_cb(int type, void *data, void *private_data)
 #endif
         up(&thread_sem);
     }
-#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+#ifdef CONFIG_MIX_FREE_SCALE
     if(type & VFRAME_EVENT_RECEIVER_POS_CHANGED){
         if(task_running){
             scaler_pos_changed = 1;
@@ -165,7 +165,7 @@ static int ppmgr_event_cb(int type, void *data, void *private_data)
             if(get_property_change()){
                 //printk("--ppmgr: get angle changed msg.\n");
                 set_property_change(0);
-#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+#ifdef CONFIG_MIX_FREE_SCALE
                 if(!amvideo_get_scaler_mode()){
                     still_picture_notify = 1;
                     up(&thread_sem);
@@ -273,7 +273,7 @@ void vf_local_init(void)
 
     set_property_change(0); 
     still_picture_notify=0;
-#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+#ifdef CONFIG_MIX_FREE_SCALE
     scaler_pos_changed = 0;
     scaler_x = scaler_y = scaler_w = scaler_h = 0;
     backup_content_w = backup_content_h = 0;
@@ -849,7 +849,7 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
     canvas_t cs0,cs1,cs2,cd;
 	 unsigned int dest_width,dest_height,dest_format;
     u32 mode = 0;
-#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+#ifdef CONFIG_MIX_FREE_SCALE
     int rect_x = 0, rect_y = 0, rect_w = 0, rect_h = 0;
     u32 ratio = 100;
     mode = amvideo_get_scaler_para(&rect_x, &rect_y, &rect_w, &rect_h, &ratio);
@@ -878,7 +878,7 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
 		dest_height = out_height;
 		dest_format = GE2D_FORMAT_S24_BGR;
 	}
-#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+#ifdef CONFIG_MIX_FREE_SCALE
 	if(mode)
 		pp_vf->dec_frame = NULL;
 #endif	
@@ -901,7 +901,7 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
     else if(interlace_mode == VIDTYPE_INTERLACE_BOTTOM)
         pic_struct = (GE2D_FORMAT_M24_YUV420B & (3<<3));
 
-#ifndef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+#ifndef CONFIG_MIX_FREE_SCALE
     vf_rotate_adjust(vf, new_vf, ppmgr_device.videoangle);
 #else
     if(!mode){
@@ -1181,7 +1181,7 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
     if(!mode)
         pp_vf->angle = ppmgr_device.videoangle ;
 
-#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+#ifdef CONFIG_MIX_FREE_SCALE
     if(mode){
         int sx,sy,sw,sh, dx,dy,dw,dh;
         unsigned ratio_x = (vf->width<<8)/rect_w;
@@ -1434,7 +1434,7 @@ static void process_vf_change(vframe_t *vf, ge2d_context_t *context, config_para
     vf->ratio_control = 0;    
 }
 
-#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+#ifdef CONFIG_MIX_FREE_SCALE
 static int process_vf_adjust(vframe_t *vf, ge2d_context_t *context, config_para_ex_t *ge2d_config)
 {
     canvas_t cs,cd;
@@ -1714,7 +1714,7 @@ static int ppmgr_task(void *data)
             break;
 
         vframe_t *vf = NULL;       
-#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+#ifdef CONFIG_MIX_FREE_SCALE
         if(scaler_pos_changed){
             scaler_pos_changed = 0;
             vf = get_cur_dispbuf();
@@ -1875,7 +1875,7 @@ int ppmgr_buffer_init(void)
     }
     
     ass_index =  PPMGR_CANVAS_INDEX + VF_POOL_SIZE ;   /*for rotate while pause status*/
-#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+#ifdef CONFIG_MIX_FREE_SCALE
     backup_index = PPMGR_CANVAS_INDEX + VF_POOL_SIZE + 1;               /*for hdmi output*/
 #endif
 

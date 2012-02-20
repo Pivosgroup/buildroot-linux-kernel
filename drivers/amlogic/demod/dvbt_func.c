@@ -13,7 +13,8 @@ static int tuner_type = 3;
 
 static void set_ACF_coef(int ADsample, int bandwidth)
 {
-    if (ADsample == 45)	{
+	printk("[RSJ] ADsample is %d,bandwidth is %d",ADsample,bandwidth);
+    if (ADsample == 45000)	{
 	// Set ACF and IIREQ
 	if (bandwidth == 0) {//8M Hz
 	    apb_write_reg(2, 0x2c ,0x255);// ACF_STAGE1_A1           
@@ -238,7 +239,7 @@ static void set_ACF_coef(int ADsample, int bandwidth)
 	    apb_write_reg(2, 0xfe, 0x020);apb_write_reg(2, 0xff, 0x00000765);
 	}
     }
-    else if (ADsample == 28) {
+    else if (ADsample == 28571) {
 	// 28.5714 MHz Set ACF
 	if (bandwidth == 0) {  //8M Hz
 
@@ -467,7 +468,7 @@ static void set_ACF_coef(int ADsample, int bandwidth)
 	    apb_write_reg(2, 0xfe, 0x020);apb_write_reg(2, 0xff, 0x000003c9);
 	}		
     }
-    else {
+    else if (ADsample == 20700) {
 	// 20.7 MHz Set ACF
 	if (bandwidth == 0) {   //8M Hz
 
@@ -693,7 +694,235 @@ static void set_ACF_coef(int ADsample, int bandwidth)
 	    apb_write_reg(2, 0xfe, 0x01f);apb_write_reg(2, 0xff, 0x0011b2c7);
 	    apb_write_reg(2, 0xfe, 0x020);apb_write_reg(2, 0xff, 0x000001cb);
 	}
-    }
+   }
+   else if (ADsample == 42857) 
+   {
+   	if (bandwidth == 0) {//8M Hz
+           apb_write_reg(2,0x2c ,0x28F);// ACF_STAGE1_A1 
+           apb_write_reg(2,0x2d ,0x095);// ACF_STAGE1_A2 
+           apb_write_reg(2,0x2e ,0x356);// ACF_STAGE1_B1 
+           apb_write_reg(2,0x2f ,0x00E);// ACF_STAGE1_GAIN 
+           apb_write_reg(2,0x30 ,0x276);// ACF_STAGE2_A1 
+           apb_write_reg(2,0x31 ,0x0C3);// ACF_STAGE2_A2 
+           apb_write_reg(2,0x32 ,0x299);// ACF_STAGE2_B1 
+           apb_write_reg(2,0x33 ,0x06A);// ACF_STAGE2_GAIN 
+           apb_write_reg(2,0x34 ,0x263);// ACF_STAGE3_A1 
+           apb_write_reg(2,0x35 ,0x0E5);// ACF_STAGE3_A2 
+           apb_write_reg(2,0x36 ,0x26E);// ACF_STAGE3_B1 
+           apb_write_reg(2,0x37 ,0x05A);// ACF_STAGE3_GAIN 
+           apb_write_reg(2,0x38 ,0x256);// ACF_STAGE4_A1 
+           apb_write_reg(2,0x39 ,0x0F9);// ACF_STAGE4_A2 
+           apb_write_reg(2,0x3a ,0x261);// ACF_STAGE4_B1 
+           apb_write_reg(2,0x3b ,0x04B);// ACF_STAGE4_GAIN 
+           apb_write_reg(2,0x3c ,0x34E);// ACF_STAGE5_A1 
+           apb_write_reg(2,0x3d ,0x000);// ACF_STAGE5_A2 
+           apb_write_reg(2,0x3e ,0x100);// ACF_STAGE5_B1 
+           apb_write_reg(2,0x3f ,0x00A);// ACF_STAGE5_GAIN 
+           	        
+           apb_write_reg(2,0xfe, 0x000);apb_write_reg(2,0xff, 0x003f3fff);
+           apb_write_reg(2,0xfe, 0x001);apb_write_reg(2,0xff, 0x003dafce);
+           apb_write_reg(2,0xfe, 0x002);apb_write_reg(2,0xff, 0x003c1f9c);
+           apb_write_reg(2,0xfe, 0x003);apb_write_reg(2,0xff, 0x003a8f6a);
+           apb_write_reg(2,0xfe, 0x004);apb_write_reg(2,0xff, 0x0038f738);
+           apb_write_reg(2,0xfe, 0x005);apb_write_reg(2,0xff, 0x00375f05);
+           apb_write_reg(2,0xfe, 0x006);apb_write_reg(2,0xff, 0x0035bed1);
+           apb_write_reg(2,0xfe, 0x007);apb_write_reg(2,0xff, 0x0034169d);
+           apb_write_reg(2,0xfe, 0x008);apb_write_reg(2,0xff, 0x00326e68);
+           apb_write_reg(2,0xfe, 0x009);apb_write_reg(2,0xff, 0x0030ae31);
+           apb_write_reg(2,0xfe, 0x00a);apb_write_reg(2,0xff, 0x002eedf9);
+           apb_write_reg(2,0xfe, 0x00b);apb_write_reg(2,0xff, 0x002d15c0);
+           apb_write_reg(2,0xfe, 0x00c);apb_write_reg(2,0xff, 0x002b2d84);
+           apb_write_reg(2,0xfe, 0x00d);apb_write_reg(2,0xff, 0x00293546);
+           apb_write_reg(2,0xfe, 0x00e);apb_write_reg(2,0xff, 0x00272d06);
+           apb_write_reg(2,0xfe, 0x00f);apb_write_reg(2,0xff, 0x002504c3);
+           apb_write_reg(2,0xfe, 0x010);apb_write_reg(2,0xff, 0x0022bc7c);
+           apb_write_reg(2,0xfe, 0x011);apb_write_reg(2,0xff, 0x00204c31);
+           apb_write_reg(2,0xfe, 0x012);apb_write_reg(2,0xff, 0x001db3e1);
+           apb_write_reg(2,0xfe, 0x013);apb_write_reg(2,0xff, 0x001ae38a);
+           apb_write_reg(2,0xfe, 0x014);apb_write_reg(2,0xff, 0x0017d32c);
+           apb_write_reg(2,0xfe, 0x015);apb_write_reg(2,0xff, 0x001462c4);
+           apb_write_reg(2,0xfe, 0x016);apb_write_reg(2,0xff, 0x00108250);
+           apb_write_reg(2,0xfe, 0x017);apb_write_reg(2,0xff, 0x000c09cc);
+           apb_write_reg(2,0xfe, 0x018);apb_write_reg(2,0xff, 0x0008112f);
+           apb_write_reg(2,0xfe, 0x019);apb_write_reg(2,0xff, 0x000508d3);
+           apb_write_reg(2,0xfe, 0x01a);apb_write_reg(2,0xff, 0x0001906b);
+           apb_write_reg(2,0xfe, 0x01b);apb_write_reg(2,0xff, 0x003d7ff3);
+           apb_write_reg(2,0xfe, 0x01c);apb_write_reg(2,0xff, 0x00384f62);
+           apb_write_reg(2,0xfe, 0x01d);apb_write_reg(2,0xff, 0x0030f69e);
+           apb_write_reg(2,0xfe, 0x01e);apb_write_reg(2,0xff, 0x0030f61e);
+           apb_write_reg(2,0xfe, 0x01f);apb_write_reg(2,0xff, 0x0030f61e);
+           apb_write_reg(2,0xfe, 0x020);apb_write_reg(2,0xff, 0x0000061e);
+     	}
+	     else if (bandwidth==1) {// 7Mhz
+           apb_write_reg(2,0x2c ,0x27D);// ACF_STAGE1_A1 
+           apb_write_reg(2,0x2d ,0x09F);// ACF_STAGE1_A2 
+           apb_write_reg(2,0x2e ,0x318);// ACF_STAGE1_B1 
+           apb_write_reg(2,0x2f ,0x00E);// ACF_STAGE1_GAIN 
+           apb_write_reg(2,0x30 ,0x263);// ACF_STAGE2_A1 
+           apb_write_reg(2,0x31 ,0x0CA);// ACF_STAGE2_A2 
+           apb_write_reg(2,0x32 ,0x277);// ACF_STAGE2_B1 
+           apb_write_reg(2,0x33 ,0x06A);// ACF_STAGE2_GAIN 
+           apb_write_reg(2,0x34 ,0x250);// ACF_STAGE3_A1 
+           apb_write_reg(2,0x35 ,0x0E8);// ACF_STAGE3_A2 
+           apb_write_reg(2,0x36 ,0x255);// ACF_STAGE3_B1 
+           apb_write_reg(2,0x37 ,0x05A);// ACF_STAGE3_GAIN 
+           apb_write_reg(2,0x38 ,0x243);// ACF_STAGE4_A1 
+           apb_write_reg(2,0x39 ,0x0F9);// ACF_STAGE4_A2 
+           apb_write_reg(2,0x3a ,0x24B);// ACF_STAGE4_B1 
+           apb_write_reg(2,0x3b ,0x04B);// ACF_STAGE4_GAIN 
+           apb_write_reg(2,0x3c ,0x346);// ACF_STAGE5_A1 
+           apb_write_reg(2,0x3d ,0x000);// ACF_STAGE5_A2 
+           apb_write_reg(2,0x3e ,0x100);// ACF_STAGE5_B1 
+           apb_write_reg(2,0x3f ,0x06D);// ACF_STAGE5_GAIN 
+           apb_write_reg(2,0xfe, 0x000);apb_write_reg(2,0xff, 0x003f3fff);
+           apb_write_reg(2,0xfe, 0x001);apb_write_reg(2,0xff, 0x003dafce);
+           apb_write_reg(2,0xfe, 0x002);apb_write_reg(2,0xff, 0x003c1f9c);
+           apb_write_reg(2,0xfe, 0x003);apb_write_reg(2,0xff, 0x003a8769);
+           apb_write_reg(2,0xfe, 0x004);apb_write_reg(2,0xff, 0x0038ef37);
+           apb_write_reg(2,0xfe, 0x005);apb_write_reg(2,0xff, 0x00375704);
+           apb_write_reg(2,0xfe, 0x006);apb_write_reg(2,0xff, 0x0035b6d0);
+           apb_write_reg(2,0xfe, 0x007);apb_write_reg(2,0xff, 0x00340e9b);
+           apb_write_reg(2,0xfe, 0x008);apb_write_reg(2,0xff, 0x00325e66);
+           apb_write_reg(2,0xfe, 0x009);apb_write_reg(2,0xff, 0x00309e2f);
+           apb_write_reg(2,0xfe, 0x00a);apb_write_reg(2,0xff, 0x002ed5f7);
+           apb_write_reg(2,0xfe, 0x00b);apb_write_reg(2,0xff, 0x002d05bd);
+           apb_write_reg(2,0xfe, 0x00c);apb_write_reg(2,0xff, 0x002b1d82);
+           apb_write_reg(2,0xfe, 0x00d);apb_write_reg(2,0xff, 0x00292544);
+           apb_write_reg(2,0xfe, 0x00e);apb_write_reg(2,0xff, 0x00271504);
+           apb_write_reg(2,0xfe, 0x00f);apb_write_reg(2,0xff, 0x0024f4c0);
+           apb_write_reg(2,0xfe, 0x010);apb_write_reg(2,0xff, 0x0022ac7a);
+           apb_write_reg(2,0xfe, 0x011);apb_write_reg(2,0xff, 0x0020442f);
+           apb_write_reg(2,0xfe, 0x012);apb_write_reg(2,0xff, 0x001db3e0);
+           apb_write_reg(2,0xfe, 0x013);apb_write_reg(2,0xff, 0x001ae38a);
+           apb_write_reg(2,0xfe, 0x014);apb_write_reg(2,0xff, 0x0017d32c);
+           apb_write_reg(2,0xfe, 0x015);apb_write_reg(2,0xff, 0x001462c4);
+           apb_write_reg(2,0xfe, 0x016);apb_write_reg(2,0xff, 0x00107a50);
+           apb_write_reg(2,0xfe, 0x017);apb_write_reg(2,0xff, 0x000bf1ca);
+           apb_write_reg(2,0xfe, 0x018);apb_write_reg(2,0xff, 0x0007e129);
+           apb_write_reg(2,0xfe, 0x019);apb_write_reg(2,0xff, 0x0004b8cb);
+           apb_write_reg(2,0xfe, 0x01a);apb_write_reg(2,0xff, 0x0001085e);
+           apb_write_reg(2,0xfe, 0x01b);apb_write_reg(2,0xff, 0x003c8fdd);
+           apb_write_reg(2,0xfe, 0x01c);apb_write_reg(2,0xff, 0x00369739);
+           apb_write_reg(2,0xfe, 0x01d);apb_write_reg(2,0xff, 0x002e6657);
+           apb_write_reg(2,0xfe, 0x01e);apb_write_reg(2,0xff, 0x002e65cc);
+           apb_write_reg(2,0xfe, 0x01f);apb_write_reg(2,0xff, 0x002e65cc);
+           apb_write_reg(2,0xfe, 0x020);apb_write_reg(2,0xff, 0x000005cc);
+     	}
+	     else if (bandwidth==2) {// 6MHz
+           apb_write_reg(2,0x2c ,0x26B);// ACF_STAGE1_A1 
+           apb_write_reg(2,0x2d ,0x0AA);// ACF_STAGE1_A2 
+           apb_write_reg(2,0x2e ,0x2DB);// ACF_STAGE1_B1 
+           apb_write_reg(2,0x2f ,0x01E);// ACF_STAGE1_GAIN 
+           apb_write_reg(2,0x30 ,0x251);// ACF_STAGE2_A1 
+           apb_write_reg(2,0x31 ,0x0D0);// ACF_STAGE2_A2 
+           apb_write_reg(2,0x32 ,0x259);// ACF_STAGE2_B1 
+           apb_write_reg(2,0x33 ,0x06A);// ACF_STAGE2_GAIN 
+           apb_write_reg(2,0x34 ,0x23E);// ACF_STAGE3_A1 
+           apb_write_reg(2,0x35 ,0x0EB);// ACF_STAGE3_A2 
+           apb_write_reg(2,0x36 ,0x23F);// ACF_STAGE3_B1 
+           apb_write_reg(2,0x37 ,0x05A);// ACF_STAGE3_GAIN 
+           apb_write_reg(2,0x38 ,0x233);// ACF_STAGE4_A1 
+           apb_write_reg(2,0x39 ,0x0FA);// ACF_STAGE4_A2 
+           apb_write_reg(2,0x3a ,0x238);// ACF_STAGE4_B1 
+           apb_write_reg(2,0x3b ,0x04B);// ACF_STAGE4_GAIN 
+           apb_write_reg(2,0x3c ,0x33D);// ACF_STAGE5_A1 
+           apb_write_reg(2,0x3d ,0x000);// ACF_STAGE5_A2 
+           apb_write_reg(2,0x3e ,0x100);// ACF_STAGE5_B1 
+           apb_write_reg(2,0x3f ,0x06B);// ACF_STAGE5_GAIN 
+           apb_write_reg(2,0xfe, 0x000);apb_write_reg(2,0xff, 0x003f37ff);
+           apb_write_reg(2,0xfe, 0x001);apb_write_reg(2,0xff, 0x003da7cd);
+           apb_write_reg(2,0xfe, 0x002);apb_write_reg(2,0xff, 0x003c0f9a);
+           apb_write_reg(2,0xfe, 0x003);apb_write_reg(2,0xff, 0x003a7767);
+           apb_write_reg(2,0xfe, 0x004);apb_write_reg(2,0xff, 0x0038d734);
+           apb_write_reg(2,0xfe, 0x005);apb_write_reg(2,0xff, 0x00373700);
+           apb_write_reg(2,0xfe, 0x006);apb_write_reg(2,0xff, 0x00358ecc);
+           apb_write_reg(2,0xfe, 0x007);apb_write_reg(2,0xff, 0x0033de96);
+           apb_write_reg(2,0xfe, 0x008);apb_write_reg(2,0xff, 0x00322e60);
+           apb_write_reg(2,0xfe, 0x009);apb_write_reg(2,0xff, 0x00306629);
+           apb_write_reg(2,0xfe, 0x00a);apb_write_reg(2,0xff, 0x002e9df0);
+           apb_write_reg(2,0xfe, 0x00b);apb_write_reg(2,0xff, 0x002cbdb5);
+           apb_write_reg(2,0xfe, 0x00c);apb_write_reg(2,0xff, 0x002acd79);
+           apb_write_reg(2,0xfe, 0x00d);apb_write_reg(2,0xff, 0x0028d53a);
+           apb_write_reg(2,0xfe, 0x00e);apb_write_reg(2,0xff, 0x0026bcf9);
+           apb_write_reg(2,0xfe, 0x00f);apb_write_reg(2,0xff, 0x00248cb4);
+           apb_write_reg(2,0xfe, 0x010);apb_write_reg(2,0xff, 0x00223c6d);
+           apb_write_reg(2,0xfe, 0x011);apb_write_reg(2,0xff, 0x001fcc21);
+           apb_write_reg(2,0xfe, 0x012);apb_write_reg(2,0xff, 0x001d2bd0);
+           apb_write_reg(2,0xfe, 0x013);apb_write_reg(2,0xff, 0x001a5378);
+           apb_write_reg(2,0xfe, 0x014);apb_write_reg(2,0xff, 0x00173319);
+           apb_write_reg(2,0xfe, 0x015);apb_write_reg(2,0xff, 0x0013b2af);
+           apb_write_reg(2,0xfe, 0x016);apb_write_reg(2,0xff, 0x000fc239);
+           apb_write_reg(2,0xfe, 0x017);apb_write_reg(2,0xff, 0x000b29b2);
+           apb_write_reg(2,0xfe, 0x018);apb_write_reg(2,0xff, 0x00071911);
+           apb_write_reg(2,0xfe, 0x019);apb_write_reg(2,0xff, 0x0003f8b2);
+           apb_write_reg(2,0xfe, 0x01a);apb_write_reg(2,0xff, 0x00006048);
+           apb_write_reg(2,0xfe, 0x01b);apb_write_reg(2,0xff, 0x003c37cc);
+           apb_write_reg(2,0xfe, 0x01c);apb_write_reg(2,0xff, 0x0036ef37);
+           apb_write_reg(2,0xfe, 0x01d);apb_write_reg(2,0xff, 0x002fbe72);
+           apb_write_reg(2,0xfe, 0x01e);apb_write_reg(2,0xff, 0x002fbdf7);
+           apb_write_reg(2,0xfe, 0x01f);apb_write_reg(2,0xff, 0x002fbdf7);
+           apb_write_reg(2,0xfe, 0x020);apb_write_reg(2,0xff, 0x000005f7);
+    	}
+	    else { // 5MHz
+           apb_write_reg(2,0x2c ,0x259);// ACF_STAGE1_A1 
+           apb_write_reg(2,0x2d ,0x0B6);// ACF_STAGE1_A2 
+           apb_write_reg(2,0x2e ,0x2A1);// ACF_STAGE1_B1 
+           apb_write_reg(2,0x2f ,0x01E);// ACF_STAGE1_GAIN 
+           apb_write_reg(2,0x30 ,0x240);// ACF_STAGE2_A1 
+           apb_write_reg(2,0x31 ,0x0D7);// ACF_STAGE2_A2 
+           apb_write_reg(2,0x32 ,0x23F);// ACF_STAGE2_B1 
+           apb_write_reg(2,0x33 ,0x05B);// ACF_STAGE2_GAIN 
+           apb_write_reg(2,0x34 ,0x22F);// ACF_STAGE3_A1 
+           apb_write_reg(2,0x35 ,0x0EE);// ACF_STAGE3_A2 
+           apb_write_reg(2,0x36 ,0x22C);// ACF_STAGE3_B1 
+           apb_write_reg(2,0x37 ,0x05A);// ACF_STAGE3_GAIN 
+           apb_write_reg(2,0x38 ,0x224);// ACF_STAGE4_A1 
+           apb_write_reg(2,0x39 ,0x0FB);// ACF_STAGE4_A2 
+           apb_write_reg(2,0x3a ,0x227);// ACF_STAGE4_B1 
+           apb_write_reg(2,0x3b ,0x04B);// ACF_STAGE4_GAIN 
+           apb_write_reg(2,0x3c ,0x334);// ACF_STAGE5_A1 
+           apb_write_reg(2,0x3d ,0x000);// ACF_STAGE5_A2 
+           apb_write_reg(2,0x3e ,0x100);// ACF_STAGE5_B1 
+           apb_write_reg(2,0x3f ,0x07A);// ACF_STAGE5_GAIN 
+           apb_write_reg(2,0xfe, 0x000);apb_write_reg(2,0xff, 0x003f37ff);
+           apb_write_reg(2,0xfe, 0x001);apb_write_reg(2,0xff, 0x003d9fcd);
+           apb_write_reg(2,0xfe, 0x002);apb_write_reg(2,0xff, 0x003c079a);
+           apb_write_reg(2,0xfe, 0x003);apb_write_reg(2,0xff, 0x003a6f67);
+           apb_write_reg(2,0xfe, 0x004);apb_write_reg(2,0xff, 0x0038cf33);
+           apb_write_reg(2,0xfe, 0x005);apb_write_reg(2,0xff, 0x00372eff);
+           apb_write_reg(2,0xfe, 0x006);apb_write_reg(2,0xff, 0x003586ca);
+           apb_write_reg(2,0xfe, 0x007);apb_write_reg(2,0xff, 0x0033d695);
+           apb_write_reg(2,0xfe, 0x008);apb_write_reg(2,0xff, 0x0032165e);
+           apb_write_reg(2,0xfe, 0x009);apb_write_reg(2,0xff, 0x00305626);
+           apb_write_reg(2,0xfe, 0x00a);apb_write_reg(2,0xff, 0x002e85ed);
+           apb_write_reg(2,0xfe, 0x00b);apb_write_reg(2,0xff, 0x002ca5b2);
+           apb_write_reg(2,0xfe, 0x00c);apb_write_reg(2,0xff, 0x002ab575);
+           apb_write_reg(2,0xfe, 0x00d);apb_write_reg(2,0xff, 0x0028ad36);
+           apb_write_reg(2,0xfe, 0x00e);apb_write_reg(2,0xff, 0x002694f4);
+           apb_write_reg(2,0xfe, 0x00f);apb_write_reg(2,0xff, 0x00245caf);
+           apb_write_reg(2,0xfe, 0x010);apb_write_reg(2,0xff, 0x00220c67);
+           apb_write_reg(2,0xfe, 0x011);apb_write_reg(2,0xff, 0x001f941a);
+           apb_write_reg(2,0xfe, 0x012);apb_write_reg(2,0xff, 0x001cebc8);
+           apb_write_reg(2,0xfe, 0x013);apb_write_reg(2,0xff, 0x001a0b70);
+           apb_write_reg(2,0xfe, 0x014);apb_write_reg(2,0xff, 0x0016e310);
+           apb_write_reg(2,0xfe, 0x015);apb_write_reg(2,0xff, 0x001362a6);
+           apb_write_reg(2,0xfe, 0x016);apb_write_reg(2,0xff, 0x000f722f);
+           apb_write_reg(2,0xfe, 0x017);apb_write_reg(2,0xff, 0x000ae1a8);
+           apb_write_reg(2,0xfe, 0x018);apb_write_reg(2,0xff, 0x0006d108);
+           apb_write_reg(2,0xfe, 0x019);apb_write_reg(2,0xff, 0x0003b0aa);
+           apb_write_reg(2,0xfe, 0x01a);apb_write_reg(2,0xff, 0x0000083e);
+           apb_write_reg(2,0xfe, 0x01b);apb_write_reg(2,0xff, 0x003b9fbe);
+           apb_write_reg(2,0xfe, 0x01c);apb_write_reg(2,0xff, 0x0035b71c);
+           apb_write_reg(2,0xfe, 0x01d);apb_write_reg(2,0xff, 0x002d863b);
+           apb_write_reg(2,0xfe, 0x01e);apb_write_reg(2,0xff, 0x002d85b0);
+           apb_write_reg(2,0xfe, 0x01f);apb_write_reg(2,0xff, 0x002d85b0);
+           apb_write_reg(2,0xfe, 0x020);apb_write_reg(2,0xff, 0x000005b0);
+	    } 
+   }
+   else 
+   {
+   	printk("Fatal Error in demod, AD samplerate %d is out of range.\n", ADsample);
+   }
 }
 
 static void dvbt_reg_initial(struct aml_demod_sta *demod_sta)
@@ -722,9 +951,9 @@ static void dvbt_reg_initial(struct aml_demod_sta *demod_sta)
     symb_rate = demod_sta->symb_rate; // k/sec
 
     bw = 8 - ch_bw/1000;
-    sr = adc_freq > 40000 ? 3 :	adc_freq > 24000 ? 2 : 
-	adc_freq > 20770 ? 1 : 0;
-    ifreq = ch_if > 35000 ? 0 : 1;
+//    sr = adc_freq > 40000 ? 3 :	adc_freq > 24000 ? 2 : 
+//	       adc_freq > 20770 ? 1 : 0;
+//    ifreq = ch_if > 35000 ? 0 : 1;
 
     //////////////////////////////////////
     // bw == 0 : 8M 
@@ -734,7 +963,7 @@ static void dvbt_reg_initial(struct aml_demod_sta *demod_sta)
     // sr == 0 : 20.7M
     //       1 : 20.8333M
     //       2 : 28.5714M
-    //       3 : 45M
+    //       3 : 45M / 42875K
     // ifreq == 0: 36.13MHz
     //          1: 4.57MHz
     // agc_mode == 0: single AGC
@@ -743,13 +972,16 @@ static void dvbt_reg_initial(struct aml_demod_sta *demod_sta)
     apb_write_reg(2, 0x02, 0x00800000);  // SW reset bit[23] ; write anything to zero
     apb_write_reg(2, 0x00, 0x00000000);
 
-    switch (sr) {
-    case 0: apb_write_reg(2, 0x08, 0x00002966);break;
-    case 1: apb_write_reg(2, 0x08, 0x00002999);break;
-    case 2: apb_write_reg(2, 0x08, 0x00003924);break;
-    case 3: apb_write_reg(2, 0x08, 0x00005a00);break;  // sample_rate	//45M
-    default : break;
-    }
+    tmp = adc_freq *64/125;
+    apb_write_reg(2, 0x08, tmp);
+	printk("\n[RSJ]tmp is %x ",tmp);
+    //switch (sr) {
+    //case 0: apb_write_reg(2, 0x08, 0x00002966);break;
+    //case 1: apb_write_reg(2, 0x08, 0x00002999);break;
+    //case 2: apb_write_reg(2, 0x08, 0x00003924);break;
+    //case 3: apb_write_reg(2, 0x08, 0x00005a00);break;  // sample_rate	//45M
+    //default : break;
+    //}
 
     apb_write_reg(2, 0x0d, 0x00000000);
     apb_write_reg(2, 0x0e, 0x00000000);
@@ -759,14 +991,17 @@ static void dvbt_reg_initial(struct aml_demod_sta *demod_sta)
     apb_write_reg(2, 0x12, 0x02100201);   // FSM 
     apb_write_reg(2, 0x14, 0xe81c4ff6);   // AGC_TARGET 0xf0121385
     apb_write_reg(2, 0x15, 0x02050ca6);   // AGC_CTRL  
-
-    switch (sr) {
-    case 0: apb_write_reg(2, 0x15, apb_read_reg(2, 0x15) | (0x5b << 12));break;
-    case 1: apb_write_reg(2, 0x15, apb_read_reg(2, 0x15) | (0x5b << 12));break;
-    case 2: apb_write_reg(2, 0x15, apb_read_reg(2, 0x15) | (0x7b << 12));break;
-    case 3: apb_write_reg(2, 0x15, apb_read_reg(2, 0x15) | (0xc2 << 12));break;  // sample_rate	//45M
-    default : break;
-    }
+   
+    tmp = (adc_freq / 234 + 5)&0xff;
+    apb_write_reg(2, 0x15, apb_read_reg(2, 0x15) | (tmp << 12));
+    printk("\n[RSJ]tmp is %x ",tmp);
+    //switch (sr) {
+    //case 0: apb_write_reg(2, 0x15, apb_read_reg(2, 0x15) | (0x5b << 12));break;
+    //case 1: apb_write_reg(2, 0x15, apb_read_reg(2, 0x15) | (0x5b << 12));break;
+    //case 2: apb_write_reg(2, 0x15, apb_read_reg(2, 0x15) | (0x7b << 12));break;
+    //case 3: apb_write_reg(2, 0x15, apb_read_reg(2, 0x15) | (0xc2 << 12));break;  // sample_rate	//45M
+    //default : break;
+    //}
 
     if (agc_mode ==0) apb_write_reg(2, 0x16, 0x67f80);  // AGC_IFGAIN_CTRL  
     else if (agc_mode ==1) apb_write_reg(2, 0x16, 0x07f80);  // AGC_IFGAIN_CTRL
@@ -775,27 +1010,8 @@ static void dvbt_reg_initial(struct aml_demod_sta *demod_sta)
     apb_write_reg(2, 0x18, 0x00000000);  // AGC_IFGAIN_ACCUM
     apb_write_reg(2, 0x19, 0x00000000);  // AGC_RFGAIN_ACCUM
 
-    /*
-    if (ifreq == 0){
-    	switch (sr){
-	case 0: apb_write_reg(2, 0x20, 0x00002096);break;  // DDC NORM_PHASE    36.13M IF  For 20.7M sample rate
-        case 1: apb_write_reg(2, 0x20, 0x000021a9);break;  // DDC NORM_PHASE    36.13M IF  For 20.8333M sample rate
-        case 2: apb_write_reg(2, 0x20, 0x000021dc);break;  // DDC NORM_PHASE    36.13M IF  For 28.57142M sample rate
-        case 3: apb_write_reg(2, 0x20, 0x000066e2);break;  // DDC NORM_PHASE    36.13M IF  For 45M sample rate
-        default :break;
-	}
-    }
-    else if (ifreq == 1){
-    	switch (sr){
-	case 0: apb_write_reg(2, 0x20, 0x00001c42);break;  // DDC NORM_PHASE    4.57M IF  For 20.7M sample rate
-        case 1: apb_write_reg(2, 0x20, 0x00001c1f);break;  // DDC NORM_PHASE    4.57M IF  For 20.8333M sample rate
-        case 2: apb_write_reg(2, 0x20, 0x00001479);break;  // DDC NORM_PHASE    4.57M IF  For 28.57142M sample rate
-        case 3: apb_write_reg(2, 0x20, 0x0000d00);break;  // DDC NORM_PHASE    4.57M IF  For 45M sample rate
-        default : break;  
-	}    	
-    }
-    */
-
+    if ((adc_freq - ch_if) < ch_if)
+        ch_if = adc_freq - ch_if;
     tmp = ch_if * (1<<15) / adc_freq;
     tmp &= 0x3fff;
     apb_write_reg(2, 0x20, tmp);
@@ -861,13 +1077,14 @@ static void dvbt_reg_initial(struct aml_demod_sta *demod_sta)
     apb_write_reg(2, 0x76, 0xffffffff);  // CCI1_DATA_UPDATE_CTRL
 
     // Set ACF and ACFEQ coeffecient
-    switch(sr){
-    case 0: set_ACF_coef(21, bw);break;
-    case 1: set_ACF_coef(21, bw);break;
-    case 2: set_ACF_coef(28, bw);break;
-    case 3: set_ACF_coef(45, bw);break;
-    default : break;
-    }
+    set_ACF_coef(adc_freq, bw);
+    //switch(sr){
+    //case 0: set_ACF_coef(21, bw);break;
+    //case 1: set_ACF_coef(21, bw);break;
+    //case 2: set_ACF_coef(28, bw);break;
+    //case 3: set_ACF_coef(45, bw);break;
+    //default : break;
+    //}
     apb_write_reg(2, 0x78, 0x000001a2);  // FEC_CTRL  parallel mode ; [27:24] is TS clk/valid/sync/error
     apb_write_reg(2, 0x7d, 0x0000009d);
     apb_write_reg(2, 0xd6, 0x00000003);
@@ -923,7 +1140,7 @@ int dvbt_set_ch(struct aml_demod_sta *demod_sta,
 	ret = -1;
     }
 
-    if (sr > 3) {
+    if (sr > 4) {
     	printk("Error: Invalid Sampling Freq option %d\n", sr);
 	sr = 2;
 	ret = -1;
@@ -950,10 +1167,25 @@ int dvbt_set_ch(struct aml_demod_sta *demod_sta,
     demod_sta->ch_mode   = 0; // TODO
     demod_sta->agc_mode  = agc_mode;
     demod_sta->ch_freq   = ch_freq;
-    if (demod_i2c->tuner == 1) 
-	demod_sta->ch_if = 36130; 
-    else if (demod_i2c->tuner == 2) 
-	demod_sta->ch_if = 4570; 
+
+	 if (demod_i2c->tuner == 1) 
+	  	demod_sta->ch_if = 36130; 
+     else if (demod_i2c->tuner == 2) 
+	  	demod_sta->ch_if = 4570; 
+	 else if (demod_i2c->tuner == 3) 
+	  	demod_sta->ch_if = 4000;
+	 else if (demod_i2c->tuner == 4) //
+	  	demod_sta->ch_if = 36130; 
+	 else if (demod_i2c->tuner == 5) // RDA
+	 {
+	 	demod_sta->ch_if = 36000;
+	 	demod_sta->adc_freq = 42857;  // 42857M sample rate for RDA 108M interference
+	 }
+	 else if (demod_i2c->tuner == 6) // TDA 
+	  	demod_sta->ch_if = 4000;
+
+	printk("\n[RSJ] adc_freq %d,ch_if is %d,agc_mode is %d,",demod_sta->adc_freq,demod_sta->ch_if,agc_mode);
+
         
     demod_sta->ch_bw     = (8-bw)*1000; 
     demod_sta->symb_rate = 0; // TODO
@@ -1531,6 +1763,12 @@ static int demod_monitor_ave(void)
 			printk("RSBi %d Thresh %d SNR %d.%d Vit %x \n\n",(ave[0]>>3)*5,(bit_unit_L*8),SNR_Int,SNR_fra,(ave[2]>>13));
 		i = 0;
 		ave[0]=ave[1]=ave[2]=0;
+		
+		//if(tuner_type==5)
+		//{
+		//	extern int  tun_rda5880e_get_agc(void);
+		//	printk("RDA_AGC: [%d]\n", tun_rda5880e_get_agc());
+		//}
 	    
    }
 

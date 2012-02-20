@@ -275,6 +275,22 @@ void Edid_ParseCEADetailedTimingDescriptors(HDMI_TX_INFO_t * info, unsigned char
       }
 
 }
+static vsdb_phy_addr_t vsdb_local = {0};
+int get_vsdb_phy_addr(vsdb_phy_addr_t * vsdb)
+{
+    vsdb = &vsdb_local;
+    return vsdb->valid;
+}
+
+void set_vsdb_phy_addr(vsdb_phy_addr_t * vsdb, unsigned char *edid_offset)
+{
+	vsdb->a = (edid_offset[4] >> 4 ) & 0xf;
+	vsdb->b = (edid_offset[4] >> 0 ) & 0xf;
+	vsdb->c = (edid_offset[5] >> 4 ) & 0xf;
+	vsdb->d = (edid_offset[5] >> 0 ) & 0xf;
+	vsdb_local = *vsdb;
+	vsdb->valid = 1;
+}
 
 int Edid_Parse_check_HDMI_VSDB(HDMI_TX_INFO_t * info, unsigned char *buff)
 {
@@ -297,6 +313,17 @@ int Edid_Parse_check_HDMI_VSDB(HDMI_TX_INFO_t * info, unsigned char *buff)
 			break;
 		BlockAddr = BlockAddr + len + 1;
 	}
+	
+    set_vsdb_phy_addr(&info->vsdb_phy_addr, &buff[BlockAddr]);
+	if(info->vsdb_phy_addr.a == 0) {
+		printk("CEC: not a valid physical address\n");
+	}
+    else {
+        vsdb_phy_addr_t *tmp = &info->vsdb_phy_addr;
+        if(tmp->valid){
+            printk("CEC: Physical address: %1x.%1x.%1x.%1x\n", tmp->a, tmp->b, tmp->c, tmp->d);
+        }
+    }
 
 	//For test only.
 	hdmi_print(0,"HDMI DEBUG [%s]\n", __FUNCTION__);
@@ -1111,6 +1138,12 @@ void hdmitx_edid_clear(hdmitx_dev_t* hdmitx_device)
     pRXCap->native_Mode = 0;
     pRXCap->native_VIC = 0xff;
     pRXCap->RxSpeakerAllocation = 0;
+    hdmitx_device->hdmi_info.vsdb_phy_addr.a = 0;
+    hdmitx_device->hdmi_info.vsdb_phy_addr.b = 0;
+    hdmitx_device->hdmi_info.vsdb_phy_addr.c = 0;
+    hdmitx_device->hdmi_info.vsdb_phy_addr.d = 0;
+    hdmitx_device->hdmi_info.vsdb_phy_addr.valid = 0;
+    memset(&vsdb_local, 0, sizeof(vsdb_phy_addr_t));    
 }
 
 int hdmitx_edid_dump(hdmitx_dev_t* hdmitx_device, char* buffer, int buffer_len)
@@ -1118,6 +1151,9 @@ int hdmitx_edid_dump(hdmitx_dev_t* hdmitx_device, char* buffer, int buffer_len)
     int i,pos=0;
     rx_cap_t* pRXCap = &(hdmitx_device->RXCap);
     pos+=snprintf(buffer+pos, buffer_len-pos, "EDID block number: 0x%x\r\n",hdmitx_device->EDID_buf[0x7e]);
+
+    pos+=snprintf(buffer+pos, buffer_len-pos, "Source Physical Address[a.b.c.d]: %x.%x.%x.%x\r\n",
+    	hdmitx_device->hdmi_info.vsdb_phy_addr.a, hdmitx_device->hdmi_info.vsdb_phy_addr.b, hdmitx_device->hdmi_info.vsdb_phy_addr.c, hdmitx_device->hdmi_info.vsdb_phy_addr.d);
 
     pos+=snprintf(buffer+pos, buffer_len-pos, "native Mode %x, VIC (native %d):\r\n",
         pRXCap->native_Mode, pRXCap->native_VIC);

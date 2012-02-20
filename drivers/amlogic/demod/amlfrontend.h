@@ -17,6 +17,7 @@ struct amlfe_config {
 	int                   i2c_id;
 	int                   tuner_type;
 	int                   tuner_addr;
+	int                   tuner_power_pin;
 };
 
 /*

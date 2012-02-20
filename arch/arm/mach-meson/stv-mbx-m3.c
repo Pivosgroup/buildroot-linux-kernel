@@ -1497,6 +1497,38 @@ static struct platform_device aml_pm_device = {
     .id             = -1,
 };
 #endif
+#ifdef CONFIG_POST_PROCESS_MANAGER
+static struct resource ppmgr_resources[] = {
+    [0] = {
+        .start = PPMGR_ADDR_START,
+        .end   = PPMGR_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
+static struct platform_device ppmgr_device = {
+    .name       = "ppmgr",
+    .id         = 0,
+    .num_resources = ARRAY_SIZE(ppmgr_resources),
+    .resource      = ppmgr_resources,
+};
+#endif
+#ifdef CONFIG_FREE_SCALE
+static struct resource freescale_resources[] = {
+    [0] = {
+        .start = FREESCALE_ADDR_START,
+        .end   = FREESCALE_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
+
+static struct platform_device freescale_device =
+{
+    .name           = "freescale",
+    .id             = 0,
+    .num_resources  = ARRAY_SIZE(freescale_resources),
+    .resource       = freescale_resources,
+};
+#endif
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AM_UART_WITH_S_CORE)
         &aml_uart_device,
@@ -1574,7 +1606,7 @@ static struct platform_device __initdata *platform_devs[] = {
     
     #ifdef CONFIG_USB_ANDROID
 		&android_usb_device,
-      #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
+    #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
 		&usb_mass_storage_device,
       #endif
     #endif	
@@ -1586,8 +1618,15 @@ static struct platform_device __initdata *platform_devs[] = {
         &aml_eth_pm,
     #endif
 
+    #ifdef CONFIG_POST_PROCESS_MANAGER
+        &ppmgr_device,
+    #endif
+    #ifdef CONFIG_FREE_SCALE
+        &freescale_device,
+    #endif        
+
     #ifdef CONFIG_EFUSE
-	&aml_efuse_device,
+    &aml_efuse_device,
     #endif
 	
     #if defined(CONFIG_CRYPTO_DEVICE_DRIVER)

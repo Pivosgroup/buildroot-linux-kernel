@@ -45,8 +45,10 @@ MODULE_VERSION("1.0.0");
 
 extern unsigned IEC958_mode_raw;
 extern unsigned IEC958_mode_codec;
-
+static int IEC958_mode_raw_last = -1;
+static int IEC958_mode_codec_last = -1;
 extern struct audio_info * get_audio_info(void);
+extern void	aml_alsa_hw_reprepare();
 void audiodsp_moniter(unsigned long);
 static struct audiodsp_priv *audiodsp_p;
 #define  DSP_DRIVER_NAME	"audiodsp"
@@ -224,11 +226,20 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 		{
 		case AUDIODSP_SET_FMT:
 			priv->stream_fmt=args;
-            if(args == MCODEC_FMT_DTS || args == MCODEC_FMT_AC3){
-              IEC958_mode_codec = 1;
-            }
+            if(args == MCODEC_FMT_DTS)
+              	IEC958_mode_codec = 1;
+            else if(args == MCODEC_FMT_AC3)
+            	IEC958_mode_codec = 2; 	
+            else
+            	IEC958_mode_codec = 0;
 			break;
 		case AUDIODSP_START:
+			if(IEC958_mode_raw_last != IEC958_mode_raw || IEC958_mode_codec_last !=  IEC958_mode_codec)
+			{
+				IEC958_mode_raw_last = IEC958_mode_raw;
+				IEC958_mode_codec_last = IEC958_mode_codec;
+				aml_alsa_hw_reprepare();
+			}	
 			priv->decoded_nb_frames = 0;
 			priv->format_wait_count = 0;
 			if(priv->stream_fmt<=0)

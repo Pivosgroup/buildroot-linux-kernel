@@ -7,8 +7,23 @@
 #include "demod_func.h"
 
 #include "mxl/MxL5007_API.h"
+#include "rda/RDA5880_adp.h"
 
 #if 1
+
+static int set_tuner_TDA18273(struct aml_demod_sta *demod_sta, 
+			     struct aml_demod_i2c *adap)
+
+{
+	unsigned long ch_freq;
+	int ch_if;
+	int ch_bw;
+	ch_freq = demod_sta->ch_freq; // kHz
+	ch_if   = demod_sta->ch_if;   // kHz 
+	ch_bw   = demod_sta->ch_bw / 1000; // MHz
+	tda18273_tuner_set_frequncy(ch_freq*KHz,ch_bw);
+}
+
 static int set_tuner_MxL5007(struct aml_demod_sta *demod_sta, 
 			     struct aml_demod_i2c *adap)
 {
@@ -216,6 +231,14 @@ int tuner_set_ch(struct aml_demod_sta *demod_sta, struct aml_demod_i2c *adap)
 	ret = set_tuner_TD1316(demod_sta, adap);
 	break;
 */
+
+    case 5:
+	ret = set_tuner_RDA5880(demod_sta, adap);
+	break;
+	
+	case 6:
+	ret = set_tuner_TDA18273(demod_sta, adap);
+	break;
     default :
 	return -1;
     }
@@ -257,11 +280,12 @@ int tuner_get_ch_power(struct aml_demod_i2c *adap)
 
 struct dvb_tuner_info * tuner_get_info( int type, int mode)
 {
-	/*type :  0-NULL, 1-DCT7070, 2-Maxliner, 3-FJ2207, 4-TD1316*/
+	/*type :  0-NULL, 1-DCT7070, 2-Maxliner, 3-FJ2207, 4-TD1316, 5-RDA5880E£¨6-TDA18273*/
 	/*mode: 0-DVBC 1-DVBT */
 	static struct dvb_tuner_info tinfo_null = {};
 
 	static struct dvb_tuner_info tinfo_MXL5003S[2] = {
+		[0] = {.name = "Maxliner",},
 		[1] = {/*DVBT*/
 			.name = "Maxliner", 
 			.frequency_min = 44000000,
@@ -285,9 +309,11 @@ struct dvb_tuner_info * tuner_get_info( int type, int mode)
 			.name = "DCT7070", 
 			.frequency_min = 51000000,
 			.frequency_max = 860000000,
-		}
+		},
+		[1] = {.name = "DCT7070",}
 	};
 	static struct dvb_tuner_info tinfo_TD1316[2] = {
+		[0] = {.name = "TD1316",},
 		[1] = {/*DVBT*/
 			.name = "TD1316", 
 			.frequency_min = 51000000,
@@ -295,15 +321,35 @@ struct dvb_tuner_info * tuner_get_info( int type, int mode)
 		}
 	};
 	
-	struct dvb_tuner_info *tinfo[5] = {
+	static struct dvb_tuner_info tinfo_RDA5880E[2] = {
+		[0] = {.name = "RDA5880E",},
+		[1] = {/*DVBT*/
+			.name = "RDA5880E", 
+			.frequency_min = 40000000,
+			.frequency_max = 860000000,
+		}
+	};
+	static struct dvb_tuner_info tinfo_TDA18273[2] = {
+		[1] = {/*DVBT*/
+			.name = "TDA18273", 
+			.frequency_min = 51000000,
+			.frequency_max = 858000000,
+		}
+		
+	};
+	
+	
+	struct dvb_tuner_info *tinfo[7] = {
 		&tinfo_null, 
 		tinfo_DCT7070,
 		tinfo_MXL5003S,
 		tinfo_FJ2207,
-		tinfo_TD1316
+		tinfo_TD1316,
+		tinfo_RDA5880E,
+		tinfo_TDA18273
 	};
 
-	if((type<0)||(type>4)||(mode<0)||(mode>1))
+	if((type<0)||(type>6)||(mode<0)||(mode>1))
 		return tinfo[0];
 	
 	return &tinfo[type][mode];
@@ -350,6 +396,19 @@ struct agc_power_tab * tuner_get_agc_power_table(int type) {
 			.ncalcE=0,
 			.calcE=NULL,
 		},
+		[5] = {
+			.name="RDA5880E",
+			.level=0,
+			.ncalcE=0,
+			.calcE=NULL,
+		},
+		[6] = {
+			.name="TDA18273",
+			.level=0,
+			.ncalcE=0,
+			.calcE=NULL,
+		},
+		
 	};
 	
 	if(type>=2 && type<=3)

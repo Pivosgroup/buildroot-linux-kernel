@@ -2,6 +2,7 @@
 #include <linux/i2c.h>
 #include "aml_demod.h"
 #include "demod_func.h"
+#include "rda/RDA5880_adp.h"
 
 static u32 demod_addr_chg(int mode, int addr)
 {
@@ -316,6 +317,12 @@ int demod_set_sys(struct aml_demod_sta *demod_sta,
 */	
 	if (demod_i2c->tuner == 3)
 	    init_tuner_fj2207(demod_sta, demod_i2c);
+
+	if(demod_i2c->tuner == 5)
+		init_tuner_RDA5880(demod_sta, demod_i2c);
+		
+	if(demod_i2c->tuner == 6)
+		init_tuner_tda18273(demod_sta,demod_i2c);
 /*    }
 */
 

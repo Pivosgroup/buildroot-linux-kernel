@@ -422,7 +422,7 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 	static  dispdata_t	save_disp_data={0,0,0,0};
 	static  pandata_t	save_pan_data={0,0,0,0};
 #ifdef CONFIG_AM_VIDEO 
-#ifdef CONFIG_POST_PROCESS_MANAGER
+#ifdef CONFIG_MIX_FREE_SCALE
 	int mode_changed = 0;
 	if((index==OSD1)&&(osd_hw.free_scale_enable[index]!=enable))
 		mode_changed = 1;
@@ -487,7 +487,7 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 	}
 	osd_enable_hw(osd_hw.enable[index],index);
 #ifdef CONFIG_AM_VIDEO  
-#ifdef CONFIG_POST_PROCESS_MANAGER
+#ifdef CONFIG_MIX_FREE_SCALE
 	if(mode_changed){
         vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_RESET,NULL);
     }

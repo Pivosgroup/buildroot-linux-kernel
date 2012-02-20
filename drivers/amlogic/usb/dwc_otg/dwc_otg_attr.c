@@ -618,7 +618,15 @@ static ssize_t bussuspend_store(struct device *_dev,
 				size_t count)
 {
 	dwc_otg_device_t *otg_dev = dev_get_drvdata(_dev);
-	uint32_t in = simple_strtoul(buf, NULL, 16);
+	uint32_t in;
+
+	if(strncmp(buf, "1", sizeof("1")-1) == 0)
+		in = 1;
+	else if(strncmp(buf, "0", sizeof("0")-1) == 0)
+		in = 0;
+	else
+		in = simple_strtoul(buf, NULL, 16);
+	
 	uint32_t *addr = (uint32_t *) otg_dev->core_if->host_if->hprt0;
 	hprt0_data_t mem;
 	mem.d32 = dwc_read_reg32(addr);
@@ -783,6 +791,41 @@ static ssize_t wr_reg_test_show(struct device *_dev,
 }
 
 DEVICE_ATTR(wr_reg_test, S_IRUGO | S_IWUSR, wr_reg_test_show, 0);
+
+/*
+  pullup the data line(D+ for high/full speed)
+ */
+static ssize_t pullup_show(struct device *_dev, struct device_attribute *attr, char *buf)
+{
+	dwc_otg_device_t *otg_dev = dev_get_drvdata(_dev);
+	dctl_data_t val;
+	val.d32 = dwc_read_reg32(&otg_dev->core_if->dev_if->dev_global_regs->dctl);
+	return sprintf(buf, "%s\n", val.b.sftdiscon ? "off":"on");
+}
+
+static ssize_t pullup_store(struct device *_dev, struct device_attribute *attr,  const char *buf, size_t count)
+{
+
+	uint32_t val = 0;
+	dwc_otg_device_t *otg_dev = dev_get_drvdata(_dev);
+
+	if(strncmp(buf, "on", sizeof("on")-1) == 0)
+		val = 1;
+	else if(strncmp(buf, "off", sizeof("off")-1) == 0)
+		val = 0;
+	else
+		val = simple_strtoul(buf, NULL, 16);
+	//printk("%s -%d\n",__func__,val);
+	if (val & 1) {
+		dwc_modify_reg32( &otg_dev->core_if->dev_if->dev_global_regs->dctl,2,0); //connect
+	} else {
+		dwc_modify_reg32( &otg_dev->core_if->dev_if->dev_global_regs->dctl,0,2);  //disconnect
+	}
+
+	return count;
+}
+
+DEVICE_ATTR(pullup, S_IRUGO | S_IWUSR, pullup_show,   pullup_store);
 /**@}*/
 
 /**
@@ -818,6 +861,7 @@ void dwc_otg_attr_create(struct lm_device *lmdev)
 	device_create_file(&lmdev->dev, &dev_attr_hcd_frrem);
 	device_create_file(&lmdev->dev, &dev_attr_rd_reg_test);
 	device_create_file(&lmdev->dev, &dev_attr_wr_reg_test);
+	device_create_file(&lmdev->dev, &dev_attr_pullup);
 }
 
 /**
@@ -853,4 +897,5 @@ void dwc_otg_attr_remove(struct lm_device *lmdev)
 	device_remove_file(&lmdev->dev, &dev_attr_hcd_frrem);
 	device_remove_file(&lmdev->dev, &dev_attr_rd_reg_test);
 	device_remove_file(&lmdev->dev, &dev_attr_wr_reg_test);
+	device_remove_file(&lmdev->dev, &dev_attr_pullup);
 }

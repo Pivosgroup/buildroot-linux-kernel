@@ -143,8 +143,8 @@ static int set_phy_tune(amlogic_usb_struct_t *paus)
                 reg_val = 1;
             else
                 return -1;
-            mask = USB_PHY_TUNE_MASK_REFCLKDIV;
-            reg_val = reg_val << USB_PHY_TUNE_SHIFT_REFCLKDIV;
+            mask = USB_PHY_TUNE_MASK_OTGDISABLE;
+            reg_val = reg_val << USB_PHY_TUNE_SHIFT_OTGDISABLE;
             ret = 0;               
             break;
             
@@ -236,8 +236,8 @@ static int get_phy_tune(amlogic_usb_struct_t *paus)
             break;
             
         case USB_PHY_TUNE_OTGDISABLE:
-            mask = USB_PHY_TUNE_MASK_REFCLKDIV;
-            shift = USB_PHY_TUNE_SHIFT_REFCLKDIV;
+            mask = USB_PHY_TUNE_MASK_OTGDISABLE;
+            shift = USB_PHY_TUNE_SHIFT_OTGDISABLE;
             ret = 0;               
             break;
             
@@ -290,10 +290,16 @@ static ssize_t phy_txvref_show(struct device *_dev,
 static ssize_t phy_txvref_store(struct device *_dev,
 			      struct device_attribute *attr,
 			      const char *buf, size_t count);
-
+static ssize_t phy_otgdisable_show(struct device *_dev,
+			     struct device_attribute *attr,
+			     char *buf);
+static ssize_t phy_otgdisable_store(struct device *_dev,
+			      struct device_attribute *attr,
+			      const char *buf, size_t count);
 DEVICE_ATTR(index, S_IRUGO | S_IWUSR, phy_index_show, phy_index_store);
 DEVICE_ATTR(por, S_IRUGO | S_IWUSR, phy_power_show, phy_power_store);
 DEVICE_ATTR(txvref, S_IRUGO | S_IWUSR, phy_txvref_show, phy_txvref_store);
+DEVICE_ATTR(otgdisable, S_IRUGO | S_IWUSR, phy_otgdisable_show, phy_otgdisable_store);
 /**
  * Show the value of phy index
  * 
@@ -403,12 +409,12 @@ static ssize_t phy_power_store(struct device *_dev,
 	if (addr != NULL) {
 		mask = paus->phy_index?PREI_USB_PHY_B_POR:PREI_USB_PHY_A_POR;
 		val = read_reg32(addr);
-		printk("reg: 0x%x, val: 0x%x\n",(int)addr,val);
+		//printk("reg: 0x%x, val: 0x%x\n",(int)addr,val);
 		if(is_on)
 			val = val & ~mask;
 		else
 			val = val | mask;
-		printk("reg: 0x%x, val: 0x%x\n",(int)addr,val);
+		//printk("reg: 0x%x, val: 0x%x\n",(int)addr,val);
 		write_reg32(addr,val);
 	}
 
@@ -468,28 +474,21 @@ static ssize_t phy_txvref_store(struct device *_dev,
 	
 }
 
-#if 0
 /**
- * Show the value of 
+ * Show the value of otgdisable
  * 
  */
-static ssize_t xxx_show(struct device *_dev,
+static ssize_t phy_otgdisable_show(struct device *_dev,
 			     struct device_attribute *attr,
 			     char *buf)
 {
 	amlogic_usb_struct_t * paus = dev_get_drvdata(_dev);
-	uint32_t val;
-	volatile uint32_t *addr;
+	int ret;
 
-
-	addr = decide_register_addr(paus,REG_MODE_COM);
-	if (addr != NULL) {
-		/* Calculate the address */
-
-		val = read_reg32(addr);
-		return snprintf(buf,
-				sizeof("Current USB Phy index = A\n") + 1,
-				"Current USB Phy index = %C", paus->phy_index?'B':'A');
+	paus->tune = USB_PHY_TUNE_OTGDISABLE;
+	ret = get_phy_tune(paus);
+	if (ret == 0) {
+		return sprintf(buf, "%s\n", paus->tune_value ? "off":"on");
 	} else {
 		dev_err(_dev, "Invalid addr (0x%0x,0x%x)\n", paus->phy_index,paus->phy_reg);
 		return sprintf(buf, "invalid address\n");
@@ -498,28 +497,38 @@ static ssize_t xxx_show(struct device *_dev,
 
 /**
  * Store the value in the register 
- * 
- * 
+ * on: enable otg
+ * off:disable otg
  */
-static ssize_t xxx_store(struct device *_dev,
+static ssize_t phy_otgdisable_store(struct device *_dev,
 			      struct device_attribute *attr,
 			      const char *buf, size_t count)
 {
 	amlogic_usb_struct_t * paus = dev_get_drvdata(_dev);
-	volatile uint32_t *addr;
-	char c = toupper(buf[0]);
+	int ret;
+	uint32_t val = 0;
 
-	if(c == 'A' || c == 'B' ){
-		paus->phy_index = (c - 'A');
-	}else{
-		dev_err(_dev,"Invalid phy index %c\n",c);
+	if(strncmp(buf, "on", sizeof("on")-1) == 0)
+		val = 0;
+	else if(strncmp(buf, "off", sizeof("off")-1) == 0)
+		val = 1;
+	else{
+		dev_err(_dev,"Invalid otgdisable value %s\n",buf);
 		return 0;
 	}
+	//printk("%s-%s[%d]\n",__func__,val?"off":"on",val);
+
+	paus->tune = USB_PHY_TUNE_OTGDISABLE;
+	paus->tune_value = val;
+	ret = set_phy_tune(paus);
+
+	if(ret !=0 )
+		return 0;
 
 	return count;
 	
 }
-#endif
+
 
 /******************************************************/
 static void create_device_attribs(struct device *dev)
@@ -527,12 +536,14 @@ static void create_device_attribs(struct device *dev)
 	device_create_file(dev, &dev_attr_index);
 	device_create_file(dev, &dev_attr_por);
 	device_create_file(dev, &dev_attr_txvref);
+	device_create_file(dev, &dev_attr_otgdisable);
 }
 static void remove_device_attribs(struct device *dev)
 {
 	device_remove_file(dev, &dev_attr_index);
 	device_remove_file(dev, &dev_attr_por);
 	device_remove_file(dev, &dev_attr_txvref);
+	device_remove_file(dev, &dev_attr_otgdisable);
 }
 
 /******************************************************/

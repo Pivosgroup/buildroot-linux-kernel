@@ -1557,6 +1557,8 @@ static void hc_xfer_timeout(unsigned long _ptr)
 	DWC_WARN("%s: timeout on channel %d\n", __func__, hc_num);
 	DWC_WARN("	start_hcchar_val 0x%08x\n",
 		 xfer_info->core_if->start_hcchar_val[hc_num]);
+		 DWC_WARN("	chn-%d,ep%d-%s:type:%d,speed:%d,len:%d,addr%d\n",hc_num,xfer_info->hc->ep_num,xfer_info->hc->ep_is_in?"IN":"OUT",
+   	 xfer_info->hc->ep_type, xfer_info->hc->speed,xfer_info->hc->xfer_len,xfer_info->hc->dev_addr);
 }
 #endif
 
@@ -1762,13 +1764,19 @@ void dwc_otg_hc_start_transfer(dwc_otg_core_if_t * _core_if, dwc_hc_t * _hc)
 
 #ifdef DEBUG
 	/* Start a timer for this transfer. */
-	_core_if->hc_xfer_timer[_hc->hc_num].function = hc_xfer_timeout;
-	_core_if->hc_xfer_info[_hc->hc_num].core_if = _core_if;
-	_core_if->hc_xfer_info[_hc->hc_num].hc = _hc;
-	_core_if->hc_xfer_timer[_hc->hc_num].data =
-	    (unsigned long)(&_core_if->hc_xfer_info[_hc->hc_num]);
-	_core_if->hc_xfer_timer[_hc->hc_num].expires = jiffies + (HZ * 10);
-	add_timer(&_core_if->hc_xfer_timer[_hc->hc_num]);
+
+  	if((_hc->speed == DWC_OTG_EP_SPEED_HIGH) && (_hc->ep_is_in) && !(_hc->ep_type == DWC_OTG_EP_TYPE_INTR ||
+  		    _hc->ep_type == DWC_OTG_EP_TYPE_ISOC))
+  		;
+  	else{	
+  		_core_if->hc_xfer_timer[_hc->hc_num].function = hc_xfer_timeout;
+  		_core_if->hc_xfer_info[_hc->hc_num].core_if = _core_if;
+  		_core_if->hc_xfer_info[_hc->hc_num].hc = _hc;
+  		_core_if->hc_xfer_timer[_hc->hc_num].data =
+  	    	(unsigned long)(&_core_if->hc_xfer_info[_hc->hc_num]);
+  		_core_if->hc_xfer_timer[_hc->hc_num].expires = jiffies + (HZ * 10);
+  		add_timer(&_core_if->hc_xfer_timer[_hc->hc_num]);
+  	}
 #endif
 
 }

@@ -64,6 +64,7 @@ vinfo_t lvideo_info;
 
 
 #include "hdmi_info_global.h"
+#include "hdmi_tx_cec.h"
 #include "hdmi_tx_module.h"
 
 #ifndef AVOS
@@ -95,6 +96,9 @@ static struct switch_dev sdev = {	// android ics switch device
 #define INIT_FLAG_VDACOFF        0x1
     /* unplug powerdown */
 #define INIT_FLAG_POWERDOWN      0x2
+
+// HDMI CEC Function Flag
+#define INIT_FLAG_CEC_FUNC       0x4
 
 #define INIT_FLAG_NOT_LOAD 0x80
 
@@ -249,6 +253,20 @@ static ssize_t store_disp_mode(struct device * dev, struct device_attribute *att
     set_disp_mode(buf);
     return 16;    
 }
+
+/*cec attr*/
+static ssize_t show_cec(struct device * dev, struct device_attribute *attr, char * buf)
+{
+    ssize_t t = cec_usrcmd_get_global_info(buf);    
+    return t;
+}
+
+static ssize_t store_cec(struct device * dev, struct device_attribute *attr, const char * buf, size_t count)
+{
+    cec_usrcmd_set_dispatch(buf, count);
+    return count;
+}
+
 
 /*aud_mode attr*/
 static ssize_t show_aud_mode(struct device * dev, struct device_attribute *attr, char * buf)
@@ -520,6 +538,7 @@ static DEVICE_ATTR(config, S_IWUSR | S_IRUGO, show_config, store_config);
 static DEVICE_ATTR(debug, S_IWUSR | S_IRUGO, NULL, store_dbg);
 static DEVICE_ATTR(disp_cap, S_IWUSR | S_IRUGO, show_disp_cap, NULL);
 static DEVICE_ATTR(log, S_IWUSR | S_IRUGO, show_log, store_log);
+static DEVICE_ATTR(cec, S_IWUSR | S_IRUGO, show_cec, store_cec);
 
 /*****************************
 *    hdmitx display client interface 
@@ -747,6 +766,7 @@ hdmi_task_handle(void *data)
                 hdmi_print(1,"HDMI: EDID Ready\n");
                 hdmitx_edid_clear(hdmitx_device);
                 hdmitx_edid_parse(hdmitx_device);
+                cec_node_init(hdmitx_device);
                 set_disp_mode_auto();
 				
 				switch_set_state(&sdev, 1);
@@ -758,6 +778,7 @@ hdmi_task_handle(void *data)
             //When unplug hdmi, clear the hdmitx module edid ram and edid buffer.
             hdmitx_edid_ram_buffer_clear(hdmitx_device);
             hdmitx_edid_clear(hdmitx_device);
+            cec_node_uninit(hdmitx_device);
 
             if(hdmitx_device->unplug_powerdown){
                 hdmitx_set_display(hdmitx_device, HDMI_Unkown);
@@ -978,6 +999,12 @@ static int amhdmitx_probe(struct platform_device *pdev)
     hdmitx_device.vic_count=0;
     hdmitx_device.auth_process_timer=0;
     hdmitx_device.force_audio_flag=0;
+    if(init_flag&INIT_FLAG_CEC_FUNC){
+        hdmitx_device.cec_func_flag = 1;
+    }
+    else{
+        hdmitx_device.cec_func_flag = 0;
+    }
     if((init_flag&INIT_FLAG_POWERDOWN)&&(hpdmode==2)){
         hdmitx_device.mux_hpd_if_pin_high_flag=0;
     }
@@ -999,6 +1026,7 @@ static int amhdmitx_probe(struct platform_device *pdev)
     device_create_file(hdmitx_dev, &dev_attr_debug);
     device_create_file(hdmitx_dev, &dev_attr_disp_cap);
     device_create_file(hdmitx_dev, &dev_attr_log);
+    device_create_file(hdmitx_dev, &dev_attr_cec);
     
     if (hdmitx_dev == NULL) {
         pr_error("device_create create error\n");
@@ -1044,6 +1072,7 @@ static int amhdmitx_remove(struct platform_device *pdev)
     device_remove_file(hdmitx_dev, &dev_attr_debug);
     device_remove_file(hdmitx_dev, &dev_attr_disp_cap);
     device_remove_file(hdmitx_dev, &dev_attr_log);
+    device_remove_file(hdmitx_dev, &dev_attr_cec);
 
     cdev_del(&hdmitx_device.cdev);
 
@@ -1234,6 +1263,10 @@ static  int __init hdmitx_boot_para_setup(char *s)
             else if(strncmp(token, "480p_clk", 8)==0){
                 hdmi_480p_force_clk = simple_strtoul(token+8,NULL,10);
                 printk("hdmi, set 480p mode clock as %dMHz always\n", hdmi_480p_force_clk);    
+            }
+            else if(strncmp(token, "true", 4)==0){
+                init_flag |= INIT_FLAG_CEC_FUNC;
+                printk("hdmi: enable cec function\n");    
             }
             
         }    

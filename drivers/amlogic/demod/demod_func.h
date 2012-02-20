@@ -90,6 +90,10 @@ int init_tuner_fj2207(struct aml_demod_sta *demod_sta,
 int set_tuner_fj2207(struct aml_demod_sta *demod_sta, 
 		     struct aml_demod_i2c *adap);
 
+int init_tuner_tda18273(struct aml_demod_sta *demod_sta, 
+		     struct aml_demod_i2c *adap);
+int tda18273_tuner_set_frequncy(unsigned int dwFrequency,unsigned int dwStandard);
+		     
 int get_fj2207_ch_power(void);
 int tuner_get_ch_power(struct aml_demod_i2c *adap);
 

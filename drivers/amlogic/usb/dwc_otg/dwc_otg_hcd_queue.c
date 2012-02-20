@@ -244,36 +244,6 @@ void dwc_otg_hcd_qh_init(dwc_otg_hcd_t * _hcd, dwc_otg_qh_t * _qh,
 }
 
 /**
- * Checks that a channel is available for a periodic transfer.
- *
- * @return 0 if successful, negative error code otherise.
- */
-static int periodic_channel_available(dwc_otg_hcd_t * _hcd)
-{
-	/*
-	 * Currently assuming that there is a dedicated host channnel for each
-	 * periodic transaction plus at least one host channel for
-	 * non-periodic transactions.
-	 */
-	int status;
-	int num_channels;
-
-	num_channels = _hcd->core_if->core_params->host_channels;
-	if ((_hcd->periodic_channels + _hcd->non_periodic_channels <
-	     num_channels) && (_hcd->periodic_channels < num_channels - 1)) {
-		status = 0;
-	} else {
-		DWC_NOTICE
-		    ("%s: Total channels: %d, Periodic: %d, Non-periodic: %d\n",
-		     __func__, num_channels, _hcd->periodic_channels,
-		     _hcd->non_periodic_channels);
-		status = -ENOSPC;
-	}
-
-	return status;
-}
-
-/**
  * Checks that there is sufficient bandwidth for the specified QH in the
  * periodic schedule. For simplicity, this calculation assumes that all the
  * transfers in the periodic schedule may occur in the same (micro)frame.
@@ -356,14 +326,14 @@ static int check_max_xfer_size(dwc_otg_hcd_t * _hcd, dwc_otg_qh_t * _qh)
 static int schedule_periodic(dwc_otg_hcd_t * _hcd, dwc_otg_qh_t * _qh)
 {
 	int status = 0;
-
+#if 0
 	status = periodic_channel_available(_hcd);
 	if (status) {
 		DWC_NOTICE("%s: No host channel available for periodic "
 			   "transfer.\n", __func__);
 		return status;
 	}
-
+#endif
 	status = check_periodic_bandwidth(_hcd, _qh);
 	if (status) {
 		DWC_NOTICE("%s: Insufficient periodic bandwidth for "
@@ -380,9 +350,6 @@ static int schedule_periodic(dwc_otg_hcd_t * _hcd, dwc_otg_qh_t * _qh)
 
 	/* Always start in the inactive schedule. */
 	list_add_tail(&_qh->qh_list_entry, &_hcd->periodic_sched_inactive);
-
-	/* Reserve the periodic channel. */
-	_hcd->periodic_channels++;
 
 	/* Update claimed usecs per (micro)frame. */
 	_hcd->periodic_usecs += _qh->usecs;
@@ -448,9 +415,6 @@ int dwc_otg_hcd_qh_add(dwc_otg_hcd_t * _hcd, dwc_otg_qh_t * _qh)
 static void deschedule_periodic(dwc_otg_hcd_t * _hcd, dwc_otg_qh_t * _qh)
 {
 	list_del_init(&_qh->qh_list_entry);
-
-	/* Release the periodic channel reservation. */
-	_hcd->periodic_channels--;
 
 	/* Update claimed usecs per (micro)frame. */
 	_hcd->periodic_usecs -= _qh->usecs;
@@ -560,7 +524,7 @@ void dwc_otg_hcd_qh_deactivate(dwc_otg_hcd_t * _hcd, dwc_otg_qh_t * _qh,
 				_qh->sched_frame =
 				    dwc_frame_num_inc(_qh->start_split_frame,
 						      _qh->interval);
-
+    #if 0		/* fixed by ssplit lock */
 				/* To avoid many ssplit/csplit in same frame */
 				if(_hcd->latest_split_fn_inc >= 0 ){
 					if(0 == ((_hcd->latest_split_schdule_fn - (_qh->sched_frame | 0x7)) 
@@ -572,7 +536,7 @@ void dwc_otg_hcd_qh_deactivate(dwc_otg_hcd_t * _hcd, dwc_otg_qh_t * _qh,
 						_hcd->latest_split_fn_inc = 0;
 					}
 				}
-
+   #endif
 				if (dwc_frame_num_le
 				    (_qh->sched_frame, frame_number)) {
 					_qh->sched_frame = frame_number;
@@ -580,12 +544,13 @@ void dwc_otg_hcd_qh_deactivate(dwc_otg_hcd_t * _hcd, dwc_otg_qh_t * _qh,
 
 				_qh->sched_frame |= 0x7;
 				_qh->start_split_frame = _qh->sched_frame;
-
+   #if 0	/* fixed by ssplit lock */
 				/* initial value */
 				if(_hcd->latest_split_fn_inc < 0){
 					_hcd->latest_split_fn_inc = 0;
 				}
 				_hcd->latest_split_schdule_fn = _qh->sched_frame;
+	#endif
 			}
 		} else {
 			_qh->sched_frame =

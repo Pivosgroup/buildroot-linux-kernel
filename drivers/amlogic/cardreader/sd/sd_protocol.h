@@ -402,12 +402,12 @@ typedef struct _SD_Switch_Function__Status {
 	
 	unsigned short Max_Current_Consumption;
 	unsigned short Function_Group[6];
-	unsigned Function_Group_Status6:4;
 	unsigned Function_Group_Status5:4;
-	unsigned Function_Group_Status4:4;	
+	unsigned Function_Group_Status6:4;
 	unsigned Function_Group_Status3:4;	
-	unsigned Function_Group_Status2:4;	
+	unsigned Function_Group_Status4:4;	
 	unsigned Function_Group_Status1:4;	
+	unsigned Function_Group_Status2:4;	
 	unsigned char Data_Struction_Verion;
 	unsigned short Function_Status_In_Group[6];
 	unsigned char Reserved[34];

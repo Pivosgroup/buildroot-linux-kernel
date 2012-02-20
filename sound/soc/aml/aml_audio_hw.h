@@ -135,6 +135,7 @@ typedef struct {
 #define AIU_958_MODE_PCM16  1
 #define AIU_958_MODE_PCM24  2
 #define AIU_958_MODE_PCM32  3
+#define AIU_958_MODE_PCM_RAW  4
 
 #define AIU_I2S_MODE_PCM16   0
 #define AIU_I2S_MODE_PCM24   2
@@ -168,7 +169,7 @@ void audio_i2s_swap_left_right(unsigned int flag);
 int audio_dac_set(unsigned freq);
 int if_audio_out_enable(void);
 int if_audio_in_i2s_enable(void);
-
+void audio_hw_958_enable(unsigned flag);
 
 #define APB_ADAC_RESET                		(0x5000+0x00*4)
 #define APB_ADAC_LATCH                		(0x5000+0x01*4)

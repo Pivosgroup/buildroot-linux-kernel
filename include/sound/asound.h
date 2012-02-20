@@ -395,7 +395,6 @@ struct snd_pcm_status {
 	struct timespec trigger_tstamp;	/* time when stream was started/stopped/paused */
 	struct timespec tstamp;		/* reference timestamp */
 	snd_pcm_uframes_t appl_ptr;	/* appl ptr */
-    //snd_pcm_uframes_t ex_size;   /* extra size kept not be put into HW buf */
 	snd_pcm_uframes_t hw_ptr;	/* hw ptr */
 	snd_pcm_sframes_t delay;	/* current delay in frames */
 	snd_pcm_uframes_t avail;	/* number of frames available */
@@ -415,7 +414,6 @@ struct snd_pcm_mmap_status {
 
 struct snd_pcm_mmap_control {
 	snd_pcm_uframes_t appl_ptr;	/* RW: appl ptr (0...boundary-1) */
-    //snd_pcm_uframes_t ex_size;  /* extra size */
 	snd_pcm_uframes_t avail_min;	/* RW: min available frames for wakeup */
 };
 

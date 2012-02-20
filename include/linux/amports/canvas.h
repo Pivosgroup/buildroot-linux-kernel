@@ -47,6 +47,8 @@ typedef struct {
 #define PPMGR_CANVAS_INDEX 0x70
 #define PPMGR_DEINTERLACE_BUF_CANVAS 0x77   /*for progressive mjpeg use*/
 
+#define FREESCALE_CANVAS_INDEX 0x70   //for osd&video scale use
+#define MAX_FREESCALE_CANVAS_INDEX 0x7f
 
 #define DEINTERLACE_CANVAS_BASE_INDEX	0x70
 #define DEINTERLACE_CANVAS_MAX_INDEX	0x7f
