@@ -13,27 +13,26 @@
 /******** CODEC memory setting ************************/
 //	Codec need 16M for 1080p decode
 //	4M for sd decode;
-#define ALIGN_MSK			((SZ_1M)-1)
-#define U_ALIGN(x)			((x+ALIGN_MSK)&(~ALIGN_MSK))
-#define D_ALIGN(x)			((x)&(~ALIGN_MSK))
+#define ALIGN_MSK		((SZ_1M)-1)
+#define U_ALIGN(x)		((x+ALIGN_MSK)&(~ALIGN_MSK))
+#define D_ALIGN(x)		((x)&(~ALIGN_MSK))
 
 /******** AUDIODSP memory setting ************************/
 #define AUDIODSP_ADDR_START	U_ALIGN(RESERVED_MEM_START)	/*audiodsp memstart*/
 #define AUDIODSP_ADDR_END	(AUDIODSP_ADDR_START+SZ_1M-1)	/*audiodsp memend*/
 
 /******** Frame buffer memory configuration ***********/
-#define OSD_480_PIX			(640*480)
-#define OSD_576_PIX			(768*576)
-#define OSD_720_PIX			(1280*720)
+#define OSD_480_PIX		(640*480)
+#define OSD_576_PIX		(768*576)
+#define OSD_720_PIX		(1280*720)
 #define OSD_1080_PIX		(1920*1080)
-#define B16BpP	(2)
-#define B32BpP	(4)
-#define DOUBLE_BUFFER	(2)
+#define B16BpP			(2)
+#define B32BpP			(4)
+#define DOUBLE_BUFFER		(2)
+#define TRIPPLE_BUFFER		(3)
 
-#define OSD1_MAX_MEM		U_ALIGN(OSD_1080_PIX*B32BpP*DOUBLE_BUFFER)
+#define OSD1_MAX_MEM		U_ALIGN(OSD_1080_PIX*B32BpP*TRIPPLE_BUFFER)
 #define OSD2_MAX_MEM		U_ALIGN(OSD_1080_PIX*B32BpP*DOUBLE_BUFFER)
-
-
 
 /******** Reserved memory configuration ***************/
 #define OSD1_ADDR_START		U_ALIGN(AUDIODSP_ADDR_END )
@@ -65,20 +64,19 @@
 #define VDIN_ADDR_START		U_ALIGN(OSD2_ADDR_END)
 #define VDIN_ADDR_END		(VDIN_ADDR_START +CODEC_MEM_SIZE -1)
 
-
 #if defined(CONFIG_AM_DEINTERLACE_SD_ONLY)
-#define DI_MEM_SIZE			(SZ_1M*3)
+#define DI_MEM_SIZE		(SZ_1M*3)
 #else
-#define DI_MEM_SIZE			(SZ_1M*15)
+#define DI_MEM_SIZE		(SZ_1M*15)
 #endif
 #define DI_ADDR_START		U_ALIGN(CODEC_ADDR_END)
-#define DI_ADDR_END			(DI_ADDR_START+DI_MEM_SIZE-1)
+#define DI_ADDR_END		(DI_ADDR_START+DI_MEM_SIZE-1)
 
 #if defined(CONFIG_POST_PROCESS_MANAGER) || defined(CONFIG_FREE_SCALE)
 #ifdef CONFIG_MIX_FREE_SCALE
-#define PPMGR_MEM_SIZE               1280 * 720*21
+#define PPMGR_MEM_SIZE		1280 * 720 * 21
 #else
-#define PPMGR_MEM_SIZE               1280 * 720*18
+#define PPMGR_MEM_SIZE		1280 * 720 * 18
 #endif
 #else
 #define PPMGR_MEM_SIZE		0
@@ -87,16 +85,14 @@
 #define PPMGR_ADDR_START	U_ALIGN(DI_ADDR_END)
 #define PPMGR_ADDR_END		(PPMGR_ADDR_START+PPMGR_MEM_SIZE-1)
 
-#define FREESCALE_MEM_SIZE   PPMGR_MEM_SIZE
-#define FREESCALE_ADDR_START PPMGR_ADDR_START
-#define FREESCALE_ADDR_END   PPMGR_ADDR_END
+#define FREESCALE_MEM_SIZE	PPMGR_MEM_SIZE
+#define FREESCALE_ADDR_START	PPMGR_ADDR_START
+#define FREESCALE_ADDR_END	PPMGR_ADDR_END
 
 #define STREAMBUF_MEM_SIZE	(SZ_1M*7)
 #define STREAMBUF_ADDR_START	U_ALIGN(PPMGR_ADDR_END)
 #define STREAMBUF_ADDR_END	(STREAMBUF_ADDR_START+STREAMBUF_MEM_SIZE-1)
 
 #define RESERVED_MEM_END	(STREAMBUF_ADDR_END)
-
-
 
 #endif
