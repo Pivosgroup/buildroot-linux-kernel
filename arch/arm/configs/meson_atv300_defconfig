@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Sun Feb 19 22:12:39 2012
+# Wed Feb 22 15:43:51 2012
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -868,8 +868,8 @@ CONFIG_MALI=m
 #
 # AMLOGIC Post Process Manager driver
 #
-# CONFIG_POST_PROCESS_MANAGER is not set
-# CONFIG_MIX_FREE_SCALE is not set
+CONFIG_POST_PROCESS_MANAGER=y
+CONFIG_MIX_FREE_SCALE=y
 
 #
 # Amlogic audio dsp log
@@ -879,7 +879,7 @@ CONFIG_MALI=m
 #
 # AMLOGIC free scale driver
 #
-CONFIG_FREE_SCALE=y
+# CONFIG_FREE_SCALE is not set
 
 #
 # AMLOGIC Deinterlace driver
@@ -1566,6 +1566,7 @@ CONFIG_USB_GSPCA=m
 # CONFIG_USB_STKWEBCAM is not set
 # CONFIG_USB_S2255 is not set
 # CONFIG_VIDEO_AMLOGIC_CAPTURE is not set
+# CONFIG_V4L_AMLOGIC_VIDEO is not set
 # CONFIG_RADIO_ADAPTERS is not set
 CONFIG_DVB_MAX_ADAPTERS=8
 # CONFIG_DVB_DYNAMIC_MINORS is not set
