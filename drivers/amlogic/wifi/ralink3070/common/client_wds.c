@@ -32,7 +32,7 @@
 VOID CliWds_ProxyTabInit(
 	IN PRTMP_ADAPTER pAd)
 {
-	MINT idx;
+	int idx;
 	ULONG i;
 
 	NdisAllocateSpinLock(pAd, &pAd->ApCfg.CliWdsTabLock);
@@ -61,7 +61,7 @@ VOID CliWds_ProxyTabInit(
 VOID CliWds_ProxyTabDestory(
 	IN PRTMP_ADAPTER pAd)
 {
-	MINT idx;
+	int idx;
 	PCLIWDS_PROXY_ENTRY pCliWdsEntry;
 
 	NdisFreeSpinLock(&pAd->ApCfg.CliWdsTabLock);

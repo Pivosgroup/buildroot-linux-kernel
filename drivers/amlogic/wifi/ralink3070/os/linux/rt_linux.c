@@ -52,7 +52,6 @@
 
 ULONG RTDebugLevel = RT_DEBUG_ERROR;
 
-
 #ifdef OS_ABL_FUNC_SUPPORT
 ULONG RTPktOffsetData = 0, RTPktOffsetLen = 0, RTPktOffsetCB = 0;
 #endif /* OS_ABL_FUNC_SUPPORT */
@@ -70,8 +69,8 @@ ULONG OS_NumOfPktAlloc = 0, OS_NumOfPktFree = 0;
  * path so throughput should not be impacted
  */
 BOOLEAN FlgIsUtilInit = FALSE;
-/*NDIS_SPIN_LOCK UtilSemLock;*/
 OS_NDIS_SPIN_LOCK UtilSemLock;
+
 
 /*
 ========================================================================
@@ -1182,7 +1181,7 @@ static inline NDIS_STATUS __RtmpOSTaskKill(IN OS_TASK *pTask) {
 
 }
 
-static inline MINT __RtmpOSTaskNotifyToExit(IN OS_TASK *pTask) {
+static inline int __RtmpOSTaskNotifyToExit(IN OS_TASK *pTask) {
 
 #ifndef KTHREAD_SUPPORT
 	pTask->taskPID = THREAD_PID_INIT_VALUE;
@@ -1322,7 +1321,7 @@ struct net_device *alloc_netdev(
 	void (*setup) (struct net_device *))
 {
 	struct net_device *dev;
-	MINT alloc_size;
+	int alloc_size;
 
 	/* ensure 32-byte alignment of the private area */
 	alloc_size = sizeof (*dev) + sizeof_priv + 31;
@@ -1382,7 +1381,7 @@ static UINT32 RtmpOSWirelessEventTranslate(IN UINT32 eventType) {
 
 int RtmpOSWrielessEventSend(IN PNET_DEV pNetDev,
 			    IN UINT32 eventType,
-			    IN MINT flags,
+			    IN int flags,
 			    IN PUCHAR pSrcMac,
 			    IN PUCHAR pData,
 			    IN UINT32 dataLen) {
@@ -1408,7 +1407,7 @@ int RtmpOSWrielessEventSend(IN PNET_DEV pNetDev,
 
 int RtmpOSWrielessEventSendExt(IN PNET_DEV pNetDev,
 			       IN UINT32 eventType,
-			       IN MINT flags,
+			       IN int flags,
 			       IN PUCHAR pSrcMac,
 			       IN PUCHAR pData,
 			       IN UINT32 dataLen,
@@ -1468,7 +1467,7 @@ static int RtmpOSNetDevRequestName(IN INT32 MC_RowID,
 				   IN UINT32 *pIoctlIF,
 				   IN PNET_DEV dev,
 				   IN PSTRING pPrefixStr,
-				   IN MINT devIdx) {
+				   IN int devIdx) {
 	PNET_DEV existNetDev;
 	STRING suffixName[IFNAMSIZ];
 	STRING desiredName[IFNAMSIZ];
@@ -1533,7 +1532,7 @@ void RtmpOSNetDevFree(PNET_DEV pNetDev) {
 #endif
 }
 
-MINT RtmpOSNetDevAlloc(IN PNET_DEV *new_dev_p,
+int RtmpOSNetDevAlloc(IN PNET_DEV *new_dev_p,
 		      IN UINT32 privDataSize) {
 	/* assign it as null first. */
 	*new_dev_p = NULL;
@@ -1554,7 +1553,7 @@ MINT RtmpOSNetDevAlloc(IN PNET_DEV *new_dev_p,
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,31)
-MINT RtmpOSNetDevOpsAlloc(IN PVOID *pNetDevOps) {
+int RtmpOSNetDevOpsAlloc(IN PVOID *pNetDevOps) {
 	*pNetDevOps = (PVOID) vmalloc(sizeof (struct net_device_ops));
 	if (*pNetDevOps) {
 		NdisZeroMemory(*pNetDevOps, sizeof (struct net_device_ops));
@@ -1609,7 +1608,7 @@ void RtmpOSNetDeviceRefPut(PNET_DEV pNetDev) {
 #endif /* LINUX_VERSION_CODE */
 }
 
-MINT RtmpOSNetDevDestory(IN VOID *pReserved,
+int RtmpOSNetDevDestory(IN VOID *pReserved,
 			IN PNET_DEV pNetDev) {
 
 	/* TODO: Need to fix this */
@@ -1747,9 +1746,9 @@ int RtmpOSNetDevAttach(IN UCHAR OpMode,
 
 PNET_DEV RtmpOSNetDevCreate(IN INT32 MC_RowID,
 			    IN UINT32 *pIoctlIF,
-			    IN MINT devType,
-			    IN MINT devNum,
-			    IN MINT privMemSize,
+			    IN int devType,
+			    IN int devNum,
+			    IN int privMemSize,
 			    IN PSTRING pNamePrefix) {
 	struct net_device *pNetDev = NULL;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,31)
@@ -1932,7 +1931,7 @@ VOID RtmpDrvAllE2PPrint(IN VOID *pReserved,
 	mm_segment_t orig_fs;
 	STRING *msg;//[1024];
 	USHORT eepAddr = 0;
-	USHORT eepValue;	
+	USHORT eepValue;
 
 	os_alloc_mem(NULL, (UCHAR **)&msg, 1024);
 
@@ -1965,7 +1964,7 @@ VOID RtmpDrvAllE2PPrint(IN VOID *pReserved,
 
 					printk("%s", msg);
 					eepAddr += AddrStep;
-					pMacContent += AddrStep;
+					pMacContent += (AddrStep/2);
 				}
 				sprintf(msg, "\nDump all EEPROM values to %s\n",
 					fileName);
@@ -2289,7 +2288,7 @@ typedef struct GNU_PACKED _RT_IAPP_L2_UPDATE_FRAME {
 PNDIS_PACKET RtmpOsPktIappMakeUp(IN PNET_DEV pNetDev,
 				 IN UINT8 *pMac) {
 	RT_IAPP_L2_UPDATE_FRAME frame_body;
-	MINT size = sizeof (RT_IAPP_L2_UPDATE_FRAME);
+	int size = sizeof (RT_IAPP_L2_UPDATE_FRAME);
 	PNDIS_PACKET pNetBuf;
 
 	if (pNetDev == NULL)
@@ -3635,7 +3634,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT RtmpOSTaskNotifyToExit(IN RTMP_OS_TASK *pTaskOrg) {
+int RtmpOSTaskNotifyToExit(IN RTMP_OS_TASK *pTaskOrg) {
 	OS_TASK *pTask;
 
 	pTask = (OS_TASK *) (pTaskOrg->pContent);
@@ -4585,7 +4584,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT RtmpOsIsPktCloned(IN PNDIS_PACKET pNetPkt) {
+int RtmpOsIsPktCloned(IN PNDIS_PACKET pNetPkt) {
 	return OS_PKT_CLONED(pNetPkt);
 }
 
@@ -4984,7 +4983,7 @@ NDIS_STATUS RtmpOSTaskKill(IN RTMP_OS_TASK * pTask) {
 	return __RtmpOSTaskKill(pTask);
 }
 
-MINT RtmpOSTaskNotifyToExit(IN RTMP_OS_TASK * pTask) {
+int RtmpOSTaskNotifyToExit(IN RTMP_OS_TASK * pTask) {
 	return __RtmpOSTaskNotifyToExit(pTask);
 }
 

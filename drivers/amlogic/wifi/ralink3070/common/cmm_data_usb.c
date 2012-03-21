@@ -948,7 +948,7 @@ NDIS_STATUS	RTMPCheckRxError(
 	IN	PRT28XX_RXD_STRUC	pRxINFO)
 {	
 	PCIPHER_KEY pWpaKey;
-	MINT	dBm;
+	int	dBm;
 	
 	if (pAd->bPromiscuous == TRUE)
 		return(NDIS_STATUS_SUCCESS);
@@ -959,7 +959,7 @@ NDIS_STATUS	RTMPCheckRxError(
 	if (pRxINFO->Crc)
 	{
 		/* Check RSSI for Noise Hist statistic collection.*/
-		dBm = (MINT) (pRxWI->RSSI0) - pAd->BbpRssiToDbmDelta;
+		dBm = (int) (pRxWI->RSSI0) - pAd->BbpRssiToDbmDelta;
 		if (dBm <= -87)
 			pAd->StaCfg.RPIDensity[0] += 1;
 		else if (dBm <= -82)

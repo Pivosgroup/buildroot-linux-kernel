@@ -31,7 +31,7 @@
 #include <linux/skbuff.h>
 #include <linux/netdevice.h>
 
-extern MINT rt28xx_send_packets(
+extern int rt28xx_send_packets(
 	IN struct sk_buff		*skb_p,
 	IN struct net_device	*net_dev);
 

@@ -38,6 +38,7 @@
 /* Otherwise post to forum in ralinktech's web site(www.ralinktech.com) and let all users help you. *** */
 MODULE_AUTHOR("Paul Lin <paul_lin@ralinktech.com>");
 MODULE_DESCRIPTION("RT2870 Wireless Lan Linux Driver");
+MODULE_LICENSE("GPL");
 #ifdef CONFIG_STA_SUPPORT
 #ifdef MODULE_VERSION
 MODULE_VERSION(STA_DRIVER_VERSION);
@@ -46,7 +47,7 @@ MODULE_VERSION(STA_DRIVER_VERSION);
 
 
 extern USB_DEVICE_ID rtusb_dev_id[];
-extern MINT const rtusb_usb_id_len;
+extern int const rtusb_usb_id_len;
 
 static void rt2870_disconnect(
 	IN struct usb_device *dev, 
@@ -300,7 +301,7 @@ static int rtusb_probe (struct usb_interface *intf,
 	{
 		usb_put_dev(dev);
 	}
-	else
+	else //mcli
  	{
    		if (VIRTUAL_IF_UP(pAd) != 0)
    		{
@@ -323,27 +324,10 @@ static void rtusb_disconnect(struct usb_interface *intf)
 
 
 	pAd = usb_get_intfdata(intf);
-	VIRTUAL_IF_DOWN(pAd);
+	VIRTUAL_IF_DOWN(pAd); //mcli
 	usb_set_intfdata(intf, NULL);	
 
 	rt2870_disconnect(dev, pAd);
-
-#ifdef CONFIG_PM
-#ifdef USB_SUPPORT_SELECTIVE_SUSPEND
-	    printk("rtusb_disconnect usb_autopm_put_interface \n");
-
-	    usb_autopm_put_interface(intf);
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,32)
-	 printk(" ^^rt2870_disconnect ====> pm_usage_cnt %d \n", atomic_read(&intf->pm_usage_cnt));
-#else
-	 printk(" rt2870_disconnect ====> pm_usage_cnt %d \n", intf->pm_usage_cnt);
-#endif
-	
-
-#endif /* USB_SUPPORT_SELECTIVE_SUSPEND */
-#endif /* CONFIG_PM */
-
 }
 
 
@@ -384,10 +368,6 @@ static int rt2870_suspend(
 #ifdef USB_SUPPORT_SELECTIVE_SUSPEND
 	UCHAR Flag;
 	DBGPRINT(RT_DEBUG_ERROR, ("autosuspend===> rt2870_suspend()\n"));
-
-/*	RtmpOSWrielessEventSend(pAd->net_dev, RT_WLAN_EVENT_CGIWAP, -1, NULL, NULL, 0);*/
-	RTMP_DRIVER_ADAPTER_END_DISSASSOCIATE(pAd);
-
 /*	if(!RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_IDLE_RADIO_OFF)) */
 	RTMP_DRIVER_ADAPTER_IDLE_RADIO_OFF_TEST(pAd, &Flag);
 	if(!Flag)
@@ -400,17 +380,11 @@ static int rt2870_suspend(
 	}
 		/*RTMP_SET_FLAG(pAd, fRTMP_ADAPTER_SUSPEND); */
 		RTMP_DRIVER_ADAPTER_SUSPEND_SET(pAd);
-	DBGPRINT(RT_DEBUG_ERROR, ("autosuspend <=== rt2870_suspend()\n"));
-
 	return 0;
 #endif /* USB_SUPPORT_SELECTIVE_SUSPEND */
 
 
 	DBGPRINT(RT_DEBUG_TRACE, ("===> rt2870_suspend()\n"));
-//	RtmpOSWrielessEventSend(pAd->net_dev, RT_WLAN_EVENT_CGIWAP, -1, NULL, NULL, 0);
-//	RTMP_DRIVER_ADAPTER_END_DISSASSOCIATE(pAd);
-
-//	RTMP_DRIVER_ADAPTER_RT28XX_USB_ASICRADIO_OFF(pAd);
 /*	net_dev = pAd->net_dev; */
 	RTMP_DRIVER_NET_DEV_GET(pAd, &net_dev);
 	netif_device_detach(net_dev);
@@ -429,7 +403,7 @@ static int rt2870_resume(
 #ifdef USB_SUPPORT_SELECTIVE_SUSPEND
 	struct usb_device		*pUsb_Dev;
 	UCHAR Flag;
-	MINT 		pm_usage_cnt;
+	int 		pm_usage_cnt;
 
 	RTMP_DRIVER_USB_DEV_GET(pAd, &pUsb_Dev);
 	RTMP_DRIVER_USB_INTF_GET(pAd, &intf);
@@ -439,12 +413,11 @@ static int rt2870_resume(
 #else
 	pm_usage_cnt = intf->pm_usage_cnt;
 #endif
-#if 0
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
 	if(pUsb_Dev->autosuspend_disabled == 0)
 #else
 	if(pUsb_Dev->auto_pm == 1)
-#endif
 #endif
 	{
 		if(pm_usage_cnt  <= 0)
@@ -475,7 +448,6 @@ static int rt2870_resume(
 	DBGPRINT(RT_DEBUG_TRACE, ("===> rt2870_resume()\n"));
 
 /*	pAd->PM_FlgSuspend = 0; */
-	//RTMP_DRIVER_ADAPTER_RT28XX_USB_ASICRADIO_ON(pAd);
 	RTMP_DRIVER_USB_RESUME(pAd);
 
 /*	net_dev = pAd->net_dev; */
@@ -493,7 +465,7 @@ static int rt2870_resume(
 
 
 /* Init driver module */
-MINT __init rtusb_init(void)
+int __init rtusb_init(void)
 {
 	printk("rtusb init %s --->\n", RTMP_DRV_NAME);
 
@@ -622,21 +594,21 @@ static int rt2870_probe(
 {
 	struct  net_device		*net_dev = NULL;
 	VOID       				*pAd = (VOID *) NULL;
-	MINT                 	status, rv;
+	int                 	status, rv;
 	PVOID					handle;
 	RTMP_OS_NETDEV_OP_HOOK	netDevHook;
 	ULONG					OpMode;
 #ifdef CONFIG_PM
 #ifdef USB_SUPPORT_SELECTIVE_SUSPEND
-/*	MINT 		pm_usage_cnt; */
-	MINT		 res =1 ; 
+/*	int 		pm_usage_cnt; */
+	int		 res =1 ; 
 #endif /* USB_SUPPORT_SELECTIVE_SUSPEND */
 #endif /* CONFIG_PM */	
 
 	
 
 	DBGPRINT(RT_DEBUG_TRACE, ("===>rt2870_probe()!\n"));
-
+	
 #ifdef CONFIG_PM
 #ifdef USB_SUPPORT_SELECTIVE_SUSPEND
 

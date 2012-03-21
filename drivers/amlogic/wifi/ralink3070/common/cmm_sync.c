@@ -75,7 +75,7 @@ VOID BuildChannelList(
 				num = TotalChNum(pChDesc);
 				bRegionFound = TRUE;
 				break;
-		}   
+			}
 		}
 
 		if (!bRegionFound)
@@ -146,7 +146,7 @@ VOID BuildChannelList(
 				num = TotalChNum(pChDesc);
 				bRegionFound = TRUE;
 				break;
-		}
+			}
 		}
 
 		if (!bRegionFound)
@@ -188,7 +188,7 @@ VOID BuildChannelList(
 					if (pChannelList[i] == pAd->TxPower[j].Channel)
 						NdisMoveMemory(&pAd->ChannelList[index+i], &pAd->TxPower[j], sizeof(CHANNEL_TX_POWER));
 						pAd->ChannelList[index + i].Flags = pChannelListFlag[i];
-					}
+				}
 
 				for (j=0; j<15; j++)
 				{
@@ -384,7 +384,7 @@ CHAR	ConvertToSnr(
 	else
 #endif /* defined(RT5370) || defined(RT5372) || defined(RT5390) || defined(RT5392) */
 	{
-	return ((0xeb - Snr) * 3) / 16 ;
+		return ((0xeb	- Snr) * 3) /	16 ;
 	}
 }
 
@@ -430,12 +430,13 @@ VOID ScanNextChannel(
 
 	if ((pAd->MlmeAux.Channel == 0) || ScanPending) 
 	{
-		if ((pAd->CommonCfg.BBPCurrentBW == BW_40)
+		if ((pAd->CommonCfg.BBPCurrentBW == BW_40) &&
+			((OpMode == OPMODE_AP)
 #ifdef CONFIG_STA_SUPPORT
-			&& (INFRA_ON(pAd) || ADHOC_ON(pAd)
-				|| (pAd->OpMode == OPMODE_AP))
-#endif /* CONFIG_STA_SUPPORT */
+				|| (INFRA_ON(pAd) || ADHOC_ON(pAd)
 			)
+#endif /* CONFIG_STA_SUPPORT */
+			))
 		{
 			AsicSwitchChannel(pAd, pAd->CommonCfg.CentralChannel, FALSE);
 			AsicLockChannel(pAd, pAd->CommonCfg.CentralChannel);
@@ -453,7 +454,7 @@ VOID ScanNextChannel(
 		}
 		
 #ifdef CONFIG_STA_SUPPORT
-		IF_DEV_CONFIG_OPMODE_ON_STA(pAd)
+		if (OpMode == OPMODE_STA)
 		{
 
 			/*
@@ -505,9 +506,6 @@ VOID ScanNextChannel(
 				Status = MLME_SUCCESS;
 				MlmeEnqueue(pAd, MLME_CNTL_STATE_MACHINE, MT2_SCAN_CONF, 2, &Status, 0);
 
-				{
-					RTMPSendWirelessEvent(pAd, IW_SCAN_COMPLETED_EVENT_FLAG, NULL, BSS0, 0);
-				}
 			}
 
 #ifdef LINUX
@@ -523,8 +521,7 @@ VOID ScanNextChannel(
 #ifdef RTMP_MAC_USB
 #ifdef CONFIG_STA_SUPPORT
 	else if (RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_NIC_NOT_EXIST) &&
-		(pAd->OpMode == OPMODE_STA)
-	)
+		(OpMode == OPMODE_STA))
 	{
 		pAd->Mlme.SyncMachine.CurrState = SYNC_IDLE;
 		MlmeCntlConfirm(pAd, MT2_SCAN_CONF, MLME_FAIL_NO_RESOURCE);
@@ -534,7 +531,7 @@ VOID ScanNextChannel(
 	else 
 	{
 #ifdef CONFIG_STA_SUPPORT
-		IF_DEV_CONFIG_OPMODE_ON_STA(pAd)
+		if (OpMode == OPMODE_STA)
 		{
 			/* BBP and RF are not accessible in PS mode, we has to wake them up first*/
 			if (OPSTATUS_TEST_FLAG(pAd, fOP_STATUS_DOZE))
@@ -550,7 +547,7 @@ VOID ScanNextChannel(
 		AsicLockChannel(pAd, pAd->MlmeAux.Channel);
 
 #ifdef CONFIG_STA_SUPPORT
-		IF_DEV_CONFIG_OPMODE_ON_STA(pAd)
+		if (OpMode == OPMODE_STA)
 		{
 			if (pAd->MlmeAux.Channel > 14)
 			{
@@ -595,10 +592,16 @@ VOID ScanNextChannel(
 				{
 					if (pAd->MlmeAux.Channel > 14)
 					{
+						if (OpMode == OPMODE_AP)
+							RTMPSetTimer(&pAd->MlmeAux.APScanTimer, ScanTimeIn5gChannel);
+						else
 						RTMPSetTimer(&pAd->MlmeAux.ScanTimer, ScanTimeIn5gChannel);
 					}
 					else
 					{
+						if (OpMode == OPMODE_AP)
+							RTMPSetTimer(&pAd->MlmeAux.APScanTimer, MIN_CHANNEL_TIME);
+						else	
 						RTMPSetTimer(&pAd->MlmeAux.ScanTimer, MIN_CHANNEL_TIME);
 					}
 				}
@@ -606,6 +609,9 @@ VOID ScanNextChannel(
 			else
 			{
 				{
+					if (OpMode == OPMODE_AP)
+						RTMPSetTimer(&pAd->MlmeAux.APScanTimer, MAX_CHANNEL_TIME);
+					else
 					RTMPSetTimer(&pAd->MlmeAux.ScanTimer, MAX_CHANNEL_TIME);
 				}
 			}
@@ -624,7 +630,7 @@ VOID ScanNextChannel(
 			{
 				DBGPRINT(RT_DEBUG_TRACE, ("SYNC - ScanNextChannel() allocate memory fail\n"));
 #ifdef CONFIG_STA_SUPPORT
-				IF_DEV_CONFIG_OPMODE_ON_STA(pAd)
+				if (OpMode == OPMODE_STA)
 				{
 					pAd->Mlme.SyncMachine.CurrState = SYNC_IDLE;
 					Status = MLME_FAIL_NO_RESOURCE;
@@ -775,8 +781,7 @@ VOID ScanNextChannel(
 
 
 #ifdef WPA_SUPPLICANT_SUPPORT
-			if (
-			(pAd->OpMode == OPMODE_STA) &&
+			if ((OpMode == OPMODE_STA) &&
 				(pAd->StaCfg.WpaSupplicantUP != WPA_SUPPLICANT_DISABLE) &&
 				(pAd->StaCfg.WpsProbeReqIeLen != 0))
 			{
@@ -794,13 +799,14 @@ VOID ScanNextChannel(
 			MiniportMMRequest(pAd, 0, pOutBuffer, FrameLen);
 
 #ifdef CONFIG_STA_SUPPORT
-			IF_DEV_CONFIG_OPMODE_ON_STA(pAd)
+			if (OpMode == OPMODE_STA)
 			{
 				
-				/* To prevent data lost.*/
-				/* Send an NULL data with turned PSM bit on to current associated AP when SCAN in the channel where*/
-				/*  associated AP located.*/
-				
+				/*
+					To prevent data lost.
+					Send an NULL data with turned PSM bit on to current associated AP when SCAN in the channel where
+					associated AP located.
+				*/
 				if (OPSTATUS_TEST_FLAG(pAd, fOP_STATUS_MEDIA_STATE_CONNECTED) && 
 					(INFRA_ON(pAd)) &&
 					(pAd->CommonCfg.Channel == pAd->MlmeAux.Channel))
@@ -819,10 +825,9 @@ VOID ScanNextChannel(
 		/* For SCAN_CISCO_PASSIVE, do nothing and silently wait for beacon or other probe reponse*/
 		
 #ifdef CONFIG_STA_SUPPORT
-		IF_DEV_CONFIG_OPMODE_ON_STA(pAd)
+		if (OpMode == OPMODE_STA)
 			pAd->Mlme.SyncMachine.CurrState = SCAN_LISTEN;
 #endif /* CONFIG_STA_SUPPORT */
-
 	}
 }
 #endif

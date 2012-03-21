@@ -121,7 +121,7 @@ VOID  APPeerDisassocReqAction(
 
 VOID MbssKickOutStas(
 	IN PRTMP_ADAPTER pAd,
-	IN MINT apidx,
+	IN int apidx,
 	IN USHORT Reason);
 
 VOID APMlmeKickOutSta(
@@ -183,11 +183,11 @@ VOID APCls2errAction(
 
 VOID APMakeBssBeacon(
     IN  PRTMP_ADAPTER   pAd,
-	IN	MINT				apidx);
+	IN	int				apidx);
 
 VOID  APUpdateBeaconFrame(
     IN  PRTMP_ADAPTER   pAd,
-	IN	MINT				apidx);
+	IN	int				apidx);
 
 VOID APMakeAllBssBeacon(
     IN  PRTMP_ADAPTER   pAd);
@@ -260,7 +260,7 @@ BOOLEAN ApScanRunning(
 VOID APOverlappingBSSScan(
 	IN RTMP_ADAPTER *pAd);
 
-MINT GetBssCoexEffectedChRange(
+int GetBssCoexEffectedChRange(
 	IN RTMP_ADAPTER *pAd,
 	IN BSS_COEX_CH_RANGE *pCoexChRange);
 
@@ -304,8 +304,8 @@ VOID APQuickResponeForRateUpExec(
 BOOLEAN APMsgTypeSubst(
     IN PRTMP_ADAPTER pAd,
     IN PFRAME_802_11 pFrame, 
-    OUT MINT *Machine, 
-    OUT MINT *MsgType);
+    OUT int *Machine, 
+    OUT int *MsgType);
 
 VOID APQuickResponeForRateUpExec(
     IN PVOID SystemSpecific1, 
@@ -489,15 +489,15 @@ BOOLEAN APPeerAuthSanity(
 
 #ifdef DOT1X_SUPPORT
 /* ap_cfg.h */
-MINT	Set_OwnIPAddr_Proc(
+int	Set_OwnIPAddr_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-MINT	Set_EAPIfName_Proc(
+int	Set_EAPIfName_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-MINT	Set_PreAuthIfName_Proc(
+int	Set_PreAuthIfName_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
@@ -520,4 +520,4 @@ VOID AP_E2PROM_IOCTL_PostCtrl(
 VOID IAPP_L2_UpdatePostCtrl(
 	IN PRTMP_ADAPTER	pAd,
     IN UINT8 *mac_p,
-    IN MINT  bssid);
+    IN int  bssid);

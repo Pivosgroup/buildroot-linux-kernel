@@ -289,10 +289,6 @@ VOID MlmeAssocReqAction(
 	else if (MlmeAssocReqSanity
 		 (pAd, Elem->Msg, Elem->MsgLen, ApAddr, &CapabilityInfo,
 		  &Timeout, &ListenIntv)) {
-
-/*dhcp debug*/
-			RTMPWPARemoveAllKeys(pAd);
-
 		RTMPCancelTimer(&pAd->MlmeAux.AssocTimer, &TimerCancelled);
 		COPY_MAC_ADDR(pAd->MlmeAux.Bssid, ApAddr);
 
@@ -536,7 +532,7 @@ VOID MlmeAssocReqAction(
 				/* Check for WPA PMK cache list */
 				if (pAd->StaCfg.AuthMode ==
 				    Ndis802_11AuthModeWPA2) {
-					MINT idx;
+					int idx;
 					BOOLEAN FoundPMK = FALSE;
 					/* Search chched PMKID, append it if existed */
 					for (idx = 0; idx < PMKID_NO; idx++) {
@@ -732,10 +728,6 @@ VOID MlmeReassocReqAction(
 	else if (MlmeAssocReqSanity
 		 (pAd, Elem->Msg, Elem->MsgLen, ApAddr, &CapabilityInfo,
 		  &Timeout, &ListenIntv)) {
-
-		/*dhcp debug*/
-		RTMPWPARemoveAllKeys(pAd);
-
 		RTMPCancelTimer(&pAd->MlmeAux.ReassocTimer, &TimerCancelled);
 
 		NStatus = MlmeAllocateMemory(pAd, &pOutBuffer);	/*Get an unused nonpaged memory */
@@ -1010,10 +1002,8 @@ VOID MlmeDisassocReqAction(
 #endif /* WPA_SUPPLICANT_SUPPORT */
 
 #ifdef NATIVE_WPA_SUPPLICANT_SUPPORT
-#ifndef ANDROID_SUPPORT
 	RtmpOSWrielessEventSend(pAd->net_dev, RT_WLAN_EVENT_CGIWAP, -1, NULL,
 				NULL, 0);
-#endif /* ANDROID_SUPPORT */
 #endif /* NATIVE_WPA_SUPPLICANT_SUPPORT */
 
 	RTMPSendWirelessEvent(pAd, IW_DISASSOC_EVENT_FLAG, NULL, BSS0, 0);
@@ -1514,11 +1504,9 @@ VOID PeerDisassocAction(
 #endif /* WPA_SUPPLICANT_SUPPORT */
 
 #ifdef NATIVE_WPA_SUPPLICANT_SUPPORT
-#ifndef ANDROID_SUPPORT
 			RtmpOSWrielessEventSend(pAd->net_dev,
 						RT_WLAN_EVENT_CGIWAP, -1, NULL,
 						NULL, 0);
-#endif /* ANDROID_SUPPORT */
 #endif /* NATIVE_WPA_SUPPLICANT_SUPPORT */
 		}
 	} else {

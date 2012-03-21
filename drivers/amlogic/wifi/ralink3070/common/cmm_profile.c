@@ -80,7 +80,7 @@ BOOLEAN rtstrcasecmp(PSTRING s1, PSTRING s2)
 /* we assume the s1 (buffer) and s2 (key) both are strings.*/
 PSTRING rtstrstruncasecmp(PSTRING s1, PSTRING s2)
 {
-	MINT l1, l2, i;
+	int l1, l2, i;
 	char temp1, temp2;
 
 	l2 = strlen(s2);
@@ -125,7 +125,7 @@ PSTRING rtstrstruncasecmp(PSTRING s1, PSTRING s2)
   */
 PSTRING rtstrstr(PSTRING s1,const PSTRING s2)
 {
-	MINT l1, l2;
+	int l1, l2;
 
 	l2 = strlen(s2);
 	if (!l2)
@@ -183,9 +183,9 @@ PSTRING rstrtok(PSTRING s,const PSTRING ct)
  * @ct: The delimiter to search for.
  * Notice : We suppose the delimiter is a single-char string(for example : ";").
  */
-MINT delimitcnt(PSTRING s,PSTRING ct)
+int delimitcnt(PSTRING s,PSTRING ct)
 {
-	MINT count = 0;
+	int count = 0;
 	/* point to the beginning of the line */
 	PSTRING token = s; 
 
@@ -363,10 +363,10 @@ PSTRING RTMPFindSection(
 	For SSID and security key related parameters, we SHALL NOT trim the space(' ') character.
     ========================================================================
 */
-MINT RTMPGetKeyParameter(
+int RTMPGetKeyParameter(
     IN PSTRING key,
     OUT PSTRING dest,
-    IN MINT destsize,
+    IN int destsize,
     IN PSTRING buffer,
     IN BOOLEAN bTrimSpace)
 {
@@ -374,7 +374,7 @@ MINT RTMPGetKeyParameter(
 	PSTRING start_ptr, end_ptr;
 	PSTRING ptr;
 	PSTRING offset = NULL;
-	MINT  len, keyLen;
+	int  len, keyLen;
 
 
 	keyLen = strlen(key);
@@ -463,11 +463,11 @@ MINT RTMPGetKeyParameter(
         This routine get the value with the matched key (case case-sensitive)
     ========================================================================
 */
-MINT RTMPGetKeyParameterWithOffset(
+int RTMPGetKeyParameterWithOffset(
     IN  PSTRING   key,
     OUT PSTRING   dest,   
     OUT	USHORT	*end_offset,		
-    IN  MINT     destsize,
+    IN  int     destsize,
     IN  PSTRING   buffer,
     IN	BOOLEAN	bTrimSpace)
 {
@@ -477,7 +477,7 @@ MINT RTMPGetKeyParameterWithOffset(
     PSTRING end_ptr;
     PSTRING ptr;
     PSTRING offset = 0;
-    MINT  len;
+    int  len;
 
 	if (*end_offset >= MAX_INI_BUFFER_SIZE)
 		return (FALSE);
@@ -575,10 +575,10 @@ inline void RTMPSetSTADefKeyId(RTMP_ADAPTER *pAd, ULONG KeyIdx)
 #endif /* CONFIG_STA_SUPPORT */
 
 
-static int rtmp_parse_key_buffer_from_file(IN  PRTMP_ADAPTER pAd,IN  PSTRING buffer,IN  ULONG KeyType,IN  MINT BSSIdx,IN  MINT KeyIdx)
+static int rtmp_parse_key_buffer_from_file(IN  PRTMP_ADAPTER pAd,IN  PSTRING buffer,IN  ULONG KeyType,IN  int BSSIdx,IN  int KeyIdx)
 {
 	PSTRING		keybuff;
-	/*MINT			i = BSSIdx, idx = KeyIdx, retVal;*/
+	/*int			i = BSSIdx, idx = KeyIdx, retVal;*/
 	ULONG		KeyLen;
 	/*UCHAR		CipherAlg = CIPHER_WEP64;*/
 	CIPHER_KEY	*pSharedKey;
@@ -607,7 +607,7 @@ static void rtmp_read_key_parms_from_file(IN  PRTMP_ADAPTER pAd, PSTRING tmpbuf,
 {
 	STRING		tok_str[16];
 	PSTRING		macptr;						
-	MINT			i = 0, idx;
+	int			i = 0, idx;
 	ULONG		KeyType[HW_BEACON_MAX_NUM];
 	ULONG		KeyIdx;
 
@@ -667,7 +667,7 @@ static void rtmp_read_key_parms_from_file(IN  PRTMP_ADAPTER pAd, PSTRING tmpbuf,
 static void rtmp_read_sta_wmm_parms_from_file(IN  PRTMP_ADAPTER pAd, char *tmpbuf, char *buffer)
 {
 	PSTRING					macptr;						
-	MINT						i=0;
+	int						i=0;
 	BOOLEAN					bWmmEnable = FALSE;
 	
 	/*WmmCapable*/
@@ -828,7 +828,7 @@ static void HTParametersHook(
             pAd->CommonCfg.BACapability.field.MMPSmode = MMPS_ENABLE;
 			/*pAd->CommonCfg.BACapability.field.MMPSmode = Value;*/
         }
-        DBGPRINT(RT_DEBUG_TRACE, ("HT: MIMOPS Mode  = %d\n", (MINT) Value));
+        DBGPRINT(RT_DEBUG_TRACE, ("HT: MIMOPS Mode  = %d\n", (int) Value));
     }
 
     if (RTMPGetKeyParameter("HT_BADecline", pValueStr, 25, pInput, TRUE))
@@ -921,7 +921,7 @@ static void HTParametersHook(
 		if (Value <=7 && Value >= 0)
 		{		
 			pAd->CommonCfg.BACapability.field.MpduDensity = Value;
-			DBGPRINT(RT_DEBUG_TRACE, ("HT: MPDU Density = %d\n", (MINT) Value));
+			DBGPRINT(RT_DEBUG_TRACE, ("HT: MPDU Density = %d\n", (int) Value));
 		}
 		else
 		{
@@ -939,7 +939,7 @@ static void HTParametersHook(
 		{		
 			pAd->CommonCfg.REGBACapability.field.RxBAWinLimit = Value;
 			pAd->CommonCfg.BACapability.field.RxBAWinLimit = Value;
-			DBGPRINT(RT_DEBUG_TRACE, ("HT: BA Windw Size = %d\n", (MINT) Value));
+			DBGPRINT(RT_DEBUG_TRACE, ("HT: BA Windw Size = %d\n", (int) Value));
 		}
 		else
 		{
@@ -1354,9 +1354,9 @@ NDIS_STATUS	RTMPSetProfileParameters(
 	ULONG					RtsThresh;
 	ULONG					FragThresh;
 	PSTRING					macptr;							
-	MINT						i = 0, retval;
+	int						i = 0, retval;
 #ifdef DFS_HARDWARE_SUPPORT
-	MINT k=0;
+	int k=0;
 #endif /* DFS_HARDWARE_SUPPORT */
 
 /*	tmpbuf = kmalloc(MAX_PARAM_BUFFER_SIZE, MEM_ALLOC_FLAG);*/
@@ -1435,7 +1435,7 @@ NDIS_STATUS	RTMPSetProfileParameters(
 		if (RTMPGetKeyParameter("TempComp", tmpbuf, 10, pBuffer, TRUE))
 		{
 			pAd->CommonCfg.TempComp = (UCHAR) simple_strtol(tmpbuf, 0, 10);
-			DBGPRINT(RT_DEBUG_TRACE, ("TempComp=%d\n", (MINT)pAd->CommonCfg.TempComp));
+			DBGPRINT(RT_DEBUG_TRACE, ("TempComp=%d\n", (int)pAd->CommonCfg.TempComp));
 		}
 #endif /* RTMP_TEMPERATURE_COMPENSATION */
 
@@ -1952,6 +1952,49 @@ NDIS_STATUS	RTMPSetProfileParameters(
 
 
 #ifdef RT30xx
+#ifdef ANT_DIVERSITY_SUPPORT
+				/*IF_DEV_CONFIG_OPMODE_ON_STA(pAd)*/
+				{
+					if (RTMPGetKeyParameter("AntDiversity", tmpbuf, 10, pBuffer, TRUE))
+					{
+						for (i = 0, macptr = rstrtok(tmpbuf,";"); macptr; macptr = rstrtok(NULL,";"), i++)
+						{
+							ANT_DIVERSITY_TYPE Ant = simple_strtol(tmpbuf, 0, 10);
+							if ((Ant <= ANT_FIX_ANT1) && (Ant >= ANT_DIVERSITY_DISABLE))
+								pAd->CommonCfg.bRxAntDiversity = Ant;
+							else
+								pAd->CommonCfg.bRxAntDiversity = ANT_DIVERSITY_DEFAULT;
+
+						}
+					}
+					else
+						pAd->CommonCfg.bRxAntDiversity = ANT_DIVERSITY_DEFAULT;
+
+					switch (pAd->CommonCfg.bRxAntDiversity)
+					{
+						case ANT_DIVERSITY_DISABLE:
+						case ANT_FIX_ANT0:
+							pAd->RxAnt.Pair1PrimaryRxAnt = 0;
+							pAd->RxAnt.Pair1SecondaryRxAnt = 1;
+							break;
+						case ANT_FIX_ANT1:
+							pAd->RxAnt.Pair1PrimaryRxAnt = 1;
+							pAd->RxAnt.Pair1SecondaryRxAnt = 0;
+							break;
+						case ANT_DIVERSITY_ENABLE:
+							if ((pAd->chipCap.FlgIsHwAntennaDiversitySup)) // HW_ANT_DIV (PPAD)
+								pAd->CommonCfg.bRxAntDiversity = ANT_HW_DIVERSITY_ENABLE;
+							else // SW_ANT_DIV
+							{
+								pAd->RxAnt.EvaluateStableCnt = 0;
+								pAd->CommonCfg.bRxAntDiversity = ANT_SW_DIVERSITY_ENABLE;
+							}
+							break;
+					}
+
+					DBGPRINT(RT_DEBUG_ERROR, ("AntDiversity=%d\n", pAd->CommonCfg.bRxAntDiversity));
+				}
+#endif /* ANT_DIVERSITY_SUPPORT */
 #endif /* RT30xx */
 
 
@@ -2021,7 +2064,7 @@ NDIS_STATUS	RTMPSetProfileParameters(
 				} }
 
 			RTMP_OS_FD srcf;
-			MINT retval;
+			int retval;
 			PSTRING buffer, tmpbuf;
 			STRING card_id_buf[30], RFIC_word[30];
 			BOOLEAN flg_match_ok = FALSE;

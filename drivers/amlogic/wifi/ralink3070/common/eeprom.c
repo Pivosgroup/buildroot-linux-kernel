@@ -28,9 +28,9 @@
 #include "rt_config.h"
 
 
-MINT RtmpChipOpsEepromHook(
+int RtmpChipOpsEepromHook(
 	IN RTMP_ADAPTER *pAd,
-	IN MINT			infType)
+	IN int			infType)
 {
 	RTMP_CHIP_OP	*pChipOps = &pAd->chipOps;
 

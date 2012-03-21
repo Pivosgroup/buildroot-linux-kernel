@@ -123,13 +123,21 @@ struct _RTMP_ADAPTER;
 #define IS_RT5392(_pAd)   ((_pAd->MACVersion & 0xFFFF0000) == 0x53920000) /* Include RT5392, RT5372 and RT5362 */
 
 /* RT5390 */
-#define IS_RT5390(_pAd)   ((((_pAd)->MACVersion & 0xFFFF0000) == 0x53900000) ||IS_RT5392(_pAd))	/* Include RT5390,  RT5370, RT5392, RT5372 and RT5362 */
+#define IS_RT5390(_pAd)   ((((_pAd)->MACVersion & 0xFFFF0000) == 0x53900000) ||IS_RT5392(_pAd))	/* Include RT5390,  RT5370, RT5392, RT5372, RT5360 and RT5362 */
 
 /* RT5390F */
 
 #define IS_RT5390F(_pAd)	((IS_RT5390(_pAd)) && (((_pAd)->MACVersion & 0x0000FFFF) >= 0x0502))
 
+/* RT5390R */
 
+/* RT5370G */
+#define IS_RT5370G(_pAd)	((IS_RT5390(_pAd)) && (((_pAd)->MACVersion & 0x0000FFFF) >= 0x0503)) /* support HW PPAD ( the hardware rx antenna diversity ) */
+
+/* RT5390R */
+
+
+#define IS_RT5390R(_pAd)   ((IS_RT5390(_pAd)) && (((_pAd)->MACVersion & 0x0000FFFF) == 0x1502)) /* support HW PPAD ( the hardware rx antenna diversity ) */
 /* PCIe interface NIC */
 
 #define IS_MINI_CARD(_pAd) ((_pAd)->Antenna.field.BoardType == BOARD_TYPE_MINI_CARD)
@@ -632,7 +640,7 @@ struct _RTMP_CHIP_CAP_ {
 #ifdef RTMP_INTERNAL_TX_ALC
 	UINT8 TxAlcTxPowerUpperBound;
 	UINT8 TxAlcMaxMCS;
-#endif				/* RTMP_INTERNAL_TX_ALC */
+#endif /* RTMP_INTERNAL_TX_ALC */
 
 #ifdef RTMP_EFUSE_SUPPORT
 	UINT16 EFUSE_USAGE_MAP_START;
@@ -642,6 +650,9 @@ struct _RTMP_CHIP_CAP_ {
 
 	BOOLEAN	FlgIsVcoReCalSup;
 	BOOLEAN FlgIsHwAntennaDiversitySup;
+#ifdef TXRX_SW_ANTDIV_SUPPORT
+	BOOLEAN bTxRxSwAntDiv;
+#endif /* TXRX_SW_ANTDIV_SUPPORT */
 };
 
 struct _RTMP_CHIP_OP_ {
@@ -708,7 +719,7 @@ struct _RTMP_CHIP_OP_ {
 				IN PUCHAR				pBbpR49);
 
 	int (*ATEReadExternalTSSI)(
-				IN struct _RTMP_ADAPTER	*pAd,
+				IN struct _RTMP_ADAPTER 	*pAd,
 				IN PSTRING				arg);
 
 	/* Antenna */
@@ -719,6 +730,9 @@ struct _RTMP_CHIP_OP_ {
 	VOID (*SetRxAnt)(
 				IN struct _RTMP_ADAPTER	*pAd,
 				IN UCHAR			Ant);
+
+	VOID (*HwAntEnable)(
+				IN struct _RTMP_ADAPTER *pAd);
 
 	/* EEPROM */
 	VOID (*NICInitAsicFromEEPROM)(IN struct _RTMP_ADAPTER *pAd);
@@ -885,13 +899,12 @@ VOID RtmpChipOpsHook(
 VOID RtmpChipBcnSpecInit(
 	IN struct _RTMP_ADAPTER *pAd);
 
-UINT32 SetHWAntennaDivsersity(
-	IN struct _RTMP_ADAPTER		*pAd,
-	IN BOOLEAN					Enable);
-
 VOID AsicGetTxPowerOffset(
 	IN struct _RTMP_ADAPTER		*pAd,
 	IN PULONG					TxPwr);
+
+VOID HWAntennaDiversityEnable(
+	IN struct _RTMP_ADAPTER     *pAd);
 
 /* global variable */
 extern FREQUENCY_ITEM RtmpFreqItems3020[];

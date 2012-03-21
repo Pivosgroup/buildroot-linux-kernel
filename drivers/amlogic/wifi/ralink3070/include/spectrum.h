@@ -148,15 +148,15 @@ VOID PeerSpectrumAction(
 	Return	: None.
 	==========================================================================
  */
-MINT Set_MeasureReq_Proc(
+int Set_MeasureReq_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-MINT Set_TpcReq_Proc(
+int Set_TpcReq_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-MINT Set_PwrConstraint(
+int Set_PwrConstraint(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 

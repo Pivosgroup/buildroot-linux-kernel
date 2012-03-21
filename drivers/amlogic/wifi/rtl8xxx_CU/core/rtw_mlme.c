@@ -937,9 +937,6 @@ int rtw_is_desired_network(_adapter *adapter, struct wlan_network *pnetwork)
 	{
 		if(rtw_get_wps_ie(pnetwork->network.IEs, pnetwork->network.IELength, NULL, &wps_ielen)!=NULL)
 		{
-			//rtw_disassoc_cmd(adapter);			
-			//rtw_indicate_disconnect(adapter);
-			//rtw_free_assoc_resources(adapter);
 			return _TRUE;
 		}
 		else
@@ -1142,11 +1139,17 @@ _func_enter_;
 		}
 		else
 		{
+			int s_ret;
 			set_fwstate(pmlmepriv, _FW_UNDER_LINKING);
 			pmlmepriv->to_join = _FALSE;
-			if(rtw_select_and_join_from_scanned_queue(pmlmepriv)==_SUCCESS)
+			if(_SUCCESS == (s_ret=rtw_select_and_join_from_scanned_queue(pmlmepriv)))
 			{
 	     		     _set_timer(&pmlmepriv->assoc_timer, MAX_JOIN_TIMEOUT);	 
+			}
+			else if(s_ret == 2)//there is no need to wait for join
+			{
+				_clr_fwstate_(pmlmepriv, _FW_UNDER_LINKING);
+				rtw_indicate_connect(adapter);
 			}
 			else
 			{
@@ -1159,10 +1162,10 @@ _func_enter_;
 				#ifdef CONFIG_LAYER2_ROAMING
 				if(pmlmepriv->to_roaming!=0) {
 					if( --pmlmepriv->to_roaming == 0
-						|| _SUCCESS != rtw_sitesurvey_cmd(adapter, &pmlmepriv->assoc_ssid)
+						|| _SUCCESS != rtw_sitesurvey_cmd(adapter, &pmlmepriv->assoc_ssid, 1)
 					) {
 						pmlmepriv->to_roaming = 0;
-						rtw_free_assoc_resources(adapter);
+						rtw_free_assoc_resources(adapter, 1);
 						rtw_indicate_disconnect(adapter);
 					} else {
 						pmlmepriv->to_join = _TRUE;
@@ -1254,7 +1257,7 @@ _func_exit_;
 /*
 *rtw_free_assoc_resources: the caller has to lock pmlmepriv->lock
 */
-void rtw_free_assoc_resources(_adapter *adapter )
+void rtw_free_assoc_resources(_adapter *adapter, int lock_scanned_queue)
 {
 	_irqL irqL;
 	struct wlan_network* pwlan = NULL;
@@ -1297,7 +1300,10 @@ _func_enter_;
 
 		rtw_init_bcmc_stainfo(adapter);	
 	}
-	_enter_critical_bh(&(pmlmepriv->scanned_queue.lock), &irqL);
+
+	if(lock_scanned_queue)
+		_enter_critical_bh(&(pmlmepriv->scanned_queue.lock), &irqL);
+	
 	pwlan = rtw_find_network(&pmlmepriv->scanned_queue, tgt_network->network.MacAddress);
 	if(pwlan)		
 	{
@@ -1314,7 +1320,10 @@ _func_enter_;
 	{
 		rtw_free_network_nolock(pmlmepriv, pwlan); 
 	}
-	_exit_critical_bh(&(pmlmepriv->scanned_queue.lock), &irqL);
+
+	if(lock_scanned_queue)
+		_exit_critical_bh(&(pmlmepriv->scanned_queue.lock), &irqL);
+	
 	pmlmepriv->key_mask = 0;
 
 _func_exit_;	
@@ -1722,7 +1731,7 @@ _func_enter_;
 		rtw_reset_securitypriv(adapter);
 		_set_timer(&pmlmepriv->assoc_timer, 1);					
 
-		//rtw_free_assoc_resources(adapter);
+		//rtw_free_assoc_resources(adapter, 1);
 
 		if((check_fwstate(pmlmepriv, _FW_UNDER_LINKING)) == _TRUE)
 		{		
@@ -1733,34 +1742,36 @@ _func_enter_;
 	}
 	else //if join_res < 0 (join fails), then try again
 	{
-		#ifdef REJOIN
-		res = rtw_select_and_join_from_scanned_queue(pmlmepriv);	
-		RT_TRACE(_module_rtl871x_mlme_c_,_drv_err_,("rtw_select_and_join_from_scanned_queue again! res:%d\n",res));
-		if (res != _SUCCESS || retry>2)
-		{
-			RT_TRACE(_module_rtl871x_mlme_c_,_drv_err_,("Set Assoc_Timer = 1; can't find match ssid in scanned_q \n"));
-		#endif
 	
-			_set_timer(&pmlmepriv->assoc_timer, 1);					
-
-			//rtw_free_assoc_resources(adapter);
-
-			if((check_fwstate(pmlmepriv, _FW_UNDER_LINKING)) == _TRUE)
-			{		
-				RT_TRACE(_module_rtl871x_mlme_c_,_drv_err_,("fail! clear _FW_UNDER_LINKING ^^^fw_state=%x\n", get_fwstate(pmlmepriv)));
-				_clr_fwstate_(pmlmepriv, _FW_UNDER_LINKING);
-			}						
-		
 		#ifdef REJOIN
-			retry = 0;
-			
+		res = _FAIL;
+		if(retry < 2) {
+			res = rtw_select_and_join_from_scanned_queue(pmlmepriv);
+			RT_TRACE(_module_rtl871x_mlme_c_,_drv_err_,("rtw_select_and_join_from_scanned_queue again! res:%d\n",res));
 		}
-		else
+
+		 if(res == _SUCCESS)
 		{
 			//extend time of assoc_timer
 			_set_timer(&pmlmepriv->assoc_timer, MAX_JOIN_TIMEOUT);
-
 			retry++;
+		}
+		else if(res == 2)//there is no need to wait for join
+		{
+			_clr_fwstate_(pmlmepriv, _FW_UNDER_LINKING);
+			rtw_indicate_connect(adapter);
+		}	
+		else
+		{
+			RT_TRACE(_module_rtl871x_mlme_c_,_drv_err_,("Set Assoc_Timer = 1; can't find match ssid in scanned_q \n"));
+		#endif
+			
+			_set_timer(&pmlmepriv->assoc_timer, 1);
+			//rtw_free_assoc_resources(adapter, 1);
+			_clr_fwstate_(pmlmepriv, _FW_UNDER_LINKING);
+			
+		#ifdef REJOIN
+			retry = 0;	
 		}
 		#endif
 	}
@@ -1910,7 +1921,7 @@ _func_enter_;
 		#endif //CONFIG_LAYER2_ROAMING
 
 
-		rtw_free_assoc_resources(adapter);
+		rtw_free_assoc_resources(adapter, 1);
 		rtw_indicate_disconnect(adapter);
 		_enter_critical_bh(&(pmlmepriv->scanned_queue.lock), &irqL);
 		// remove the network entry in scanned_queue
@@ -2277,7 +2288,16 @@ static int rtw_check_join_candidate(struct mlme_priv *pmlmepriv
 	}
 
 	if(updated){
-		DBG_871X("new candidate: %s("MAC_FMT") rssi:%d\n",
+		DBG_871X("[by_bssid:%u][assoc_ssid:%s]"
+			#ifdef  CONFIG_LAYER2_ROAMING
+			"[to_roaming:%u] "
+			#endif
+			"new candidate: %s("MAC_FMT") rssi:%d\n",
+			pmlmepriv->assoc_by_bssid,
+			pmlmepriv->assoc_ssid.Ssid,
+			#ifdef  CONFIG_LAYER2_ROAMING
+			pmlmepriv->to_roaming,
+			#endif
 			(*candidate)->network.Ssid.Ssid,
 			MAC_ARG((*candidate)->network.MacAddress),
 			(int)(*candidate)->network.Rssi
@@ -2351,7 +2371,8 @@ _func_enter_;
 	if (check_fwstate(pmlmepriv, _FW_LINKED) == _TRUE)
 	{
 		DBG_871X("%s: _FW_LINKED while ask_for_joinbss!!!\n", __FUNCTION__);
-	
+
+		#if 0 // for WPA/WPA2 authentication, wpa_supplicant will expect authentication from AP, it is needed to reconnect AP...
 		if(is_same_network(&pmlmepriv->cur_network.network, &candidate->network))
 		{
 			DBG_871X("%s: _FW_LINKED and is same network, it needn't join again\n", __FUNCTION__);
@@ -2362,10 +2383,11 @@ _func_enter_;
 			goto exit;
 		}
 		else
+		#endif
 		{
 			rtw_disassoc_cmd(adapter);
 			rtw_indicate_disconnect(adapter);
-			rtw_free_assoc_resources(adapter);
+			rtw_free_assoc_resources(adapter, 0);
 		}
 	}
 	
@@ -2455,7 +2477,7 @@ _func_enter_;
 					{
 						rtw_disassoc_cmd(adapter);
 						rtw_indicate_disconnect(adapter);
-						rtw_free_assoc_resources(adapter);
+						rtw_free_assoc_resources(adapter, 0);
 						_exit_critical_bh(&(pmlmepriv->scanned_queue.lock), &irqL);
 						goto ask_for_joinbss;
 						
@@ -2533,7 +2555,7 @@ _func_enter_;
 					{
 						rtw_disassoc_cmd(adapter);
 						//rtw_indicate_disconnect(adapter);//
-						rtw_free_assoc_resources(adapter);
+						rtw_free_assoc_resources(adapter, 0);
 						_exit_critical_bh(&(pmlmepriv->scanned_queue.lock), &irqL);
 						goto ask_for_joinbss;						
 					}

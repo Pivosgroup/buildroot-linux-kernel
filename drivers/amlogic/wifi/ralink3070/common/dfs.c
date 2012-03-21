@@ -71,7 +71,7 @@ BOOLEAN RadarChannelCheck(
 	IN PRTMP_ADAPTER	pAd,
 	IN UCHAR			Ch)
 {
-	MINT		i;
+	int		i;
 	BOOLEAN result = FALSE;
 
 	for (i=0; i<pAd->ChannelListNum; i++)

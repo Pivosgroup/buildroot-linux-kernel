@@ -378,7 +378,7 @@ _func_enter_;
 		if(pwdinfo->opp_ps == 0)
 #endif //CONFIG_P2P
 		{
-			DBG_8192C("rtw_set_ps_mode(): Busy Traffic , Leave 802.11 power save..\n");
+			//DBG_8192C("rtw_set_ps_mode(): Busy Traffic , Leave 802.11 power save..\n");
 			pwrpriv->smart_ps = smart_ps;
 			pwrpriv->pwr_mode = ps_mode;
 			rtw_set_rpwm(padapter, PS_STATE_S4);
@@ -390,7 +390,7 @@ _func_enter_;
 	{
 		if(PS_RDY_CHECK(padapter))
 		{
-			DBG_8192C("rtw_set_ps_mode(): Enter 802.11 power save mode...\n");
+			//DBG_8192C("rtw_set_ps_mode(): Enter 802.11 power save mode...\n");
 			pwrpriv->smart_ps = smart_ps;
 			pwrpriv->pwr_mode = ps_mode;
 			pwrpriv->bFwCurrentInPSMode = _TRUE;

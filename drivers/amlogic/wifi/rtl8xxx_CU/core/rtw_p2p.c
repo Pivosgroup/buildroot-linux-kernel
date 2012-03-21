@@ -2594,7 +2594,7 @@ _func_enter_;
 	pwdinfo->p2p_state = P2P_STATE_FIND_PHASE_SEARCH;
 		
 	_enter_critical_bh(&pmlmepriv->lock, &irqL);
-	_status = rtw_sitesurvey_cmd(padapter, &ssid);
+	_status = rtw_sitesurvey_cmd(padapter, &ssid, 1);
 	_exit_critical_bh(&pmlmepriv->lock, &irqL);
 
 

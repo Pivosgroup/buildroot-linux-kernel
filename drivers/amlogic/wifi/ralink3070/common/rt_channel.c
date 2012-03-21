@@ -94,7 +94,7 @@ CH_FREQ_MAP CH_HZ_ID_MAP[]=
 			{216, 5080},	/* Japan, means J16 */
 };
 
-MINT	CH_HZ_ID_MAP_NUM = (sizeof(CH_HZ_ID_MAP)/sizeof(CH_FREQ_MAP));
+int	CH_HZ_ID_MAP_NUM = (sizeof(CH_HZ_ID_MAP)/sizeof(CH_FREQ_MAP));
 
 CH_DESC Country_Region0_ChDesc_2GHZ[] =
 {
@@ -1394,7 +1394,7 @@ CH_REGION ChRegion[] =
 static PCH_REGION GetChRegion(
 	IN PUCHAR CntryCode)
 {
-	MINT loop = 0;
+	int loop = 0;
 	PCH_REGION pChRegion = NULL;
 
 	while (strcmp((PSTRING) ChRegion[loop].CountReg, "") != 0)
@@ -1445,7 +1445,7 @@ static UCHAR FillChList(
 	IN UCHAR increment,
 	IN UCHAR regulatoryDomain)
 {
-	MINT i, j, l;
+	int i, j, l;
 	UCHAR channel;
 
 	j = Offset;
@@ -1485,7 +1485,7 @@ static inline VOID CreateChList(
 	IN PCH_REGION pChRegion,
 	IN UCHAR Geography)
 {
-	MINT i;
+	int i;
 	UCHAR offset = 0;
 	PCH_DESP pChDesp;
 	UCHAR ChType;
@@ -1542,7 +1542,7 @@ VOID BuildBeaconChList(
 	OUT PUCHAR pBuf,
 	OUT	PULONG pBufLen)
 {
-	MINT i;
+	int i;
 	ULONG TmpLen;
 	PCH_REGION pChRegion;
 	PCH_DESP pChDesp;
@@ -1593,7 +1593,7 @@ static BOOLEAN IsValidChannel(
 	IN UCHAR channel)
 
 {
-	MINT i;
+	int i;
 
 	for (i = 0; i < pAd->ChannelListNum; i++)
 	{
@@ -1774,7 +1774,7 @@ VOID RTMP_MapChannelID2KHZ(
 /* for OS_ABL */
 VOID RTMP_MapKHZ2ChannelID(
 	IN ULONG Freq,
-	OUT MINT *pCh)
+	OUT int *pCh)
 {
 	int chIdx;
 	for (chIdx = 0; chIdx < CH_HZ_ID_MAP_NUM; chIdx++)

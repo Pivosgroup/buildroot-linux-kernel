@@ -98,8 +98,8 @@ int rtmp_ee_efuse_write16(
 /*************************************************************************
   *	Public function declarations for prom operation callback functions setting
   ************************************************************************/
-MINT RtmpChipOpsEepromHook(
+int RtmpChipOpsEepromHook(
 	IN RTMP_ADAPTER *pAd,
-	IN MINT			infType);
+	IN int			infType);
 
 #endif /* __EEPROM_H__ */

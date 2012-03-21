@@ -119,10 +119,22 @@ USB_DEVICE_ID rtusb_dev_id[] = {
 	{USB_DEVICE(0x148F,0x5372)}, /* Ralink 5370 */	
 	{USB_DEVICE(0x13D3,0x3365)}, /* Azurewave */
 	{USB_DEVICE(0x13D3,0x3329)}, /* Azurewave */
+	{USB_DEVICE(0x2001,0x3C15)}, /* Alpha */
+	{USB_DEVICE(0x2001,0x3C19)}, /* Alpha */
+	{USB_DEVICE(0x043E,0x7A12)}, /* Arcadyan */
+	{USB_DEVICE(0x043E,0x7A22)}, /* LG innotek */
 #endif // RT5370 //
+#ifdef RT5372
+	{USB_DEVICE(0x148F,0x5372)}, /* Ralink 5372 */
+	{USB_DEVICE(0x13D3,0x3365)}, /* Azurewave */
+#endif /*  RT5372 */
+#ifdef RT5572
+	{USB_DEVICE(0x148F,0x5572)}, /* Ralink 5572 */
+	{USB_DEVICE(0x043E,0x7A32)}, /* Arcadyan */
+#endif /* RT5572 */
 	{ }/* Terminating entry */
 };
 
-MINT const rtusb_usb_id_len = sizeof(rtusb_dev_id) / sizeof(USB_DEVICE_ID);
+int const rtusb_usb_id_len = sizeof(rtusb_dev_id) / sizeof(USB_DEVICE_ID);
 
 MODULE_DEVICE_TABLE(usb, rtusb_dev_id);

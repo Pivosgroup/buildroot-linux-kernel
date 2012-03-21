@@ -28,17 +28,23 @@
 #ifndef __RTMP_MCU_H__
 #define __RTMP_MCU_H__
 
-MINT RtmpAsicEraseFirmware(
+int RtmpAsicEraseFirmware(
 	IN PRTMP_ADAPTER pAd);
 
 NDIS_STATUS RtmpAsicLoadFirmware(
 	IN PRTMP_ADAPTER pAd);
 
-MINT RtmpAsicSendCommandToMcu(
-	IN PRTMP_ADAPTER pAd,
-	IN UCHAR Command,
-	IN UCHAR Token,
-	IN UCHAR Arg0,
+NDIS_STATUS isMCUnotReady(
+	IN PRTMP_ADAPTER pAd);
+
+NDIS_STATUS isMCUNeedToLoadFIrmware(
+	IN PRTMP_ADAPTER pAd);
+
+int RtmpAsicSendCommandToMcu(
+	IN PRTMP_ADAPTER	pAd,
+	IN UCHAR			Command,
+	IN UCHAR			Token,
+	IN UCHAR			Arg0,
 	IN UCHAR			Arg1,
 	IN BOOLEAN			FlgIsNeedLocked);
 

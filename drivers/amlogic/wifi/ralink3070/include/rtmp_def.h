@@ -719,14 +719,9 @@
 #define CNTL_WAIT_AUTH2                 7
 #define CNTL_WAIT_OID_LIST_SCAN         8
 #define CNTL_WAIT_OID_DISASSOC          9
-#ifdef ANDROID_SUPPORT
-#define CNTL_WAIT_SCAN_FOR_CONNECT      10
-#endif /* ANDROID_SUPPORT */
-#if 0
 #ifdef RTMP_MAC_USB
 #define CNTL_WAIT_SCAN_FOR_CONNECT      10
 #endif /* RTMP_MAC_USB */
-#endif
 
 #define MT2_ASSOC_CONF                  34
 #define MT2_AUTH_CONF                   35
@@ -922,16 +917,7 @@
 #define MT2_BEACON_TIMEOUT              7
 #define MT2_ATIM_TIMEOUT                8
 #define MT2_PEER_PROBE_REQ              9
-#ifdef ANDROID_SUPPORT
-#define MT2_MLME_FORCE_JOIN_REQ 10
-#define MT2_MLME_FORCE_SCAN_REQ 11
-#endif /* ANDROID_SUPPORT */
-
-#ifdef ANDROID_SUPPORT
-#define MAX_SYNC_MSG                    12
-#else
 #define MAX_SYNC_MSG                    10
-#endif /* ANDROID_SUPPORT */
 
 #define SYNC_FUNC_SIZE                  (MAX_SYNC_STATE * MAX_SYNC_MSG)
 
@@ -1148,7 +1134,7 @@
 #define BLOCK_ACK                   0x60	/* b6:5 = 11 */
 
 #ifdef USB_BULK_BUF_ALIGMENT
-#define BUF_ALIGMENT_RINGSIZE         ((MAX_TXBULK_SIZE) >> 15)	/*BUF_ALIGMENT_RINGSIZE must  >= 3 */
+#define BUF_ALIGMENT_RINGSIZE         6	/*BUF_ALIGMENT_RINGSIZE must  >= 3 */
 #endif /* USB_BULK_BUF_ALIGMENT */
 
 
@@ -1486,14 +1472,9 @@
 
 #define IS_OPMODE_AP(_x)		((_x)->OpMode == OPMODE_AP)
 #define IS_OPMODE_STA(_x)		((_x)->OpMode == OPMODE_STA)
-#ifdef ANDROID_SUPPORT
+
 #define INF_MAIN_DEV_NAME		"wlan"
 #define INF_MBSSID_DEV_NAME		"wlan"
-#else
-#define INF_MAIN_DEV_NAME		"ra"
-#define INF_MBSSID_DEV_NAME		"ra"
-#endif /* ANDROID_SUPPORT */
-
 #define INF_WDS_DEV_NAME		"wds"
 #define INF_APCLI_DEV_NAME		"apcli"
 #define INF_MESH_DEV_NAME		"mesh"
@@ -1661,6 +1642,16 @@
 #define	WPA_SUPPLICANT_ENABLE_WPS			0x80
 
 /* definition for Antenna Diversity flag */
+typedef enum {
+	ANT_DIVERSITY_DISABLE,
+	ANT_DIVERSITY_ENABLE ,
+	ANT_FIX_ANT0,
+	ANT_FIX_ANT1,
+	ANT_SW_DIVERSITY_ENABLE,
+	ANT_HW_DIVERSITY_ENABLE,
+	ANT_DIVERSITY_DEFAULT
+}ANT_DIVERSITY_TYPE;
+
 
 
 

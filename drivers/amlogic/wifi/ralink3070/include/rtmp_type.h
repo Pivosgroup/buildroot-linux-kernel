@@ -65,7 +65,7 @@ typedef char STRING;
 typedef signed char CHAR;
 
 typedef signed short SHORT;
-typedef signed int MINT;
+typedef signed int INT;
 typedef signed long LONG;
 typedef signed long long LONGLONG;
 

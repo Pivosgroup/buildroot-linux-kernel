@@ -100,9 +100,6 @@ VOID	RTUSBInitHTTxDesc(
 
 	pSrc = &pTxContext->TransferBuffer->field.WirelessPacket[pTxContext->NextBulkOutPosition];
 
-#ifdef USB_BULK_BUF_ALIGMENT2
-	NdisMoveMemory(pTxContext->pBuf, pSrc, BulkOutSize);
-#endif /* USB_BULK_BUF_ALIGMENT2 */
 	/*Initialize a tx bulk urb*/
 	RTUSB_FILL_HTTX_BULK_URB(pUrb,
 						pObj->pUsb_Dev,
@@ -112,9 +109,6 @@ VOID	RTUSBInitHTTxDesc(
 						Func,
 						pTxContext,
 						(pTxContext->data_dma + pTxContext->NextBulkOutPosition));
-#ifdef USB_BULK_BUF_ALIGMENT2
-	pUrb->transfer_dma = pTxContext->data_dma2;
-#endif /* USB_BULK_BUF_ALIGMENT2 */
 }
 
 VOID	RTUSBInitRxDesc(
@@ -748,17 +742,14 @@ VOID	RTUSBBulkOutMLMEPacket(
 	unsigned long	IrqFlags;
 		
 	pMLMEContext = (PTX_CONTEXT)pAd->MgmtRing.Cell[pAd->MgmtRing.TxDmaIdx].AllocVa;
-	if(pMLMEContext == NULL){
-	    printk("RTUSBBulkOutMLMEPacket: pMLMEContext == NULL\n");
-	    return;
-	}
-	
 	pUrb = pMLMEContext->pUrb;
 
 	if ((pAd->MgmtRing.TxSwFreeIdx >= MGMT_RING_SIZE) ||
 		(pMLMEContext->InUse == FALSE) ||
 		(pMLMEContext->bWaitingBulkOut == FALSE))
 	{
+		
+		
 		/* Clear MLME bulk flag*/
 		RTUSB_CLEAR_BULK_FLAG(pAd, fRTUSB_BULK_OUT_MLME);
 		

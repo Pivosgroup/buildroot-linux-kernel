@@ -180,6 +180,16 @@ int rtmp_ee_prom_read16(
 	USHORT		data;
 
 #ifdef RT30xx
+#ifdef ANT_DIVERSITY_SUPPORT
+/*
+	 Old chips use single circuit to contorl EEPROM and AntDiversity, so need protect.
+	 AntDiversity of RT5390 is independence internal circuit, so doesn't need protect.
+*/
+	if (pAd->NicConfig2.field.AntDiversity && (!IS_RT5390(pAd)))
+	{
+		pAd->EepromAccess = TRUE;
+	}
+#endif /* ANT_DIVERSITY_SUPPORT */
 #endif /* RT30xx */
 
 	Offset /= 2;
@@ -207,6 +217,17 @@ int rtmp_ee_prom_read16(
 	EEpromCleanup(pAd);
 
 #ifdef RT30xx
+#ifdef ANT_DIVERSITY_SUPPORT
+	/* Antenna and EEPROM access are both using EESK pin,*/
+	/* Therefor we should avoid accessing EESK at the same time*/
+	/* Then restore antenna after EEPROM access*/
+	/*AntDiversity of RT5390 is independence internal circuit, so doesn't need protect.*/
+	if ((pAd->NicConfig2.field.AntDiversity) && (!(IS_RT5390(pAd)))/* || (pAd->RfIcType == RFIC_3020)*/)
+	{
+		pAd->EepromAccess = FALSE;
+		AsicSetRxAnt(pAd, pAd->RxAnt.Pair1PrimaryRxAnt);
+	}
+#endif /* ANT_DIVERSITY_SUPPORT */
 #endif /* RT30xx */
 
 	*pValue = data;
@@ -223,6 +244,14 @@ int rtmp_ee_prom_write16(
 	UINT32 x;
 
 #ifdef RT30xx
+#ifdef ANT_DIVERSITY_SUPPORT
+	/* Old chips use single circuit to contorl EEPROM and AntDiversity, so need protect. */
+	/* AntDiversity of RT5390 is independence internal circuit, so doesn't need protect. */
+	if (pAd->NicConfig2.field.AntDiversity && (!IS_RT5390(pAd))) 
+	{
+		pAd->EepromAccess = TRUE;
+	}
+#endif /* ANT_DIVERSITY_SUPPORT */
 #endif /* RT30xx */
 
 	Offset /= 2;
@@ -260,6 +289,17 @@ int rtmp_ee_prom_write16(
 	EEpromCleanup(pAd);
 
 #ifdef RT30xx
+#ifdef ANT_DIVERSITY_SUPPORT
+	/* Antenna and EEPROM access are both using EESK pin,*/
+	/* Therefor we should avoid accessing EESK at the same time*/
+	/* Then restore antenna after EEPROM access*/
+	/* AntDiversity of RT5390 is independence internal circuit, so doesn't need protect. */
+	if ((pAd->NicConfig2.field.AntDiversity) && (!IS_RT5390(pAd)) /*|| (pAd->RfIcType == RFIC_3020)*/)
+	{
+		pAd->EepromAccess = FALSE;
+		AsicSetRxAnt(pAd, pAd->RxAnt.Pair1PrimaryRxAnt);
+	}
+#endif /* ANT_DIVERSITY_SUPPORT */
 #endif /* RT30xx */
 
 	return NDIS_STATUS_SUCCESS;

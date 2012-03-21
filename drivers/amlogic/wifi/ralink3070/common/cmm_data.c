@@ -101,8 +101,9 @@ NDIS_STATUS MiniportMMRequest(
 		/* Reset is in progress, stop immediately*/
 		if (RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_RESET_IN_PROGRESS) ||
 			 RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_HALT_IN_PROGRESS | fRTMP_ADAPTER_NIC_NOT_EXIST)||
-			 !RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_START_UP))
-		{
+			 !RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_START_UP)
+				)
+		 {
 			Status = NDIS_STATUS_FAILURE;
 			break;
 		}
@@ -974,7 +975,7 @@ VOID RTMPDeQueuePacket(
 		}
 
 		RTMP_STOP_DEQUEUE(pAd, QueIdx, IrqFlags);
-		
+
 #ifdef RTMP_MAC_USB
 		if (!hasTxDesc)
 			RTUSBKickBulkOut(pAd);
@@ -2693,10 +2694,10 @@ VOID Indicate_EAPOL_Packet(
 	IF_DEV_CONFIG_OPMODE_ON_STA(pAd)
 	{
 		{
-			pEntry = &pAd->MacTab.Content[BSSID_WCID];
-			STARxEAPOLFrameIndicate(pAd, pEntry, pRxBlk, FromWhichBSSID);
-			return;
-		}
+		pEntry = &pAd->MacTab.Content[BSSID_WCID];
+		STARxEAPOLFrameIndicate(pAd, pEntry, pRxBlk, FromWhichBSSID);
+		return;
+	}
 	}
 #endif /* CONFIG_STA_SUPPORT */
 

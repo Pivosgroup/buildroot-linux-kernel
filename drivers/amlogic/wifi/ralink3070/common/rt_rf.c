@@ -143,12 +143,12 @@ NDIS_STATUS RT30xxWriteRFRegister(
 		}
 		else
 		{
-		rfcsr.field.RF_CSR_WR = 1;
-		rfcsr.field.RF_CSR_KICK = 1;
-		rfcsr.field.TESTCSR_RFACC_REGNUM = regID; /* R0~R31*/
-		rfcsr.field.RF_CSR_DATA = value;
-		RTMP_IO_WRITE32(pAd, RF_CSR_CFG, rfcsr.word);
-	}
+			rfcsr.field.RF_CSR_WR = 1;
+			rfcsr.field.RF_CSR_KICK = 1;
+			rfcsr.field.TESTCSR_RFACC_REGNUM = regID; /* R0~R31*/
+			rfcsr.field.RF_CSR_DATA = value;
+			RTMP_IO_WRITE32(pAd, RF_CSR_CFG, rfcsr.word);
+		}
 	}
 
 	return NDIS_STATUS_SUCCESS;
@@ -200,14 +200,14 @@ NDIS_STATUS RT30xxReadRFRegister(
 			{
 				continue;
 			}
-
+			
 			RfCsrCfgExt.word = 0;
 			RfCsrCfgExt.field.RF_CSR_WR = 0;
 			RfCsrCfgExt.field.RF_CSR_KICK = 1;
 			RfCsrCfgExt.field.TESTCSR_RFACC_REGNUM = regID; /* R0~R63*/
-
+			
 			RTMP_IO_WRITE32(pAd, RF_CSR_CFG, RfCsrCfgExt.word);
-
+			
 			for (k = 0; k < MAX_BUSY_COUNT; k++)
 			{
 				if(RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_NIC_NOT_EXIST))
@@ -285,47 +285,5 @@ VOID NICInitRFRegisters(
 		pAd->chipOps.AsicRfInit(pAd);
 }
 
-
-#if 0
-VOID RFMultiStepXoCode(
-	IN	PRTMP_ADAPTER pAd,
-	IN	UCHAR	rfRegID,
-	IN	UCHAR	rfRegValue,
-	IN	UCHAR	rfRegValuePre)
-{
-	UINT i = 0, count = 0;
-	BOOLEAN bit7IsTrue = (rfRegValue & (0x80));
-
-	rfRegValue &= (0x7F);
-	rfRegValuePre &= (0x7F);
-
-	if (rfRegValuePre == rfRegValue)
-		return;
-
-	DBGPRINT(RT_DEBUG_TRACE, ("RFMultiStepXoCode--> Write Value 0x%02x, previous Value 0x%02x, bit7IsTrue = %d\n",rfRegValue, rfRegValuePre, bit7IsTrue));
-
-		if (rfRegValue>rfRegValuePre)
-	{
-		/* Sequentially */
-		for (i = rfRegValuePre; i<=rfRegValue; i++)
-		{
-			if (bit7IsTrue)
-				i |=0x80;		
-			RT30xxWriteRFRegister(pAd, rfRegID, i);
-			count ++;
-		}
-	}
-	else
-	{
-		/* one step */
-		if (bit7IsTrue)
-			rfRegValue |=0x80;	
-		RT30xxWriteRFRegister(pAd, rfRegID, rfRegValue);
-		count++;
-	}
-		DBGPRINT(RT_DEBUG_TRACE, ("RFMultiStepXoCode<-- Write Value 0x%02x, previous Value 0x%02x, running step count=%d\n",rfRegValue, rfRegValuePre,count));
-
-}
-#endif
 #endif /* RTMP_RF_RW_SUPPORT */
 

@@ -96,7 +96,7 @@ extern UINT32 RT5350_GetDesiredTSSI(
 VOID ATEAsicAdjustTxPower(
 	IN PRTMP_ADAPTER pAd) 
 {
-	MINT			i, j, maxTxPwrCnt;
+	int			i, j, maxTxPwrCnt;
 	CHAR		DeltaPwr = 0;
 	BOOLEAN		bAutoTxAgc = FALSE;
 	UCHAR		TssiRef, *pTssiMinusBoundary, *pTssiPlusBoundary, TxAgcStep;
@@ -678,10 +678,10 @@ VOID ATESampleRssi(
 
 
 #ifdef RTMP_MAC_USB
-static MINT TxDmaBusy(
+static int TxDmaBusy(
 	IN PRTMP_ADAPTER pAd)
 {
-	MINT result;
+	int result;
 	USB_DMA_CFG_STRUC UsbCfg;
 
 	RTMP_IO_READ32(pAd, USB_DMA_CFG, &UsbCfg.word);	/* disable DMA */
@@ -695,10 +695,10 @@ static MINT TxDmaBusy(
 }
 
 
-static MINT RxDmaBusy(
+static int RxDmaBusy(
 	IN PRTMP_ADAPTER pAd)
 {
-	MINT result;
+	int result;
 	USB_DMA_CFG_STRUC UsbCfg;
 
 	RTMP_IO_READ32(pAd, USB_DMA_CFG, &UsbCfg.word);	/* disable DMA */
@@ -714,7 +714,7 @@ static MINT RxDmaBusy(
 
 static VOID RtmpDmaEnable(
 	IN PRTMP_ADAPTER pAd,
-	IN MINT Enable)
+	IN int Enable)
 {
 	BOOLEAN value;
 	ULONG WaitCnt;
@@ -1130,6 +1130,12 @@ VOID DefaultATEAsicSwitchChannel(
 				RFValue = RFValue | 0x1;
 				ATE_RF_IO_WRITE8_BY_REG_ID(pAd, RF_R07, (UCHAR)RFValue);
 
+				   ATE_RF_IO_READ8_BY_REG_ID(pAd, RF_R30, (PUCHAR)&RFValue);
+                                RFValue |= 0x80;
+                                ATE_RF_IO_WRITE8_BY_REG_ID(pAd, RF_R30, (UCHAR)RFValue);
+                                RTMPusecDelay(1000);
+                                RFValue &= 0x7F;
+                                ATE_RF_IO_WRITE8_BY_REG_ID(pAd, RF_R30, (UCHAR)RFValue);   
 				/* latch channel for future usage */
 				pAd->LatchRfRegs.Channel = Channel;
  				if (pAd->Antenna.field.RxPath > 1)
@@ -1186,6 +1192,12 @@ VOID DefaultATEAsicSwitchChannel(
 					ATE_RF_IO_WRITE8_BY_REG_ID(pAd, RF_R01, (UCHAR)RFValue);
 					ATE_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R1, BbpValue);
 	                     }
+				ATE_RF_IO_READ8_BY_REG_ID(pAd, RF_R30, (PUCHAR)&RFValue);
+				RFValue |= 0x80;
+				ATE_RF_IO_WRITE8_BY_REG_ID(pAd, RF_R30, (UCHAR)RFValue);
+				RTMPusecDelay(1000);
+				RFValue &= 0x7F;
+				ATE_RF_IO_WRITE8_BY_REG_ID(pAd, RF_R30, (UCHAR)RFValue);
 				break;				
 			}
 		}
@@ -1245,6 +1257,12 @@ VOID DefaultATEAsicSwitchChannel(
 				}	
 				ATE_RF_IO_WRITE8_BY_REG_ID(pAd, RF_R01, RFValue);
 
+				ATE_RF_IO_READ8_BY_REG_ID(pAd, RF_R02, (PUCHAR)&RFValue);
+                                RFValue |= 0x80;
+                                ATE_RF_IO_WRITE8_BY_REG_ID(pAd, RF_R02, (UCHAR)RFValue);
+                                RTMPusecDelay(1000);
+                                RFValue &= 0x7F;
+                                ATE_RF_IO_WRITE8_BY_REG_ID(pAd, RF_R02, (UCHAR)RFValue);   
 				{
 					/* Zero patch based on windows driver */
 					if (IS_RT5392(pAd))
@@ -1253,28 +1271,29 @@ VOID DefaultATEAsicSwitchChannel(
 					}/**/
 					
 					ATE_RF_IO_READ8_BY_REG_ID(pAd, RF_R17, (PUCHAR)&RFValue);
-/*					pAd->PreRFXCodeValue = (UCHAR)RFValue;*/
-					PreRFValue = (UCHAR)RFValue;
-					RFValue = ((RFValue & ~0x7F) | (pAd->RfFreqOffset & 0x7F)); /* xo_code (C1 value control) - Crystal calibration */
+					PreRFValue = RFValue;
+					RFValue = ((RFValue & 0x80) | (pAd->ate.RFFreqOffset & 0x7F)); /* xo_code (C1 value control) - Crystal calibration */
 					RFValue = min(RFValue, 0x5F);
-/*					RFMultiStepXoCode(pAd, RF_R17, (UCHAR)RFValue,pAd->PreRFXCodeValue);*/
 					if (PreRFValue != RFValue)
 					{
 						AsicSendCommandToMcu(pAd, 0x74, 0xff, RFValue, PreRFValue);
 					}
+
 					/* Zero patch based on windows driver */
 					if(pAd->ate.TxWI.PHYMODE == MODE_CCK)
 					{
 						ATE_RF_IO_WRITE8_BY_REG_ID(pAd, RF_R32, 0xC0);
 
-						if (IS_RT5390F(pAd) || IS_RT5392C(pAd)) /* >= RT5390F */
+						if (IS_RT5390F(pAd)) /* >= RT5390F */
 						{
-							ATE_RF_IO_WRITE8_BY_REG_ID(pAd, RF_R55, 0x47);
+							ATE_RF_IO_WRITE8_BY_REG_ID(pAd, RF_R55, 0x46);
 						}
+						else if (IS_RT5392C(pAd))
+							ATE_RF_IO_WRITE8_BY_REG_ID(pAd, RF_R55, 0x47);
 					}
 					else
 					{
-						ATE_RF_IO_WRITE8_BY_REG_ID(pAd, RF_R32, 0x80);
+						ATE_RF_IO_WRITE8_BY_REG_ID(pAd, RF_R32, 0x20);
 
 						if (IS_RT5390F(pAd) || IS_RT5392C(pAd)) /* >= RT5390F */
 						{
@@ -2819,11 +2838,11 @@ BOOLEAN SyncTxRxConfig(PRTMP_ADAPTER pAd, USHORT offset, UCHAR value)
 }
 
 
-static MINT ResponseToGUI(
+static int ResponseToGUI(
 	IN  struct ate_racfghdr *pRaCfg,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*pwrq,
-	IN  MINT Length,
-	IN  MINT Status)
+	IN  int Length,
+	IN  int Status)
 {
 	(pRaCfg)->length = OS_HTONS((Length));
 	(pRaCfg)->status = OS_HTONS((Status));
@@ -2848,7 +2867,7 @@ static MINT ResponseToGUI(
 }
 
 
-static  MINT DO_RACFG_CMD_ATE_START(
+static  int DO_RACFG_CMD_ATE_START(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -2871,7 +2890,7 @@ static  MINT DO_RACFG_CMD_ATE_START(
 }
 
 
-static  MINT DO_RACFG_CMD_ATE_STOP(
+static  int DO_RACFG_CMD_ATE_STOP(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -2936,7 +2955,7 @@ static  MINT DO_RACFG_CMD_ATE_STOP(
 }
 
 
-static  MINT DO_RACFG_CMD_RF_WRITE_ALL(
+static  int DO_RACFG_CMD_RF_WRITE_ALL(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -2967,7 +2986,7 @@ static  MINT DO_RACFG_CMD_RF_WRITE_ALL(
 }
 
 
-static  MINT DO_RACFG_CMD_E2PROM_READ16(
+static  int DO_RACFG_CMD_E2PROM_READ16(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -2991,7 +3010,7 @@ static  MINT DO_RACFG_CMD_E2PROM_READ16(
 }
 
 
-static  MINT DO_RACFG_CMD_E2PROM_WRITE16(
+static  int DO_RACFG_CMD_E2PROM_WRITE16(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3009,7 +3028,7 @@ static  MINT DO_RACFG_CMD_E2PROM_WRITE16(
 }
 
 
-static  MINT DO_RACFG_CMD_E2PROM_READ_ALL(
+static  int DO_RACFG_CMD_E2PROM_READ_ALL(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3025,7 +3044,7 @@ static  MINT DO_RACFG_CMD_E2PROM_READ_ALL(
 }
 
 
-static  MINT DO_RACFG_CMD_E2PROM_WRITE_ALL(
+static  int DO_RACFG_CMD_E2PROM_WRITE_ALL(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3042,7 +3061,7 @@ static  MINT DO_RACFG_CMD_E2PROM_WRITE_ALL(
 }
 
 
-static  MINT DO_RACFG_CMD_IO_READ(
+static  int DO_RACFG_CMD_IO_READ(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3070,7 +3089,7 @@ static  MINT DO_RACFG_CMD_IO_READ(
 }
 
 
-static  MINT DO_RACFG_CMD_IO_WRITE(
+static  int DO_RACFG_CMD_IO_WRITE(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3097,7 +3116,7 @@ static  MINT DO_RACFG_CMD_IO_WRITE(
 }
 
 
-static  MINT DO_RACFG_CMD_IO_READ_BULK(
+static  int DO_RACFG_CMD_IO_READ_BULK(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3133,7 +3152,7 @@ static  MINT DO_RACFG_CMD_IO_READ_BULK(
 }
 
 
-static  MINT DO_RACFG_CMD_BBP_READ8(
+static  int DO_RACFG_CMD_BBP_READ8(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3161,7 +3180,7 @@ static  MINT DO_RACFG_CMD_BBP_READ8(
 }
 
 
-static  MINT DO_RACFG_CMD_BBP_WRITE8(
+static  int DO_RACFG_CMD_BBP_WRITE8(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3188,7 +3207,7 @@ static  MINT DO_RACFG_CMD_BBP_WRITE8(
 }
 
 
-static  MINT DO_RACFG_CMD_BBP_READ_ALL(
+static  int DO_RACFG_CMD_BBP_READ_ALL(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3215,7 +3234,7 @@ static  MINT DO_RACFG_CMD_BBP_READ_ALL(
 }
 
 
-static  MINT DO_RACFG_CMD_GET_NOISE_LEVEL(
+static  int DO_RACFG_CMD_GET_NOISE_LEVEL(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3234,7 +3253,7 @@ static  MINT DO_RACFG_CMD_GET_NOISE_LEVEL(
 
 
 
-static  MINT DO_RACFG_CMD_GET_COUNTER(
+static  int DO_RACFG_CMD_GET_COUNTER(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3260,7 +3279,7 @@ static  MINT DO_RACFG_CMD_GET_COUNTER(
 }
 
 
-static  MINT DO_RACFG_CMD_CLEAR_COUNTER(
+static  int DO_RACFG_CMD_CLEAR_COUNTER(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3283,7 +3302,7 @@ static  MINT DO_RACFG_CMD_CLEAR_COUNTER(
 }
 
 
-static  MINT DO_RACFG_CMD_TX_START(
+static  int DO_RACFG_CMD_TX_START(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3463,7 +3482,7 @@ tx_start_error:
 }
 
 
-static  MINT DO_RACFG_CMD_GET_TX_STATUS(
+static  int DO_RACFG_CMD_GET_TX_STATUS(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3479,7 +3498,7 @@ static  MINT DO_RACFG_CMD_GET_TX_STATUS(
 }
 
 
-static  MINT DO_RACFG_CMD_TX_STOP(
+static  int DO_RACFG_CMD_TX_STOP(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3494,7 +3513,7 @@ static  MINT DO_RACFG_CMD_TX_STOP(
 }
 
 
-static  MINT DO_RACFG_CMD_RX_START(
+static  int DO_RACFG_CMD_RX_START(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3510,7 +3529,7 @@ static  MINT DO_RACFG_CMD_RX_START(
 }	
 
 
-static  MINT DO_RACFG_CMD_RX_STOP(
+static  int DO_RACFG_CMD_RX_STOP(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3525,7 +3544,7 @@ static  MINT DO_RACFG_CMD_RX_STOP(
 }
 
 
-static  MINT DO_RACFG_CMD_ATE_START_TX_CARRIER(
+static  int DO_RACFG_CMD_ATE_START_TX_CARRIER(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3540,7 +3559,7 @@ static  MINT DO_RACFG_CMD_ATE_START_TX_CARRIER(
 }
 
 
-static  MINT DO_RACFG_CMD_ATE_START_TX_CONT(
+static  int DO_RACFG_CMD_ATE_START_TX_CONT(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3555,7 +3574,7 @@ static  MINT DO_RACFG_CMD_ATE_START_TX_CONT(
 }
 
 
-static  MINT DO_RACFG_CMD_ATE_START_TX_FRAME(
+static  int DO_RACFG_CMD_ATE_START_TX_FRAME(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3570,7 +3589,7 @@ static  MINT DO_RACFG_CMD_ATE_START_TX_FRAME(
 }	
 
 
-static  MINT DO_RACFG_CMD_ATE_SET_BW(
+static  int DO_RACFG_CMD_ATE_SET_BW(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3594,7 +3613,7 @@ static  MINT DO_RACFG_CMD_ATE_SET_BW(
 }
 
 
-static  MINT DO_RACFG_CMD_ATE_SET_TX_POWER0(
+static  int DO_RACFG_CMD_ATE_SET_TX_POWER0(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3617,7 +3636,7 @@ static  MINT DO_RACFG_CMD_ATE_SET_TX_POWER0(
 }
 
 
-static  MINT DO_RACFG_CMD_ATE_SET_TX_POWER1(
+static  int DO_RACFG_CMD_ATE_SET_TX_POWER1(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3641,7 +3660,7 @@ static  MINT DO_RACFG_CMD_ATE_SET_TX_POWER1(
 
 
 #if defined(DOT11N_SS3_SUPPORT)
-static  MINT DO_RACFG_CMD_ATE_SET_TX_POWER2(
+static  int DO_RACFG_CMD_ATE_SET_TX_POWER2(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3665,7 +3684,7 @@ static  MINT DO_RACFG_CMD_ATE_SET_TX_POWER2(
 #endif /* DOT11N_SS3_SUPPORT */
 
 
-static  MINT DO_RACFG_CMD_ATE_SET_FREQ_OFFSET(
+static  int DO_RACFG_CMD_ATE_SET_FREQ_OFFSET(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3688,7 +3707,7 @@ static  MINT DO_RACFG_CMD_ATE_SET_FREQ_OFFSET(
 }
 
 
-static  MINT DO_RACFG_CMD_ATE_GET_STATISTICS(
+static  int DO_RACFG_CMD_ATE_GET_STATISTICS(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3733,7 +3752,7 @@ static  MINT DO_RACFG_CMD_ATE_GET_STATISTICS(
 }
 
 
-static  MINT DO_RACFG_CMD_ATE_RESET_COUNTER(
+static  int DO_RACFG_CMD_ATE_RESET_COUNTER(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3756,7 +3775,7 @@ static  MINT DO_RACFG_CMD_ATE_RESET_COUNTER(
 }
 
 
-static  MINT DO_RACFG_CMD_ATE_SEL_TX_ANTENNA(
+static  int DO_RACFG_CMD_ATE_SEL_TX_ANTENNA(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)	
@@ -3779,7 +3798,7 @@ static  MINT DO_RACFG_CMD_ATE_SEL_TX_ANTENNA(
 }
 
 
-static  MINT DO_RACFG_CMD_ATE_SEL_RX_ANTENNA(
+static  int DO_RACFG_CMD_ATE_SEL_RX_ANTENNA(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3802,7 +3821,7 @@ static  MINT DO_RACFG_CMD_ATE_SEL_RX_ANTENNA(
 }
 
 
-static  MINT DO_RACFG_CMD_ATE_SET_PREAMBLE(
+static  int DO_RACFG_CMD_ATE_SET_PREAMBLE(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3825,7 +3844,7 @@ static  MINT DO_RACFG_CMD_ATE_SET_PREAMBLE(
 }
 
 
-static  MINT DO_RACFG_CMD_ATE_SET_CHANNEL(
+static  int DO_RACFG_CMD_ATE_SET_CHANNEL(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3848,7 +3867,7 @@ static  MINT DO_RACFG_CMD_ATE_SET_CHANNEL(
 }
 
 
-static  MINT DO_RACFG_CMD_ATE_SET_ADDR1(
+static  int DO_RACFG_CMD_ATE_SET_ADDR1(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3867,7 +3886,7 @@ static  MINT DO_RACFG_CMD_ATE_SET_ADDR1(
 }
 
 
-static  MINT DO_RACFG_CMD_ATE_SET_ADDR2(
+static  int DO_RACFG_CMD_ATE_SET_ADDR2(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3886,7 +3905,7 @@ static  MINT DO_RACFG_CMD_ATE_SET_ADDR2(
 }
 
 
-static  MINT DO_RACFG_CMD_ATE_SET_ADDR3(
+static  int DO_RACFG_CMD_ATE_SET_ADDR3(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3905,7 +3924,7 @@ static  MINT DO_RACFG_CMD_ATE_SET_ADDR3(
 }
 
 
-static  MINT DO_RACFG_CMD_ATE_SET_RATE(
+static  int DO_RACFG_CMD_ATE_SET_RATE(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3928,7 +3947,7 @@ static  MINT DO_RACFG_CMD_ATE_SET_RATE(
 }
 
 
-static  MINT DO_RACFG_CMD_ATE_SET_TX_FRAME_LEN(
+static  int DO_RACFG_CMD_ATE_SET_TX_FRAME_LEN(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3951,7 +3970,7 @@ static  MINT DO_RACFG_CMD_ATE_SET_TX_FRAME_LEN(
 }
 
 
-static  MINT DO_RACFG_CMD_ATE_SET_TX_FRAME_COUNT(
+static  int DO_RACFG_CMD_ATE_SET_TX_FRAME_COUNT(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3977,7 +3996,7 @@ static  MINT DO_RACFG_CMD_ATE_SET_TX_FRAME_COUNT(
 }
 
 
-static  MINT DO_RACFG_CMD_ATE_START_RX_FRAME(
+static  int DO_RACFG_CMD_ATE_START_RX_FRAME(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -3992,7 +4011,7 @@ static  MINT DO_RACFG_CMD_ATE_START_RX_FRAME(
 }
 
 
-static  MINT DO_RACFG_CMD_ATE_E2PROM_READ_BULK(
+static  int DO_RACFG_CMD_ATE_E2PROM_READ_BULK(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -4018,7 +4037,7 @@ static  MINT DO_RACFG_CMD_ATE_E2PROM_READ_BULK(
 }
 
 
-static  MINT DO_RACFG_CMD_ATE_E2PROM_WRITE_BULK(
+static  int DO_RACFG_CMD_ATE_E2PROM_WRITE_BULK(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -4051,7 +4070,7 @@ static  MINT DO_RACFG_CMD_ATE_E2PROM_WRITE_BULK(
 }
 
 
-static  MINT DO_RACFG_CMD_ATE_IO_WRITE_BULK(
+static  int DO_RACFG_CMD_ATE_IO_WRITE_BULK(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -4077,7 +4096,7 @@ static  MINT DO_RACFG_CMD_ATE_IO_WRITE_BULK(
 }
 
 
-static  MINT DO_RACFG_CMD_ATE_BBP_READ_BULK(
+static  int DO_RACFG_CMD_ATE_BBP_READ_BULK(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -4110,7 +4129,7 @@ static  MINT DO_RACFG_CMD_ATE_BBP_READ_BULK(
 }
 
 
-static  MINT DO_RACFG_CMD_ATE_BBP_WRITE_BULK(
+static  int DO_RACFG_CMD_ATE_BBP_WRITE_BULK(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -4147,7 +4166,7 @@ static  MINT DO_RACFG_CMD_ATE_BBP_WRITE_BULK(
 
 #if defined (RT3883) || defined (RT3352) || defined (RT5350)
 /* busy mode - make CPU in ATE mode as busy as in normal driver */ 
-static  MINT DO_RACFG_CMD_ATE_RUN_CPUBUSY(
+static  int DO_RACFG_CMD_ATE_RUN_CPUBUSY(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -4179,7 +4198,7 @@ static  MINT DO_RACFG_CMD_ATE_RUN_CPUBUSY(
 
 
 #ifdef RTMP_RF_RW_SUPPORT
-static  MINT DO_RACFG_CMD_ATE_RF_READ_BULK(
+static  int DO_RACFG_CMD_ATE_RF_READ_BULK(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -4204,7 +4223,7 @@ static  MINT DO_RACFG_CMD_ATE_RF_READ_BULK(
 }
 
 
-static  MINT DO_RACFG_CMD_ATE_RF_WRITE_BULK(
+static  int DO_RACFG_CMD_ATE_RF_WRITE_BULK(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -4296,7 +4315,7 @@ static INT32 DO_RACFG_CMD_ATE_SHOW_PARAM(
 }
 
 
-typedef MINT (*RACFG_CMD_HANDLER)(
+typedef int (*RACFG_CMD_HANDLER)(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg);
@@ -4510,7 +4529,7 @@ static INT32 RACfgCMDHandler(
 }
 
 
-MINT RtmpDoAte(
+int RtmpDoAte(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	RTMP_IOCTL_INPUT_STRUCT		*wrq,
 	IN	PSTRING			wrq_name)
@@ -4596,7 +4615,7 @@ VOID ATE_QA_Statistics(
 }
 
 
-MINT Set_TxStop_Proc(
+int Set_TxStop_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -4613,7 +4632,7 @@ MINT Set_TxStop_Proc(
 }
 
 
-MINT Set_RxStop_Proc(
+int Set_RxStop_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -4631,13 +4650,13 @@ MINT Set_RxStop_Proc(
 
 
 #ifdef DBG
-MINT Set_EERead_Proc(
+int Set_EERead_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
 	USHORT buffer[EEPROM_SIZE >> 1];
 	USHORT *p;
-	MINT i;
+	int i;
 	
 	rt_ee_read_all(pAd, (USHORT *)buffer);
 	p = buffer;
@@ -4654,7 +4673,7 @@ MINT Set_EERead_Proc(
 }
 
 
-MINT Set_EEWrite_Proc(
+int Set_EEWrite_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -4688,7 +4707,7 @@ MINT Set_EEWrite_Proc(
 }
 
 
-MINT Set_BBPRead_Proc(
+int Set_BBPRead_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -4711,7 +4730,7 @@ MINT Set_BBPRead_Proc(
 }
 
 
-MINT Set_BBPWrite_Proc(
+int Set_BBPWrite_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -4747,7 +4766,7 @@ MINT Set_BBPWrite_Proc(
 }
 
 
-MINT Set_RFWrite_Proc(
+int Set_RFWrite_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -4939,7 +4958,7 @@ static VOID ATEWriteTxInfo(
 
 
 extern UCHAR EpToQueue[];
-static MINT ATESetUpFrame(
+static int ATESetUpFrame(
 	IN PRTMP_ADAPTER pAd,
 	IN UINT32 TxIdx)
 {
@@ -5159,7 +5178,7 @@ VOID ATE_RTUSBBulkOutDataPacket(
 {
 	PTX_CONTEXT		pNullContext = &(pAd->NullContext);
 	PURB			pUrb;
-	MINT			ret = 0;
+	int			ret = 0;
 	ULONG			IrqFlags;
 
 
@@ -5283,11 +5302,11 @@ VOID ATEResetBulkIn(
 	
 ========================================================================
 */
-MINT ATEResetBulkOut(
+int ATEResetBulkOut(
 	IN PRTMP_ADAPTER	pAd)
 {
 	PTX_CONTEXT	pNullContext = &(pAd->NullContext);
-	MINT ret=0;
+	int ret=0;
 
 	pNullContext->IRPPending = TRUE;
 
@@ -5318,7 +5337,7 @@ MINT ATEResetBulkOut(
 #endif /* RTMP_MAC_USB */
 
 
-static MINT ATETxPwrHandler(
+static int ATETxPwrHandler(
 	IN PRTMP_ADAPTER pAd,
 	IN char index)
 {
@@ -5337,7 +5356,7 @@ static MINT ATETxPwrHandler(
 	*/
 	CHAR		TotalDeltaPower = 0; 
 	CONFIGURATION_OF_TX_POWER_CONTROL_OVER_MAC CfgOfTxPwrCtrlOverMAC = {0};
-	MINT			i,j;
+	int			i,j;
 	CHAR		Value;
 	ULONG		TxPwr[5];
 	PTX_POWER_TUNING_ENTRY_STRUCT pTxPowerTuningEntry = NULL;
@@ -5613,7 +5632,7 @@ static MINT ATETxPwrHandler(
 				RFValue = ((RFValue & ~0x3F) | (TxPower & 0x3F)); /* tx0_alc */
 				ATE_RF_IO_WRITE8_BY_REG_ID(pAd, ANT_POWER_INDEX, (UCHAR)RFValue);
 				if (!IS_RT5392(pAd))	
-				ATE_RF_IO_WRITE8_BY_REG_ID(pAd, RF_R53, 0x04);
+					ATE_RF_IO_WRITE8_BY_REG_ID(pAd, RF_R53, 0x04);
 		}
 #endif /* defined(RT5370) || defined(RT5372) || defined(RT5390) || defined(RT5392) */
 #endif /* RTMP_RF_RW_SUPPORT */
@@ -7169,7 +7188,7 @@ static NDIS_STATUS	ATECmdHandler(
 }
 
 
-MINT	Set_ATE_Proc(
+int	Set_ATE_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -7215,12 +7234,12 @@ MINT	Set_ATE_Proc(
         TRUE if all parameters are OK, FALSE otherwise
 ==========================================================================
 */
-MINT	Set_ATE_DA_Proc(
+int	Set_ATE_DA_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
 	PSTRING				value;
-	MINT					i;
+	int					i;
 
 	/* Mac address acceptable format 01:02:03:04:05:06 length 17 */	
 	if (strlen(arg) != 17)  
@@ -7267,12 +7286,12 @@ MINT	Set_ATE_DA_Proc(
         TRUE if all parameters are OK, FALSE otherwise
 ==========================================================================
 */
-MINT	Set_ATE_SA_Proc(
+int	Set_ATE_SA_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
 	PSTRING				value;
-	MINT					i;
+	int					i;
 
 	/* Mac address acceptable format 01:02:03:04:05:06 length 17 */	
 	if (strlen(arg) != 17)  
@@ -7319,12 +7338,12 @@ MINT	Set_ATE_SA_Proc(
         TRUE if all parameters are OK, FALSE otherwise
 ==========================================================================
 */
-MINT	Set_ATE_BSSID_Proc(
+int	Set_ATE_BSSID_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
 	PSTRING				value;
-	MINT					i;
+	int					i;
 
 	/* Mac address acceptable format 01:02:03:04:05:06 length 17 */	
 	if (strlen(arg) != 17)  
@@ -7369,7 +7388,7 @@ MINT	Set_ATE_BSSID_Proc(
         TRUE if all parameters are OK, FALSE otherwise
 ==========================================================================
 */
-MINT	Set_ATE_CHANNEL_Proc(
+int	Set_ATE_CHANNEL_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -7405,7 +7424,7 @@ MINT	Set_ATE_CHANNEL_Proc(
         TRUE if all parameters are OK, FALSE otherwise
 ==========================================================================
 */
-MINT	Set_ATE_TX_POWER0_Proc(
+int	Set_ATE_TX_POWER0_Proc(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	PSTRING			arg)
 {
@@ -7466,7 +7485,7 @@ MINT	Set_ATE_TX_POWER0_Proc(
         TRUE if all parameters are OK, FALSE otherwise
 ==========================================================================
 */
-MINT	Set_ATE_TX_POWER1_Proc(
+int	Set_ATE_TX_POWER1_Proc(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	PSTRING			arg)
 {
@@ -7528,7 +7547,7 @@ MINT	Set_ATE_TX_POWER1_Proc(
         TRUE if all parameters are OK, FALSE otherwise
 ==========================================================================
 */
-MINT	Set_ATE_TX_POWER2_Proc(
+int	Set_ATE_TX_POWER2_Proc(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	PSTRING			arg)
 {
@@ -7588,7 +7607,7 @@ MINT	Set_ATE_TX_POWER2_Proc(
         TRUE if all parameters are OK, FALSE otherwise
 ==========================================================================
 */
-MINT	Set_ATE_TX_Antenna_Proc(
+int	Set_ATE_TX_Antenna_Proc(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	PSTRING			arg)
 {
@@ -7624,7 +7643,7 @@ MINT	Set_ATE_TX_Antenna_Proc(
         TRUE if all parameters are OK, FALSE otherwise
 ==========================================================================
 */
-MINT	Set_ATE_RX_Antenna_Proc(
+int	Set_ATE_RX_Antenna_Proc(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	PSTRING			arg)
 {
@@ -7661,7 +7680,7 @@ MINT	Set_ATE_RX_Antenna_Proc(
         TRUE if all parameters are OK, FALSE otherwise
 ==========================================================================
 */
-MINT Set_ATE_PA_Bias_Proc(
+int Set_ATE_PA_Bias_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -7700,7 +7719,7 @@ MINT Set_ATE_PA_Bias_Proc(
         TRUE if all parameters are OK, FALSE otherwise
 ==========================================================================
 */
-MINT	Set_ATE_TX_FREQOFFSET_Proc(
+int	Set_ATE_TX_FREQOFFSET_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -7711,9 +7730,8 @@ MINT	Set_ATE_TX_FREQOFFSET_Proc(
 #endif /* RTMP_RF_RW_SUPPORT */
 
 #if defined(RT5370) || defined(RT5372) || defined(RT5390) || defined(RT5392)
-	 UCHAR PreRFValue = 0;
+	UCHAR PreRFValue = 0;
 #endif /* defined(RT5370) || defined(RT5372) || defined(RT5390) || defined(RT5392) */
-
 	
 	RFFreqOffset = simple_strtol(arg, 0, 10);
 
@@ -7747,11 +7765,9 @@ MINT	Set_ATE_TX_FREQOFFSET_Proc(
 	if ( IS_RT5390(pAd))
 	{
 		ATE_RF_IO_READ8_BY_REG_ID(pAd, RF_R17, (PUCHAR)&RFValue);
-/*		pAd->ate.PreRFXCodeValue = (UCHAR)RFValue;*/
-		PreRFValue = (UCHAR)RFValue;
+		PreRFValue = RFValue;
 		RFValue = ((RFValue & 0x80) | (pAd->ate.RFFreqOffset & 0x7F)); // xo_code (C1 value control) - Crystal calibration
 		RFValue = min(RFValue, 0x5F);
-/*		RFMultiStepXoCode(pAd, RF_R17, (UCHAR)RFValue,pAd->ate.PreRFXCodeValue);*/
 		if (PreRFValue != RFValue)
 		{
 			AsicSendCommandToMcu(pAd, 0x74, 0xff, RFValue, PreRFValue);
@@ -7787,11 +7803,11 @@ MINT	Set_ATE_TX_FREQOFFSET_Proc(
         TRUE if all parameters are OK, FALSE otherwise
 ==========================================================================
 */
-MINT	Set_ATE_TX_BW_Proc(
+int	Set_ATE_TX_BW_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
-	MINT powerIndex;
+	int powerIndex;
 	UCHAR value = 0;
 	UCHAR BBPCurrentBW;
 	
@@ -7958,7 +7974,7 @@ MINT	Set_ATE_TX_BW_Proc(
 		/* BBP_R4 should be overwritten for every chip if the condition matched. */
 		if (pAd->ate.Channel == 14)
 		{
-			MINT TxMode = pAd->ate.TxWI.PHYMODE;
+			int TxMode = pAd->ate.TxWI.PHYMODE;
 
 			if (TxMode == MODE_CCK)
 			{
@@ -8107,7 +8123,7 @@ MINT	Set_ATE_TX_BW_Proc(
         TRUE if all parameters are OK, FALSE otherwise
 ==========================================================================
 */
-MINT	Set_ATE_TX_LENGTH_Proc(
+int	Set_ATE_TX_LENGTH_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -8137,7 +8153,7 @@ MINT	Set_ATE_TX_LENGTH_Proc(
         TRUE if all parameters are OK, FALSE otherwise
 ==========================================================================
 */
-MINT	Set_ATE_TX_COUNT_Proc(
+int	Set_ATE_TX_COUNT_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -8161,12 +8177,12 @@ MINT	Set_ATE_TX_COUNT_Proc(
         	TRUE if all parameters are OK, FALSE otherwise
 ==========================================================================
 */
-MINT	Set_ATE_TX_MCS_Proc(
+int	Set_ATE_TX_MCS_Proc(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	PSTRING			arg)
 {
 	UCHAR MCS;
-	MINT result;
+	int result;
 
 	MCS = simple_strtol(arg, 0, 10);
 	result = CheckMCSValid(pAd, pAd->ate.TxWI.PHYMODE, MCS);
@@ -8202,7 +8218,7 @@ MINT	Set_ATE_TX_MCS_Proc(
         	TRUE if all parameters are OK, FALSE otherwise
 ==========================================================================
 */
-MINT	Set_ATE_TX_MODE_Proc(
+int	Set_ATE_TX_MODE_Proc(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	PSTRING			arg)
 {
@@ -8231,7 +8247,7 @@ MINT	Set_ATE_TX_MODE_Proc(
 	if (IS_RT5390F(pAd))
 	{
 		if (pAd->ate.TxWI.PHYMODE == MODE_CCK)
-			ATE_RF_IO_WRITE8_BY_REG_ID(pAd, RF_R55, 0x47);
+			ATE_RF_IO_WRITE8_BY_REG_ID(pAd, RF_R55, 0x46);
 		else			
 			ATE_RF_IO_WRITE8_BY_REG_ID(pAd, RF_R55, 0x43);
 	}
@@ -8335,7 +8351,7 @@ MINT	Set_ATE_TX_MODE_Proc(
         	TRUE if all parameters are OK, FALSE otherwise
 ==========================================================================
 */
-MINT	Set_ATE_TX_GI_Proc(
+int	Set_ATE_TX_GI_Proc(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	PSTRING			arg)
 {
@@ -8356,7 +8372,7 @@ MINT	Set_ATE_TX_GI_Proc(
 }
 
 
-MINT	Set_ATE_RX_FER_Proc(
+int	Set_ATE_RX_FER_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -8376,14 +8392,14 @@ MINT	Set_ATE_RX_FER_Proc(
 }
 
 
-MINT Set_ATE_Read_RF_Proc(
+int Set_ATE_Read_RF_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
 #ifdef RTMP_RF_RW_SUPPORT
 	/* modify by WY for Read RF Reg. error */
 	UCHAR RFValue;
-	MINT index=0;
+	int index=0;
 
 /* 2008/07/10:KH add to support RT30xx ATE<-- */
 	if (IS_RT30xx(pAd) || IS_RT3572(pAd))
@@ -8408,7 +8424,7 @@ MINT Set_ATE_Read_RF_Proc(
 
 
 #ifndef RTMP_RF_RW_SUPPORT
-MINT Set_ATE_Write_RF1_Proc(
+int Set_ATE_Write_RF1_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -8421,7 +8437,7 @@ MINT Set_ATE_Write_RF1_Proc(
 }
 
 
-MINT Set_ATE_Write_RF2_Proc(
+int Set_ATE_Write_RF2_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -8434,7 +8450,7 @@ MINT Set_ATE_Write_RF2_Proc(
 }
 
 
-MINT Set_ATE_Write_RF3_Proc(
+int Set_ATE_Write_RF3_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -8447,7 +8463,7 @@ MINT Set_ATE_Write_RF3_Proc(
 }
 
 
-MINT Set_ATE_Write_RF4_Proc(
+int Set_ATE_Write_RF4_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -8470,7 +8486,7 @@ MINT Set_ATE_Write_RF4_Proc(
         	TRUE if all parameters are OK, FALSE otherwise
 ==========================================================================
 */
-MINT Set_ATE_Load_E2P_Proc(
+int Set_ATE_Load_E2P_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -8479,7 +8495,7 @@ MINT Set_ATE_Load_E2P_Proc(
 	RTMP_OS_FD		srcf;
 	INT32 			retval;
 	USHORT 			WriteEEPROM[(EEPROM_SIZE >> 1)];
-	MINT				FileLength = 0;
+	int				FileLength = 0;
 	UINT32 			value = (UINT32) simple_strtol(arg, 0, 10);
 	RTMP_OS_FS_INFO	osFSInfo;
 
@@ -8547,7 +8563,7 @@ MINT Set_ATE_Load_E2P_Proc(
 }
 
 
-MINT Set_ATE_Read_E2P_Proc(
+int Set_ATE_Read_E2P_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -8585,7 +8601,7 @@ MINT Set_ATE_Read_E2P_Proc(
         	TRUE if all parameters are OK, FALSE otherwise
 ==========================================================================
 */
-MINT	Set_ATE_AUTO_ALC_Proc(
+int	Set_ATE_AUTO_ALC_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -8620,7 +8636,7 @@ MINT	Set_ATE_AUTO_ALC_Proc(
         	TRUE if all parameters are OK, FALSE otherwise
 ==========================================================================
 */
-MINT	Set_ATE_TX_BF_Proc(
+int	Set_ATE_TX_BF_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -8652,7 +8668,7 @@ MINT	Set_ATE_TX_BF_Proc(
         TRUE if all parameters are OK, FALSE otherwise
 ==========================================================================
 */
-MINT	Set_ATE_IPG_Proc(
+int	Set_ATE_IPG_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -8740,7 +8756,7 @@ MINT	Set_ATE_IPG_Proc(
         TRUE if all parameters are OK, FALSE otherwise
 ==========================================================================
 */
-MINT	Set_ATE_Payload_Proc(
+int	Set_ATE_Payload_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -8762,7 +8778,7 @@ MINT	Set_ATE_Payload_Proc(
 }
 
 
-MINT	Set_ATE_Show_Proc(
+int	Set_ATE_Show_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -8869,7 +8885,7 @@ MINT	Set_ATE_Show_Proc(
 }
 
 
-MINT	Set_ATE_Help_Proc(
+int	Set_ATE_Help_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -8955,7 +8971,7 @@ CHAR RTUSBInsertTssi(UCHAR InChannel, UCHAR Channel0, UCHAR Channel1,CHAR Tssi0,
 #endif /* RTMP_INTERNAL_TX_ALC */
 
 #ifdef HW_ANTENNA_DIVERSITY_SUPPORT
-static  MINT DO_RACFG_CMD_DIV_ANTENNA_CALIBRATION(
+static  int DO_RACFG_CMD_DIV_ANTENNA_CALIBRATION(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN  struct ate_racfghdr *pRaCfg)
@@ -9073,7 +9089,7 @@ static NDIS_STATUS ANTDIVCBA(
 }
 
 
-MINT Set_ATE_DIV_ANTENNA_Proc(
+int Set_ATE_DIV_ANTENNA_Proc(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	PSTRING			arg)
 {
@@ -9174,10 +9190,10 @@ extern UCHAR OFDM_Rate2MCS(
 
 
 
-MINT ATE_GET_TSSI(
+int ATE_GET_TSSI(
 	IN PRTMP_ADAPTER pAd,
-	IN	MINT	MODE,
-	IN	MINT	MCS,
+	IN	int	MODE,
+	IN	int	MCS,
 	OUT PUCHAR  pBbpR49)
 {
 	UCHAR		BbpR47=0;
@@ -9280,16 +9296,16 @@ extern INT32 TSSIDelta2PowDelta(
 	UINT32 TSSI_ref);
 
 
-MINT RT5350_Set_ATE_TSSI_CALIBRATION_Proc(
+int RT5350_Set_ATE_TSSI_CALIBRATION_Proc(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	PSTRING			arg)
 {    
-	MINT 	i;
+	int 	i;
 	USHORT	EEPData, EEPData2;                              
 	UINT32	TSSI_x_10000[15];
 	INT32	TSSI_power_delta[15];
 	UCHAR	TSSI_CH1, TSSI_CH7, TSSI_CH13;
-	MINT	TSSI_CH1_10000, TSSI_CH7_10000, TSSI_CH13_10000;
+	int	TSSI_CH1_10000, TSSI_CH7_10000, TSSI_CH13_10000;
 	TssiDeltaInfo TSSI_x_h, TSSI_x_l;
 
 	if (!IS_RT5350(pAd))                  
@@ -9459,7 +9475,7 @@ MINT RT5350_Set_ATE_TSSI_CALIBRATION_Proc(
 #endif /* RT5350 */
 
 
-MINT Set_ATE_TSSI_CALIBRATION_Proc(
+int Set_ATE_TSSI_CALIBRATION_Proc(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	PSTRING			arg)
 {    
@@ -9468,7 +9484,7 @@ MINT Set_ATE_TSSI_CALIBRATION_Proc(
 
 
 /* NOT tested yet */
-MINT Set_ATE_TSSI_CALIBRATION_EX_Proc(
+int Set_ATE_TSSI_CALIBRATION_EX_Proc(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	PSTRING			arg)
 {    
@@ -9485,7 +9501,7 @@ MINT Set_ATE_TSSI_CALIBRATION_EX_Proc(
 
 
 #ifdef RTMP_TEMPERATURE_COMPENSATION
-MINT Set_ATE_READ_EXTERNAL_TSSI_Proc(
+int Set_ATE_READ_EXTERNAL_TSSI_Proc(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	PSTRING			arg)
 {
@@ -9533,7 +9549,7 @@ static VOID TX_EVM_CAL_GET(
 }
 
  
-MINT Set_ATE_TX_EVM_CALIBRATION_Show_Proc(
+int Set_ATE_TX_EVM_CALIBRATION_Show_Proc(
 	IN PRTMP_ADAPTER pAd,
 	IN PSTRING   arg)
 {
@@ -9549,7 +9565,7 @@ MINT Set_ATE_TX_EVM_CALIBRATION_Show_Proc(
 }
 
  
-MINT Set_ATE_TX_EVM_CALIBRATION_Proc(
+int Set_ATE_TX_EVM_CALIBRATION_Proc(
 	IN PRTMP_ADAPTER pAd,
 	IN PSTRING   arg)
 {
@@ -9580,7 +9596,7 @@ MINT Set_ATE_TX_EVM_CALIBRATION_Proc(
 }
 
  
-MINT Set_ATE_TX_EVM_CALIBRATION_Fill_Proc(
+int Set_ATE_TX_EVM_CALIBRATION_Fill_Proc(
 	IN PRTMP_ADAPTER pAd,
 	IN PSTRING   arg)
 {

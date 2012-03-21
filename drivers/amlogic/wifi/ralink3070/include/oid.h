@@ -1204,6 +1204,11 @@ typedef struct _WSC_PROFILE {
 
 
 
+#define RT_P2P_DEVICE_FIND                                0x0109
+#define RT_P2P_CONNECTED                                  0x010A
+#define RT_P2P_DISCONNECTED                               0x010B
+#define RT_P2P_CONNECTED_TIMEOUT	                  0x010C
+
 
 
 

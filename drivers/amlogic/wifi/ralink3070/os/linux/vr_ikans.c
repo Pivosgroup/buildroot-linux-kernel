@@ -46,7 +46,7 @@
 /*#define IKANOS_DEBUG */
 
 
-extern MINT rt28xx_send_packets(
+extern int rt28xx_send_packets(
 	IN struct sk_buff		*skb_p,
 	IN struct net_device	*net_dev);
 

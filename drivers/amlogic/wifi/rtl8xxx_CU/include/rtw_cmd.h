@@ -265,11 +265,19 @@ Notes: To ask RTL8711 performing site-survey
 Command-Event Mode 
 
 */
+
+#define RTW_SSID_SCAN_AMOUNT 9 // for WEXT_CSCAN_AMOUNT 9
 struct sitesurvey_parm {
 	sint scan_mode;	//active: 1, passive: 0 
 	sint bsslimit;	// 1 ~ 48
-	sint	ss_ssidlen;
-	u8 	ss_ssid[IW_ESSID_MAX_SIZE + 1];
+	
+	// for up to 9 probreq with specific ssid
+#if 1
+	NDIS_802_11_SSID ssid[RTW_SSID_SCAN_AMOUNT];
+#else
+	sint	ss_ssidlen[RTW_SSID_SCAN_AMOUNT]; 
+	u8 	ss_ssid[RTW_SSID_SCAN_AMOUNT][IW_ESSID_MAX_SIZE + 1];
+#endif
 };
 
 /*
@@ -899,7 +907,7 @@ Result:
 
 extern u8 rtw_setassocsta_cmd(_adapter  *padapter, u8 *mac_addr);
 extern u8 rtw_setstandby_cmd(_adapter *padapter, uint action);
-extern u8 rtw_sitesurvey_cmd(_adapter  *padapter, NDIS_802_11_SSID *pssid);
+extern u8 rtw_sitesurvey_cmd(_adapter  *padapter, NDIS_802_11_SSID *pssid, int ssid_max_num);
 extern u8 rtw_createbss_cmd(_adapter  *padapter);
 extern u8 rtw_createbss_cmd_ex(_adapter  *padapter, unsigned char *pbss, unsigned int sz);
 extern u8 rtw_setphy_cmd(_adapter  *padapter, u8 modem, u8 ch);

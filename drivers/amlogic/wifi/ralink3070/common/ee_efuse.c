@@ -838,7 +838,7 @@ NTSTATUS eFuseWrite(
 	
 ========================================================================
 */
-MINT set_eFuseGetFreeBlockCount_Proc(  
+int set_eFuseGetFreeBlockCount_Proc(  
    	IN	PRTMP_ADAPTER	pAd,
 	IN	PSTRING			arg)
 {
@@ -851,12 +851,12 @@ MINT set_eFuseGetFreeBlockCount_Proc(
 }
 
 
-MINT set_eFusedump_Proc(
+int set_eFusedump_Proc(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	PSTRING			arg)
 {
 	USHORT InBuf[3];
-	MINT i=0;
+	int i=0;
 	
 	if (pAd->bUseEfuse == FALSE && pAd->bFroceEEPROMBuffer == FALSE)
 		return FALSE;
@@ -876,16 +876,16 @@ MINT set_eFusedump_Proc(
 }
 
 
-MINT	set_eFuseLoadFromBin_Proc(
+int	set_eFuseLoadFromBin_Proc(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	PSTRING			arg)
 {
 	PSTRING					src;
 	RTMP_OS_FD				srcf;
 	RTMP_OS_FS_INFO			osfsInfo;
-	MINT 						retval, memSize;
+	int 						retval, memSize;
 	PSTRING					buffer, memPtr;
-	MINT						TotalByte= 0,ReadedByte=0,CompareBuf=1;
+	int						TotalByte= 0,ReadedByte=0,CompareBuf=1;
 	USHORT					*PDATA;
 	USHORT					DATA;
 	
@@ -1391,7 +1391,7 @@ int RtmpEfuseSupportCheck(
 
 
 #ifdef RALINK_ATE
-MINT set_eFuseBufferModeWriteBack_Proc(
+int set_eFuseBufferModeWriteBack_Proc(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	PSTRING			arg)
 {
@@ -1433,11 +1433,11 @@ MINT set_eFuseBufferModeWriteBack_Proc(
 		
 	========================================================================
 */
-MINT eFuseLoadEEPROM(
+int eFuseLoadEEPROM(
 	IN PRTMP_ADAPTER pAd)
 {
 	PSTRING					src = NULL;
-	MINT 						retval;			
+	int 						retval;			
 	RTMP_OS_FD				srcf;
 	RTMP_OS_FS_INFO			osFSInfo;
 
@@ -1495,12 +1495,12 @@ MINT eFuseLoadEEPROM(
 	return TRUE;	
 }
 
-MINT eFuseWriteEeeppromBuf(
+int eFuseWriteEeeppromBuf(
 	IN PRTMP_ADAPTER pAd)
 {
 
 	PSTRING					src = NULL;
-	MINT 						retval;			
+	int 						retval;			
 	RTMP_OS_FD				srcf;
 	RTMP_OS_FS_INFO			osFSInfo;
 						
@@ -1658,7 +1658,7 @@ VOID eFuseGetFreeBlockCount(IN PRTMP_ADAPTER pAd,
 	DBGPRINT(RT_DEBUG_TRACE,("eFuseGetFreeBlockCount is %d\n",*EfuseFreeBlock));
 }
 
-MINT eFuse_init(
+int eFuse_init(
 	IN PRTMP_ADAPTER pAd)
 {
 	UINT	EfuseFreeBlock=0;

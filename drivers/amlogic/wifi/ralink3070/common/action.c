@@ -965,7 +965,7 @@ VOID ORIBATimerTimeout(
 	IN	PRTMP_ADAPTER	pAd) 
 {
 	MAC_TABLE_ENTRY	*pEntry;
-	MINT			i, total;
+	int			i, total;
 /*	FRAME_BAR			FrameBar;*/
 /*	ULONG			FrameLen;*/
 /*	NDIS_STATUS 	NStatus;*/

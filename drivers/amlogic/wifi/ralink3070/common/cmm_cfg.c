@@ -29,10 +29,10 @@
 
 
 
-MINT ComputeChecksum(
+int ComputeChecksum(
 	IN UINT PIN)
 {
-	MINT digit_s;
+	int digit_s;
     UINT accum = 0;
 
 	PIN *= 10;
@@ -124,10 +124,10 @@ char* GetBW(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT RT_CfgSetCountryRegion(
+int RT_CfgSetCountryRegion(
 	IN PRTMP_ADAPTER	pAd, 
 	IN PSTRING			arg,
-	IN MINT				band)
+	IN int				band)
 {
 	LONG region;
 	UCHAR *pCountryRegion;
@@ -174,11 +174,11 @@ MINT RT_CfgSetCountryRegion(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT RT_CfgSetWirelessMode(
+int RT_CfgSetWirelessMode(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
-	MINT		MaxPhyMode = PHY_11G;
+	int		MaxPhyMode = PHY_11G;
 	LONG	WirelessMode;
 	
 #ifdef DOT11_N_SUPPORT
@@ -215,7 +215,7 @@ MINT RT_CfgSetWirelessMode(
 /* maybe can be moved to GPL code, ap_mbss.c, but the code will be open */
 
 
-MINT RT_CfgSetShortSlot(
+int RT_CfgSetShortSlot(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -242,14 +242,14 @@ MINT RT_CfgSetShortSlot(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT	RT_CfgSetWepKey(
+int	RT_CfgSetWepKey(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			keyString,
 	IN	CIPHER_KEY		*pSharedKey,
-	IN	MINT				keyIdx)
+	IN	int				keyIdx)
 {
-	MINT				KeyLen;
-	MINT				i;
+	int				KeyLen;
+	int				i;
 	/*UCHAR			CipherAlg = CIPHER_NONE;*/
 	BOOLEAN			bKeyIsHex = FALSE;
 
@@ -306,11 +306,11 @@ MINT	RT_CfgSetWepKey(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT RT_CfgSetWPAPSKKey(
+int RT_CfgSetWPAPSKKey(
 	IN RTMP_ADAPTER	*pAd, 
 	IN PSTRING		keyString,
 	IN UCHAR		*pHashStr,
-	IN MINT			hashStrLen,
+	IN int			hashStrLen,
 	OUT PUCHAR		pPMKBuf)
 {
 	int keyLen;
@@ -338,10 +338,10 @@ MINT RT_CfgSetWPAPSKKey(
 	return TRUE;
 }
 
-MINT	RT_CfgSetFixedTxPhyMode(
+int	RT_CfgSetFixedTxPhyMode(
 	IN	PSTRING			arg)
 {
-	MINT		fix_tx_mode = FIXED_TXMODE_HT;
+	int		fix_tx_mode = FIXED_TXMODE_HT;
 	UINT32	value;
 
 	if (strcmp(arg, "OFDM") == 0 || strcmp(arg, "ofdm") == 0)
@@ -372,11 +372,11 @@ MINT	RT_CfgSetFixedTxPhyMode(
 					
 }	
 
-MINT	RT_CfgSetMacAddress(
+int	RT_CfgSetMacAddress(
 	IN 	PRTMP_ADAPTER 	pAd,
 	IN	PSTRING			arg)
 {
-	MINT	i, mac_len;
+	int	i, mac_len;
 	
 	/* Mac address acceptable format 01:02:03:04:05:06 length 17 */
 	mac_len = strlen(arg);
@@ -402,12 +402,12 @@ MINT	RT_CfgSetMacAddress(
 	return TRUE;
 }
 
-MINT	RT_CfgSetTxMCSProc(
+int	RT_CfgSetTxMCSProc(
 	IN	PSTRING			arg,
 	OUT	BOOLEAN			*pAutoRate)
 {
-	MINT	Value = simple_strtol(arg, 0, 10);
-	MINT	TxMcs;
+	int	Value = simple_strtol(arg, 0, 10);
+	int	TxMcs;
 	
 	if ((Value >= 0 && Value <= 23) || (Value == 32)) /* 3*3*/
 	{
@@ -424,7 +424,7 @@ MINT	RT_CfgSetTxMCSProc(
 
 }
 
-MINT	RT_CfgSetAutoFallBack(
+int	RT_CfgSetAutoFallBack(
 	IN 	PRTMP_ADAPTER 	pAd,
 	IN	PSTRING			arg)
 {
@@ -455,7 +455,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT RtmpIoctl_rt_ioctl_giwname(
+int RtmpIoctl_rt_ioctl_giwname(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
 	IN	ULONG					Data)
@@ -471,17 +471,17 @@ MINT RtmpIoctl_rt_ioctl_giwname(
 }
 
 
-MINT RTMP_COM_IoctlHandle(
+int RTMP_COM_IoctlHandle(
 	IN	VOID					*pAdSrc,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
-	IN	MINT						cmd,
+	IN	int						cmd,
 	IN	USHORT					subcmd,
 	IN	VOID					*pData,
 	IN	ULONG					Data)
 {
 	PRTMP_ADAPTER pAd = (PRTMP_ADAPTER)pAdSrc;
 	POS_COOKIE pObj = (POS_COOKIE)pAd->OS_Cookie;
-	MINT Status = NDIS_STATUS_SUCCESS, i;
+	int Status = NDIS_STATUS_SUCCESS, i;
 	UCHAR PermanentAddress[MAC_ADDR_LEN];
 	USHORT Addr01, Addr23, Addr45;
 
@@ -574,12 +574,6 @@ MINT RTMP_COM_IoctlHandle(
 		/* clear driver state to fRTMP_ADAPTER_SUSPEND */
 			RTMP_CLEAR_FLAG(pAd,fRTMP_ADAPTER_SUSPEND);
 			break;
-
-		case CMD_RTPRIV_IOCTL_ADAPTER_SEND_DISSASSOCIATE:
-		/* clear driver state to fRTMP_ADAPTER_SUSPEND */
-			RtmpOSWrielessEventSend(pAd->net_dev, RT_WLAN_EVENT_CGIWAP, -1, NULL, NULL, 0);
-			break;
-		
 
 		case CMD_RTPRIV_IOCTL_ADAPTER_SUSPEND_TEST:
 		/* test driver state to fRTMP_ADAPTER_SUSPEND */
@@ -903,7 +897,7 @@ MINT RTMP_COM_IoctlHandle(
 		case CMD_RTPRIV_IOCTL_INF_P2P_CHECK:
 			if (Data != INT_P2P)
 				return NDIS_STATUS_FAILURE;
-			break;
+			break;			
 
 
 #ifdef RALINK_ATE
@@ -1041,7 +1035,7 @@ MINT RTMP_COM_IoctlHandle(
                1.) iwpriv ra0 set site_survey
     ==========================================================================
 */
-MINT Set_SiteSurvey_Proc(
+int Set_SiteSurvey_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {

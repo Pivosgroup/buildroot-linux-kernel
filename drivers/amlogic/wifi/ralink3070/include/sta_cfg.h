@@ -28,7 +28,7 @@
 #ifndef __STA_CFG_H__
 #define __STA_CFG_H__
 
-MINT RTMPSTAPrivIoctlSet(
+int RTMPSTAPrivIoctlSet(
 	IN RTMP_ADAPTER *pAd,
 	IN PSTRING SetProcName,
 	IN PSTRING ProcArg);

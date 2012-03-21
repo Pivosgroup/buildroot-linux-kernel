@@ -630,7 +630,7 @@ rtw_sitesurvey_cmd(~)
 	### NOTE:#### (!!!!)
 	MUST TAKE CARE THAT BEFORE CALLING THIS FUNC, YOU SHOULD HAVE LOCKED pmlmepriv->lock
 */
-u8 rtw_sitesurvey_cmd(_adapter  *padapter, NDIS_802_11_SSID *pssid)
+u8 rtw_sitesurvey_cmd(_adapter  *padapter, NDIS_802_11_SSID *pssid, int ssid_max_num)
 {
 	u8 res = _FAIL;
 	struct cmd_obj		*ph2c;
@@ -671,13 +671,27 @@ _func_enter_;
 
 	psurveyPara->bsslimit = cpu_to_le32(48);
 	psurveyPara->scan_mode = cpu_to_le32(pmlmepriv->scan_mode);
-	psurveyPara->ss_ssidlen= cpu_to_le32(0);// pssid->SsidLength;
-	_rtw_memset(psurveyPara->ss_ssid, 0, IW_ESSID_MAX_SIZE + 1);
+
+	//psurveyPara->ss_ssidlen= cpu_to_le32(0);// pssid->SsidLength;
+	_rtw_memset(psurveyPara->ssid, 0, sizeof(NDIS_802_11_SSID)*RTW_SSID_SCAN_AMOUNT);
+
+	#if 1
+	if(pssid){
+		int i;
+		for(i=0; i<ssid_max_num && i< RTW_SSID_SCAN_AMOUNT; i++){
+			if(pssid[i].SsidLength){
+				_rtw_memcpy(&psurveyPara->ssid[i], &pssid[i], sizeof(NDIS_802_11_SSID));
+				DBG_871X("%s scan for specific ssid: %s, %d\n", __FUNCTION__
+					, psurveyPara->ssid[i].Ssid, psurveyPara->ssid[i].SsidLength);
+			}
+		}
+	}
+	#else
 	if ((pssid != NULL) && (pssid->SsidLength)) {
 		_rtw_memcpy(psurveyPara->ss_ssid, pssid->Ssid, pssid->SsidLength);
 		psurveyPara->ss_ssidlen = cpu_to_le32(pssid->SsidLength);
 	}
-
+	#endif
 	set_fwstate(pmlmepriv, _FW_UNDER_SURVEY);
 
 	res = rtw_enqueue_cmd(pcmdpriv, ph2c);

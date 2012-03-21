@@ -118,7 +118,7 @@ UINT FCSTAB_32[256] =
 UINT	RTMP_CALC_FCS32(
 	IN	UINT	Fcs,
 	IN	PUCHAR	Cp,
-	IN	MINT		Len)
+	IN	int		Len)
 {
 	while (Len--)
 	   Fcs = (((Fcs) >> 8) ^ FCSTAB_32[((Fcs) ^ (*Cp++)) & 0xff]);

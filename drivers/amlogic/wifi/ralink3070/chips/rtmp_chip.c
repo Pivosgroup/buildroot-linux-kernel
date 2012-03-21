@@ -26,7 +26,7 @@
 
 
 #include "rt_config.h"
-#include "chip/rt28xx.h"
+
 
 
 FREQUENCY_ITEM RtmpFreqItems3020[] =
@@ -358,6 +358,10 @@ VOID RtmpChipBcnInit(
 	DBGPRINT(RT_DEBUG_TRACE, ("\tBcnBase[7] = \t0x%x\n", pChipCap->BcnBase[7]));
 }
 
+extern VOID RT28xx_ChipSwitchChannel(
+	IN PRTMP_ADAPTER 			pAd,
+	IN UCHAR					Channel,
+	IN BOOLEAN					bScan);
 
 /*
 ========================================================================
@@ -409,8 +413,11 @@ VOID RtmpChipOpsHook(
 
 #ifdef RTMP_EFUSE_SUPPORT
 	pChipCap->EFUSE_USAGE_MAP_START = 0x2d0;
-	pChipCap->EFUSE_USAGE_MAP_END = 0x2fc;      
-	pChipCap->EFUSE_USAGE_MAP_SIZE = 45;
+	pChipCap->EFUSE_USAGE_MAP_END = 0x2fc;
+{     
+        pChipCap->EFUSE_USAGE_MAP_SIZE = 45;
+}
+
 	DBGPRINT(RT_DEBUG_ERROR, ("(Efuse for 3062/3562/3572) Size=0x%x [%x-%x] \n",pAd->chipCap.EFUSE_USAGE_MAP_SIZE,pAd->chipCap.EFUSE_USAGE_MAP_START,pAd->chipCap.EFUSE_USAGE_MAP_END));
 #endif /* RTMP_EFUSE_SUPPORT */
 
@@ -463,10 +470,10 @@ VOID RtmpChipOpsHook(
 
 	if (IS_RT30xx(pAd))
 	{
-		if (IS_RT3390(pAd))
+		/*if (IS_RT3390(pAd))
 			RT33xx_Init(pAd);
-		else
-		RT30xx_Init(pAd);
+		else */
+			RT30xx_Init(pAd);
 	}
 #endif /* RT30xx */
 
@@ -1203,87 +1210,38 @@ static VOID AsicSetAGCInitValue(
 }
 
 
-#ifdef HW_ANTENNA_DIVERSITY_SUPPORT
-UINT32 SetHWAntennaDivsersity(
-	IN PRTMP_ADAPTER		pAd,
-	IN BOOLEAN				Enable)
+#ifdef ANT_DIVERSITY_SUPPORT
+VOID HWAntennaDiversityEnable(
+	IN PRTMP_ADAPTER		pAd)
 {
-	if (Enable == TRUE)
-	{
-		UINT8 BBPValue = 0, RFValue = 0;
-		USHORT value;
+#if defined(RT5350)
+	UINT8 regs[7] = { 0xC0, 0xB0, 0x23, 0x34, 0x10, 0x3B, 0x05 };
+#elif defined(RT5370) || defined(RT5390)
+	UINT8 regs[7] = { 0xBE, 0xAE, 0x20, 0x34, 0x40, 0x3B, 0x04 };
+#endif
+	UINT8 BBPValue = 0, RFValue = 0;
 
-		// RF_R29 bit7:6
-		RT28xx_EEPROM_READ16(pAd, EEPROM_RSSI_GAIN, value);
-		
-		RT30xxReadRFRegister(pAd, RF_R29, &RFValue);
-		RFValue &= 0x3f; // clear bit7:6
-		RFValue |= (value << 6);			
-		RT30xxWriteRFRegister(pAd, RF_R29, RFValue);
+	// RF_R29 bit[7:6] = b'11
+	RT30xxReadRFRegister(pAd, RF_R29, &RFValue);
+	RFValue |= 0xC0; //rssi_gain
+	RT30xxWriteRFRegister(pAd, RF_R29, RFValue);
 
-		// BBP_R47 bit7=1
-		RTMP_BBP_IO_READ8_BY_REG_ID(pAd, BBP_R47, &BBPValue);
-		BBPValue |= 0x80;
-		RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R47, BBPValue);
+	// BBP_R47 bit7=1
+	RTMP_BBP_IO_READ8_BY_REG_ID(pAd, BBP_R47, &BBPValue);
+	BBPValue |= 0x80; //ADC6 on
+	RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R47, BBPValue);
 	
-		BBPValue = 0xbe;			
-		RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R150, BBPValue);
-		BBPValue = 0xb0;			
-		RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R151, BBPValue);
-		BBPValue = 0x23;			
-		RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R152, BBPValue);
-		BBPValue = 0x3a;			
-		RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R153, BBPValue);
-		BBPValue = 0x10;			
-		RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R154, BBPValue);
-		BBPValue = 0x3b;			
-		RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R155, BBPValue);
-		BBPValue = 0x04;			
-		RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R253, BBPValue);
+	RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R150, regs[0]); // ENABLE_ANTSW_OFDM and RSSI_ANTSWT
+	RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R151, regs[1]); // ENABLE_ANTSW_CCK and RSSI_LNASWTH_HM
+	RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R152, regs[2]); // RSSI_LNASWTH_HL /*aux ant */
+	RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R153, regs[3]); // RSSI_ANALOG_LOWTH
+	RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R154, regs[4]); // ANTSW_PWROFFSET, ANTSW_DELAYOFFSET and auto-control BBP R152[7] (RX_DEFAULT_ANT)
+	RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R155, regs[5]); // RSSI_OFFSET
+	RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R253, regs[6]); // MEASURE_RSSI_OFFSET
 
-		DBGPRINT(RT_DEBUG_TRACE, ("HwAnDi> Enable!\n"));
-	}
-	else
-	{
-		UINT8 BBPValue = 0;
-
-		/*
-			main antenna: BBP_R152 bit7=1
-			aux antenna: BBP_R152 bit7=0
-		 */
-		if (pAd->FixDefaultAntenna == 0)
-		{
-			/* fix to main antenna */
-			/* do not care BBP R153, R155, R253 */
-			BBPValue = 0x3e;
-			RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R150, BBPValue);
-			BBPValue = 0x30;
-			RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R151, BBPValue);
-			BBPValue = 0x23;
-			RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R152, BBPValue);
-			BBPValue = 0x00;
-			RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R154, BBPValue);
-		}
-		else
-		{
-			/* fix to aux antenna */
-			/* do not care BBP R153, R155, R253 */
-			BBPValue = 0x3e;
-			RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R150, BBPValue);
-			BBPValue = 0x30;
-			RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R151, BBPValue);
-			BBPValue = 0xa3;
-			RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R152, BBPValue);
-			BBPValue = 0x00;
-			RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R154, BBPValue);
-		}
-
-		DBGPRINT(RT_DEBUG_TRACE, ("HwAnDi> Disable!\n"));
-	}
-
-	return 0;
+	DBGPRINT(RT_DEBUG_TRACE, ("HwAnDiv --> Enable!\n"));
 }
-#endif // HW_ANTENNA_DIVERSITY_SUPPORT // 
+#endif // ANT_DIVERSITY_SUPPORT // 
 
 
 #ifdef RTMP_INTERNAL_TX_ALC
@@ -1549,14 +1507,14 @@ static VOID InitDesiredTSSITableDefault(
 		desiredTSSIOverHTUsingSTBC[7]));
 
 	{
-	RT30xxReadRFRegister(pAd, RF_R27, (PUCHAR)(&RFValue));
+		RT30xxReadRFRegister(pAd, RF_R27, (PUCHAR)(&RFValue));
 		RFValue = (RFValue | 0x88); // <7>: IF_Rxout_en, <3>: IF_Txout_en
-	RT30xxWriteRFRegister(pAd, RF_R27, RFValue);
+		RT30xxWriteRFRegister(pAd, RF_R27, RFValue);
 
-	RT30xxReadRFRegister(pAd, RF_R28, (PUCHAR)(&RFValue));
+		RT30xxReadRFRegister(pAd, RF_R28, (PUCHAR)(&RFValue));
 		RFValue = (RFValue & (~0x60)); // <6:5>: tssi_atten
-	RT30xxWriteRFRegister(pAd, RF_R28, RFValue);
-}
+		RT30xxWriteRFRegister(pAd, RF_R28, RFValue);
+	}
 
 #if defined (RT3350)
 	if (IS_RT3350(pAd))
@@ -1666,7 +1624,7 @@ CHAR GetDesiredTSSI(
 
 
 VOID AsicGetTxPowerOffset(
-	IN PRTMP_ADAPTER		pAd,
+	IN PRTMP_ADAPTER pAd,
 	IN PULONG TxPwr)
 {
 	CONFIGURATION_OF_TX_POWER_CONTROL_OVER_MAC CfgOfTxPwrCtrlOverMAC;

@@ -701,7 +701,7 @@ int rtw_hw_suspend(_adapter *padapter )
 
 		}
 		//s2-3.
-		rtw_free_assoc_resources(padapter);
+		rtw_free_assoc_resources(padapter, 1);
 
 		//s2-4.
 		rtw_free_network_queue(padapter,_TRUE);
@@ -848,7 +848,7 @@ static int rtw_suspend(struct usb_interface *pusb_intf, pm_message_t message)
 		//s2-2.  indicate disconnect to os
 		rtw_indicate_disconnect(padapter);
 		//s2-3.
-		rtw_free_assoc_resources(padapter);
+		rtw_free_assoc_resources(padapter, 1);
 #ifdef CONFIG_AUTOSUSPEND
 		if(!pwrpriv->bInternalAutoSuspend )
 #endif
@@ -1419,8 +1419,10 @@ void extern_usb_wifi_power(int is_power);
 static int __init rtw_drv_entry(void)
 {
 #ifdef CONFIG_RTL8XXX_CU_EXT_POWER_CTRL
-	extern_usb_wifi_power(1);
+	extern_usb_wifi_power(0);
 	mdelay(100);
+	extern_usb_wifi_power(1);
+	mdelay(500);
 #endif
 
 #ifdef CONFIG_PLATFORM_RTK_DMP

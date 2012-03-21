@@ -143,7 +143,7 @@
 
 
 
-MINT Show_AGS_Proc(
+int Show_AGS_Proc(
     IN  PRTMP_ADAPTER	pAd, 
     IN  PSTRING			arg)
 {

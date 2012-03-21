@@ -122,9 +122,9 @@ void RTMPHandleRadarInterrupt(PRTMP_ADAPTER  pAd);
 #endif /* TONE_RADAR_DETECT_SUPPORT */
 
 #ifdef TONE_RADAR_DETECT_SUPPORT
-MINT Set_CarrierCriteria_Proc(IN PRTMP_ADAPTER pAd, IN PSTRING arg);
+int Set_CarrierCriteria_Proc(IN PRTMP_ADAPTER pAd, IN PSTRING arg);
 int Set_CarrierReCheck_Proc(IN PRTMP_ADAPTER pAd, IN PSTRING arg);
-MINT Set_CarrierStopCheck_Proc(IN PRTMP_ADAPTER pAd, IN PSTRING arg);
+int Set_CarrierStopCheck_Proc(IN PRTMP_ADAPTER pAd, IN PSTRING arg);
 void NewCarrierDetectionStart(PRTMP_ADAPTER pAd);
 #endif /* TONE_RADAR_DETECT_SUPPORT */
 
@@ -176,11 +176,11 @@ VOID RTMPPrepareRadarDetectParams(
 	IN PRTMP_ADAPTER	pAd);
 #endif /* DFS_SOFTWARE_SUPPORT */
 
-MINT Set_ChMovingTime_Proc(
+int Set_ChMovingTime_Proc(
 	IN PRTMP_ADAPTER pAd, 
 	IN PSTRING arg);
 
-MINT Set_LongPulseRadarTh_Proc(
+int Set_LongPulseRadarTh_Proc(
 	IN PRTMP_ADAPTER pAd, 
 	IN PSTRING arg);
 

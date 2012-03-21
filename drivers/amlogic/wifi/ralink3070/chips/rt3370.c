@@ -45,10 +45,10 @@ UCHAR RT3370_NUM_BBP_REG_PARMS = (sizeof(RT3370_BBPRegTable) / sizeof(REG_PAIR))
 
 VOID NICInitRT3370RFRegisters(IN PRTMP_ADAPTER pAd)
 {
-	MINT i;
+	int i;
 	UINT8 RfReg = 0;
 	UINT32 data;
-//	CHAR bbpreg;
+	CHAR bbpreg;
 
 	/* Driver must read EEPROM to get RfIcType before initial RF registers*/
 	/* Initialize RF register to default value*/

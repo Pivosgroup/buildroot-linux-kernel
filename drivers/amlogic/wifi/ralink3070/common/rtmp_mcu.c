@@ -110,7 +110,7 @@ unsigned char BitReverse(unsigned char x)
 		
 	========================================================================
 */
-MINT RtmpAsicEraseFirmware(
+int RtmpAsicEraseFirmware(
 	IN PRTMP_ADAPTER pAd)
 {
 	ULONG i;
@@ -120,7 +120,59 @@ MINT RtmpAsicEraseFirmware(
 
 	return 0;
 }
+NDIS_STATUS isMCUNeedToLoadFIrmware(
+	IN PRTMP_ADAPTER pAd)
+{
+	NDIS_STATUS		Status = NDIS_STATUS_SUCCESS;
+	ULONG			Index;
+	UINT32			MacReg;
+	
+	Index = 0;
 
+	do {
+		if (RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_NIC_NOT_EXIST))			
+			return NDIS_STATUS_FAILURE;
+		
+		RTMP_IO_READ32(pAd, PBF_SYS_CTRL, &MacReg);
+
+		if (MacReg & 0x100) /* check bit 8*/
+			break;
+		
+		RTMPusecDelay(1000);
+	} while (Index++ < 100);
+
+	if (Index >= 100)
+		Status = NDIS_STATUS_FAILURE;
+
+	return Status;
+}
+
+NDIS_STATUS isMCUnotReady(
+	IN PRTMP_ADAPTER pAd)
+{
+	NDIS_STATUS		Status = NDIS_STATUS_SUCCESS;
+	ULONG			Index;
+	UINT32			MacReg;
+	
+	Index = 0;
+
+	do {
+		if (RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_NIC_NOT_EXIST))			
+			return NDIS_STATUS_FAILURE;
+		
+		RTMP_IO_READ32(pAd, PBF_SYS_CTRL, &MacReg);
+
+		if (MacReg & 0x80) /* check bit 7*/
+			break;
+		
+		RTMPusecDelay(1000);
+	} while (Index++ < 1000);
+
+	if (Index >= 1000)
+		Status = NDIS_STATUS_FAILURE;
+
+	return Status;
+}
 /*
 	========================================================================
 	
@@ -149,9 +201,9 @@ NDIS_STATUS RtmpAsicLoadFirmware(
 	NDIS_STATUS		Status = NDIS_STATUS_SUCCESS;
 	PUCHAR			src;
 	RTMP_OS_FD		srcf;
-	MINT 				retval, i;
+	int 				retval, i;
 	PUCHAR			pFirmwareImage;
-	MINT				FileLength = 0;
+	int				FileLength = 0;
 	UINT32			MacReg;
 	ULONG			Index;
 	ULONG			firm;
@@ -325,10 +377,10 @@ NDIS_STATUS RtmpAsicLoadFirmware(
 
 	NDIS_STATUS		Status = NDIS_STATUS_SUCCESS;
 	PUCHAR			pFirmwareImage;
-	ULONG			FileLength, Index;
+	ULONG			FileLength;
 	/*ULONG			firm;*/
-	UINT32			MacReg = 0;
 	UINT32			Version = (pAd->MACVersion >> 16);
+	UINT32			MacReg1 = 0;
 
 	pFirmwareImage = FirmwareImage;
 	FileLength = sizeof(FirmwareImage);
@@ -365,22 +417,7 @@ NDIS_STATUS RtmpAsicLoadFirmware(
 
 #endif
 
-	/* check if MCU is ready */
-	Index = 0;
-	do
-	{
-		if (RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_NIC_NOT_EXIST))			
-			return NDIS_STATUS_FAILURE;
-		
-		RTMP_IO_READ32(pAd, PBF_SYS_CTRL, &MacReg);
-
-		if (MacReg & 0x80)
-			break;
-		
-		RTMPusecDelay(1000);
-	} while (Index++ < 1000);
-
-    if (Index >= 1000)
+	if (isMCUnotReady(pAd))
 	{
 		DBGPRINT(RT_DEBUG_ERROR, ("NICLoadFirmware: MCU is not ready\n\n\n"));
 		Status = NDIS_STATUS_FAILURE;
@@ -392,6 +429,8 @@ NDIS_STATUS RtmpAsicLoadFirmware(
 		RTUSBWriteMACRegister(pAd,H2M_MAILBOX_CSR,0);
 		RTUSBWriteMACRegister(pAd, H2M_INT_SRC, 0);
 		AsicSendCommandToMcu(pAd, 0x72, 0x00, 0x00, 0x00); /* reset rf by MCU supported by new firmware */
+//		RTMPusecDelay(1000);
+//		AsicSendCommandToMcu(pAd, 0x31, 0x00, 0x00, 0x00);/* Wakeup MCU */
 	}
 #endif /* RTMP_USB_SUPPORT */
 
@@ -401,21 +440,23 @@ NDIS_STATUS RtmpAsicLoadFirmware(
 }
 
 
-MINT RtmpAsicSendCommandToMcu(
-	IN PRTMP_ADAPTER pAd,
-	IN UCHAR		 Command,
-	IN UCHAR		 Token,
-	IN UCHAR		 Arg0,
+int RtmpAsicSendCommandToMcu(
+	IN PRTMP_ADAPTER	pAd,
+	IN UCHAR			Command,
+	IN UCHAR			Token,
+	IN UCHAR			Arg0,
 	IN UCHAR			Arg1,
 	IN BOOLEAN			FlgIsNeedLocked)
 {
 	HOST_CMD_CSR_STRUC	H2MCmd;
 	H2M_MAILBOX_STRUC	H2MMailbox;
 	ULONG				i = 0;
-//	POS_COOKIE pObj;
-//	ULONG	IrqFlags = 0;
+#ifdef SPECIFIC_BCN_BUF_SUPPORT
+	ULONG	IrqFlags = 0;
+#endif /* SPECIFIC_BCN_BUF_SUPPORT */
 #ifdef CONFIG_STA_SUPPORT
 #ifdef PCIE_PS_SUPPORT
+	POS_COOKIE pObj;
 	ULONG	Configuration;
 	ULONG	offset;
 #endif /* PCIE_PS_SUPPORT */
@@ -425,13 +466,37 @@ MINT RtmpAsicSendCommandToMcu(
 #ifdef CONFIG_STA_SUPPORT
 #ifdef PCIE_PS_SUPPORT
 	pObj = (POS_COOKIE) pAd->OS_Cookie;
+#if defined(RT5390) || defined(RT5392)
+         /* 
+         	FW v.30; for 0x30 MCU CMD, Arg1 is not L1/L0 state anymore
+	 	Arg 1 set to 0x5A, then FW will not turn off PCIe CLK for PM4 (Associate-Idle)
+	 	default it will be turned off; and can be configured to not turn off at PM4
+	  */
+	if (Command == SLEEP_MCU_CMD)
+	{
+		Arg1 = 0x00;		/* set default to 0 */ 
+	
+		if ((INFRA_ON(pAd)) && (pAd->OpMode == OPMODE_STA))
+		{
+			if ((OPSTATUS_TEST_FLAG(pAd, fOP_STATUS_MEDIA_STATE_CONNECTED)) && (pAd->StaCfg.PSControl.field.PM4PCIeCLKOn))
+			{
+				Arg1 = (UCHAR)0x5A;		/* Arg1 set to 0x5A, FW will not turn off PCIe CLK */
+			}
+		}
+	}
+	/*
+		When calling from RTMP_BBP_IO_READ8_BY_REG_ID or RTMP_BBP_IO_WRITE8_BY_REG_ID,
+	 	MCUCommandLock already locked.  So don't lock here again.
+	*/
+#endif /* defined(RT5390) || defined(RT5392) */
 
 
 
 	/* 3090F power solution 3 has hw limitation that needs to ban all mcu command */
 	/* when firmware is in radio state.  For other chip doesn't have this limitation. */
-	if ((IS_RT3090(pAd) || IS_RT3572(pAd) ||
-		IS_RT3390(pAd) || IS_RT3593(pAd) || IS_RT5390(pAd)) && IS_VERSION_AFTER_F(pAd)
+	if ((IS_RT3090(pAd) || IS_RT3572(pAd) || IS_RT3390(pAd) 
+		|| IS_RT3593(pAd) || IS_RT5390(pAd) || IS_RT5392(pAd)) 
+		&& IS_VERSION_AFTER_F(pAd)
 		&& (pAd->StaCfg.PSControl.field.rt30xxPowerMode == 3) 
 		&& (pAd->StaCfg.PSControl.field.EnableNewPS == TRUE))
 	{
@@ -461,9 +526,51 @@ MINT RtmpAsicSendCommandToMcu(
 
 	}
 
+#if defined(RT5390) || defined(RT5392)
+	if (Command == SLEEP_MCU_CMD)
+        {
+                /* Write L1 latency */
+		if ((pAd->StaCfg.PSControl.field.AMDNewPSOn == TRUE) && ((IS_RT30xx(pAd) ||IS_RT5390(pAd) || IS_RT5392(pAd))
+			&& (pAd->HostVendor != PCIBUS_INTEL_VENDOR)))
+		{
+			offset = 0x70F;
+			pci_read_config_word(((POS_COOKIE)pAd->OS_Cookie)->pci_dev, offset, &Configuration); 
+			Configuration=le2cpu16(Configuration);
+			Configuration &= 0xffffff00;
+			Configuration |= (0x13);	/* set Latency to default */
+			Configuration=le2cpu16(Configuration);
+			pci_write_config_word(((POS_COOKIE)pAd->OS_Cookie)->pci_dev, offset, Configuration);
+			DBGPRINT(RT_DEBUG_TRACE, ("Write 70f; offset = %x, Configuration = %x. \n", offset, Configuration));
+		}
+		pAd->LastMCUCmd = Command;
+        }
+        else if (Command == WAKE_MCU_CMD)
+	{
+		/* Write L1 latency */
+		if ((pAd->StaCfg.PSControl.field.AMDNewPSOn == TRUE) && (IS_RT3090(pAd) || IS_RT3572(pAd) 
+			|| IS_RT3390(pAd) || IS_RT3593(pAd) || IS_RT5390(pAd) || IS_RT5392(pAd))
+			&& (pAd->HostVendor != PCIBUS_INTEL_VENDOR))
+		{
+			offset = 0x70F;
+			/* Configuration = RTMPReadCBConfigXP(pAd, offset); */
+			pci_read_config_word(((POS_COOKIE)pAd->OS_Cookie)->pci_dev, offset, &Configuration);
+			Configuration=le2cpu16(Configuration);
 
-	if ((IS_RT3090(pAd) || IS_RT3572(pAd) ||
-		IS_RT3390(pAd) || IS_RT3593(pAd) || IS_RT5390(pAd)) && IS_VERSION_AFTER_F(pAd)
+			Configuration &= 0xffffff00;
+			Configuration |= (0x7F);	// Set to long latency
+			Configuration=le2cpu16(Configuration);
+
+			pci_write_config_word(((POS_COOKIE)pAd->OS_Cookie)->pci_dev, offset, Configuration);
+
+			DBGPRINT(RT_DEBUG_TRACE, ("RadioOnExec restore 70f; offset = %x, Configuration = %x. \n", offset, Configuration));
+		}
+	}
+
+#endif /* defined(RT5390) || defined(RT5392) */
+
+	if ((IS_RT3090(pAd) || IS_RT3572(pAd) || IS_RT3390(pAd) 
+		|| IS_RT3593(pAd) || IS_RT5390(pAd) || IS_RT5392(pAd)) 
+		&& IS_VERSION_AFTER_F(pAd)
 		&& (pAd->StaCfg.PSControl.field.rt30xxPowerMode == 3) 
 		&& (pAd->StaCfg.PSControl.field.EnableNewPS == TRUE)
 		&& (Command == WAKE_MCU_CMD))
@@ -505,7 +612,7 @@ MINT RtmpAsicSendCommandToMcu(
 					RTMP_MAC_SHR_MSEL_PROTECT_UNLOCK(pAd, IrqFlags);
 #endif /* SPECIFIC_BCN_BUF_SUPPORT */
 
-				return FALSE;
+					return FALSE;
 			}
 		}
 
@@ -591,8 +698,9 @@ MINT RtmpAsicSendCommandToMcu(
 #ifdef PCIE_PS_SUPPORT
 	/* 3090 MCU Wakeup command needs more time to be stable. */
 	/* Before stable, don't issue other MCU command to prevent from firmware error.*/
-	if ((IS_RT3090(pAd) || IS_RT3572(pAd)
-		|| IS_RT3390(pAd) || IS_RT3593(pAd) || IS_RT5390(pAd)) && IS_VERSION_AFTER_F(pAd)
+	if ((IS_RT3090(pAd) || IS_RT3572(pAd) || IS_RT3390(pAd) 
+		|| IS_RT3593(pAd) || IS_RT5390(pAd) || IS_RT5392(pAd)) 
+		&& IS_VERSION_AFTER_F(pAd)
 		&& (pAd->StaCfg.PSControl.field.rt30xxPowerMode == 3) 
 		&& (pAd->StaCfg.PSControl.field.EnableNewPS == TRUE))
 	{
@@ -610,7 +718,7 @@ MINT RtmpAsicSendCommandToMcu(
 				{
 					/* Put this is after RF program. */ 
 					pAd->brt30xxBanMcuCmd = FALSE;
-	}
+				}
 				break;
 			case SLEEP_MCU_CMD :
 				RTMPusecDelay(2000);

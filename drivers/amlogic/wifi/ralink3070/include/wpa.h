@@ -66,7 +66,7 @@
 
 #define INC_TX_TSC(_tsc, _cnt)                          \
 {                                                       \
-    MINT i=0;                                            \
+    int i=0;                                            \
 	while (++_tsc[i] == 0x0)                            \
     {                                                   \
         i++;                                            \
@@ -210,17 +210,17 @@ void inc_iv_byte(
 
 BOOLEAN WpaMsgTypeSubst(
 	IN UCHAR EAPType,
-	OUT MINT *MsgType);
+	OUT int *MsgType);
 
 VOID PRF(
 	IN UCHAR *key,
-	IN MINT key_len,
+	IN int key_len,
 	IN UCHAR *prefix,
-	IN MINT prefix_len,
+	IN int prefix_len,
 	IN UCHAR *data,
-	IN MINT data_len,
+	IN int data_len,
 	OUT UCHAR *output,
-	IN MINT len);
+	IN int len);
 
 int RtmpPasswordHash(
 	char *password,
@@ -230,11 +230,11 @@ int RtmpPasswordHash(
 
 	VOID KDF(
 	IN PUINT8 key,
-	IN MINT key_len,
+	IN int key_len,
 	IN PUINT8 label,
-	IN MINT label_len,
+	IN int label_len,
 	IN PUINT8 data,
-	IN MINT data_len,
+	IN int data_len,
 	OUT PUINT8 output,
 	IN USHORT len);
 
@@ -405,7 +405,7 @@ PSTRING GetEapolMsgType(
 UINT RTMP_CALC_FCS32(
 	IN UINT Fcs,
 	IN PUCHAR Cp,
-	IN MINT Len);
+	IN int Len);
 
 VOID RTMPConstructWEPIVHdr(
 	IN UINT8 key_idx,
@@ -485,6 +485,6 @@ BOOLEAN RTMPSoftDecryptCCMP(
 
 VOID CCMP_test_vector(
 	IN PRTMP_ADAPTER pAd,
-	IN MINT input);
+	IN int input);
 
 #endif

@@ -287,21 +287,27 @@ config RALINK_3070_USB_WIFI
 	---help---
 	This module adds support for wireless USB dongle based on ralink 3070 chipset.
 	
-	This driver uses the kernel's wireless extensions subsystem.
-	You should add RALINK 3070 configuration file in directory firmware/ralink/3070/
+#	This driver uses the kernel's wireless extensions subsystem.
+#	You should add RALINK 3070 configuration file in directory firmware/ralink/3070/
+#	
+#	    & assure to set these config in 
+#	Device Drivers  ---> Generic Driver Options  ---> 
+#	
+#	[*]   Include in-kernel firmware blobs in kernel binary  
+#	    (ralink/3070/RT2870STA.dat) External firmware blobs to build into 	  
 	
-	    & assure to set these config in 
-	Device Drivers  ---> Generic Driver Options  ---> 
-	
-	[*]   Include in-kernel firmware blobs in kernel binary  
-	    (ralink/3070/RT2870STA.dat) External firmware blobs to build into 	  
-	  	  	  
-config RALINK_3070_PROFILE_FILE
-	depends on RALINK_3070_USB_WIFI
-	string "RALINK_3070 PROFILE_FILE path"
-	default "ralink/3070/RT2870STA.dat"
+#config RALINK_3070_PROFILE_FILE
+#	depends on RALINK_3070_USB_WIFI
+#	string "RALINK_3070 PROFILE_FILE path"
+#	default "ralink/3070/RT2870STA.dat"
+#	---help---
+#	  Path to the configuration file.
+
+config RALINK_3070_USB_WIFI_AP
+	tristate "Ralink RT3070 wireless USB Dongle Soft AP support"
+	depends on USB
 	---help---
-	  Path to the configuration file.
+	This module adds soft AP support for wireless USB dongle based on ralink 3070 chipset.
    
 config SDIO_DHD_CDC_WIFI_4319_MODULE
 	tristate "Broadcom 4319 wireless cards support"

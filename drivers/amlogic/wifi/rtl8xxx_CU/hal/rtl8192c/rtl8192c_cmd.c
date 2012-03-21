@@ -483,7 +483,7 @@ void rtl8192c_set_FwPwrMode_cmd(_adapter*padapter, u8 Mode)
 	
 _func_enter_;
 
-	DBG_871X("%s(): Mode = %d, SmartPS = %d\n", __FUNCTION__,Mode,pwrpriv->smart_ps);
+	//DBG_871X("%s(): Mode = %d, SmartPS = %d\n", __FUNCTION__,Mode,pwrpriv->smart_ps);
 
 	H2CSetPwrMode.Mode = Mode;
 

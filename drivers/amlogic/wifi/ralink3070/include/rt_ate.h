@@ -173,7 +173,7 @@ VOID ATE_RTUSBCancelPendingBulkInIRP(
 VOID ATEResetBulkIn(
 	IN PRTMP_ADAPTER	pAd);
 
-MINT ATEResetBulkOut(
+int ATEResetBulkOut(
 	IN PRTMP_ADAPTER	pAd);
 #endif /* RTMP_MAC_USB */
 
@@ -184,37 +184,37 @@ VOID ATE_QA_Statistics(
 	IN PRT28XX_RXD_STRUC    p28xxRxD,
 	IN PHEADER_802_11		pHeader);
 	
-MINT RtmpDoAte(
+int RtmpDoAte(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
 	IN	PSTRING	wrq_name);
 
-MINT Set_TxStop_Proc(
+int Set_TxStop_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-MINT Set_RxStop_Proc(
+int Set_RxStop_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
 #ifdef DBG
-MINT Set_EERead_Proc(
+int Set_EERead_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-MINT Set_EEWrite_Proc(
+int Set_EEWrite_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-MINT Set_BBPRead_Proc(
+int Set_BBPRead_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-MINT Set_BBPWrite_Proc(
+int Set_BBPWrite_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-MINT Set_RFWrite_Proc(
+int Set_RFWrite_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 #endif /* DBG */ 
@@ -226,159 +226,169 @@ MINT Set_RFWrite_Proc(
 #define ATE_RF_IO_WRITE8_BY_REG_ID(_A, _I, _V)     RT30xxWriteRFRegister(_A, _I, _V)
 #endif /* RTMP_RF_RW_SUPPORT */
 
-MINT Set_ATE_Proc(
+int Set_ATE_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-MINT	Set_ATE_DA_Proc(
+int	Set_ATE_DA_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-MINT	Set_ATE_SA_Proc(
+int	Set_ATE_SA_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-MINT	Set_ATE_BSSID_Proc(
+int	Set_ATE_BSSID_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-MINT	Set_ATE_CHANNEL_Proc(
+int	Set_ATE_CHANNEL_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
 #ifdef RTMP_INTERNAL_TX_ALC
-MINT Set_ATE_TSSI_CALIBRATION_Proc(
+int Set_ATE_TSSI_CALIBRATION_Proc(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	PSTRING			arg);
 
-MINT Set_ATE_TSSI_CALIBRATION_EX_Proc(
+int Set_ATE_TSSI_CALIBRATION_EX_Proc(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	PSTRING			arg);
 #endif /* RTMP_INTERNAL_TX_ALC */
 
 #ifdef RTMP_TEMPERATURE_COMPENSATION
-MINT Set_ATE_READ_EXTERNAL_TSSI_Proc(
-	IN	PRTMP_ADAPTER	pAd, 
+int Set_ATE_READ_EXTERNAL_TSSI_Proc(
+	IN	PRTMP_ADAPTER	pAd,
 	IN	PSTRING			arg);
 #endif /* RTMP_TEMPERATURE_COMPENSATION */
 
-MINT	Set_ATE_TX_POWER0_Proc(
+#ifdef HW_ANTENNA_DIVERSITY_SUPPORT
+int Set_ATE_DIV_ANTENNA_Proc(
+	IN	PRTMP_ADAPTER	pAd,
+	IN	PSTRING			arg);
+
+int Set_ATE_DIV_ANTENNA_CALIBRATION_Proc(
+	IN	PRTMP_ADAPTER	pAd,
+	IN	PSTRING			arg);
+#endif /* HW_ANTENNA_DIVERSITY_SUPPORT */
+
+int	Set_ATE_TX_POWER0_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-MINT	Set_ATE_TX_POWER1_Proc(
+int	Set_ATE_TX_POWER1_Proc(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	PSTRING			arg);
 
 #ifdef DOT11N_SS3_SUPPORT
-MINT	Set_ATE_TX_POWER2_Proc(
+int	Set_ATE_TX_POWER2_Proc(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	PSTRING			arg);
 #endif /* DOT11N_SS3_SUPPORT */
 
-MINT	Set_ATE_TX_Antenna_Proc(
+int	Set_ATE_TX_Antenna_Proc(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	PSTRING			arg);
 
-MINT	Set_ATE_RX_Antenna_Proc(
+int	Set_ATE_RX_Antenna_Proc(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	PSTRING			arg);
 
 #ifdef RT3350
-MINT	Set_ATE_PA_Bias_Proc(
+int	Set_ATE_PA_Bias_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 #endif /* RT3350 */
 
-MINT	Set_ATE_TX_FREQOFFSET_Proc(
+int	Set_ATE_TX_FREQOFFSET_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-MINT	Set_ATE_TX_BW_Proc(
+int	Set_ATE_TX_BW_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-MINT	Set_ATE_TX_LENGTH_Proc(
+int	Set_ATE_TX_LENGTH_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-MINT	Set_ATE_TX_COUNT_Proc(
+int	Set_ATE_TX_COUNT_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-MINT	Set_ATE_TX_MCS_Proc(
+int	Set_ATE_TX_MCS_Proc(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	PSTRING			arg);
 
-MINT	Set_ATE_TX_MODE_Proc(
+int	Set_ATE_TX_MODE_Proc(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	PSTRING			arg);
 
-MINT	Set_ATE_TX_GI_Proc(
+int	Set_ATE_TX_GI_Proc(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	PSTRING			arg);
 
 
-MINT	Set_ATE_RX_FER_Proc(
+int	Set_ATE_RX_FER_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-MINT Set_ATE_Read_RF_Proc(
+int Set_ATE_Read_RF_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
 #ifndef RTMP_RF_RW_SUPPORT
-MINT Set_ATE_Write_RF1_Proc(
+int Set_ATE_Write_RF1_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-MINT Set_ATE_Write_RF2_Proc(
+int Set_ATE_Write_RF2_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-MINT Set_ATE_Write_RF3_Proc(
+int Set_ATE_Write_RF3_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-MINT Set_ATE_Write_RF4_Proc(
+int Set_ATE_Write_RF4_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 #endif /* RTMP_RF_RW_SUPPORT */
 
-MINT Set_ATE_Load_E2P_Proc(
+int Set_ATE_Load_E2P_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-MINT Set_ATE_Read_E2P_Proc(
+int Set_ATE_Read_E2P_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
 #ifdef LED_CONTROL_SUPPORT
 #endif /* LED_CONTROL_SUPPORT */
 
-MINT	Set_ATE_AUTO_ALC_Proc(
+int	Set_ATE_AUTO_ALC_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-MINT	Set_ATE_IPG_Proc(
+int	Set_ATE_IPG_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-MINT Set_ATE_Payload_Proc(
+int Set_ATE_Payload_Proc(
     IN  PRTMP_ADAPTER   pAd, 
     IN  PSTRING         arg);
 
 #ifdef TXBF_SUPPORT
-MINT	Set_ATE_TX_BF_Proc(
+int	Set_ATE_TX_BF_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 #endif /* TXBF_SUPPORT */
 
-MINT	Set_ATE_Show_Proc(
+int	Set_ATE_Show_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-MINT	Set_ATE_Help_Proc(
+int	Set_ATE_Help_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
@@ -390,15 +400,15 @@ VOID ATESampleRssi(
 	IN PRXWI_STRUC		pRxWI);	
 
 #ifdef RT33xx
-MINT Set_ATE_TX_EVM_CALIBRATION_Show_Proc(
+int Set_ATE_TX_EVM_CALIBRATION_Show_Proc(
  IN PRTMP_ADAPTER pAd,
  IN PSTRING   arg);
  
-MINT Set_ATE_TX_EVM_CALIBRATION_Proc(
+int Set_ATE_TX_EVM_CALIBRATION_Proc(
  IN PRTMP_ADAPTER pAd,
  IN PSTRING   arg);
  
-MINT Set_ATE_TX_EVM_CALIBRATION_Fill_Proc(
+int Set_ATE_TX_EVM_CALIBRATION_Fill_Proc(
  IN PRTMP_ADAPTER pAd,
  IN PSTRING   arg);
 #endif /* RT33xx */

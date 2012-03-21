@@ -139,7 +139,7 @@ static void RtmpTimerQHandle(RTMP_ADAPTER *pAd)
 }
 
 
-MINT RtmpTimerQThread(
+int RtmpTimerQThread(
 	IN ULONG Context)
 {
 	RTMP_OS_TASK	*pTask;

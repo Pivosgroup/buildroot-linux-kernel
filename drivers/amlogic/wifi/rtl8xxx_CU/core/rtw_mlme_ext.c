@@ -1128,6 +1128,16 @@ unsigned int OnAuthClient(_adapter *padapter, union recv_frame *precv_frame)
 	if (status != 0)
 	{
 		DBG_871X("clnt auth fail, status: %d\n", status);
+		if(status == 13)//&& pmlmeinfo->auth_algo == dot11AuthAlgrthm_Auto)
+		{
+			if(pmlmeinfo->auth_algo == dot11AuthAlgrthm_Shared)
+				pmlmeinfo->auth_algo = dot11AuthAlgrthm_Open;
+			else
+				pmlmeinfo->auth_algo = dot11AuthAlgrthm_Shared;
+			//pmlmeinfo->reauth_count = 0;
+		}
+		
+		set_link_timer(pmlmeext, 1);
 		goto authclnt_fail;
 	}
 
@@ -5580,7 +5590,7 @@ void issue_probersp(_adapter *padapter, unsigned char *da, u8 is_valid_p2p_probe
 
 }
 
-void issue_probereq(_adapter *padapter, u8 blnbc)
+void issue_probereq(_adapter *padapter, NDIS_802_11_SSID *pssid,u8 blnbc)
 {
 	struct xmit_frame		*pmgntframe;
 	struct pkt_attrib		*pattrib;
@@ -5640,7 +5650,10 @@ void issue_probereq(_adapter *padapter, u8 blnbc)
 	pframe += sizeof (struct ieee80211_hdr_3addr);
 	pattrib->pktlen = sizeof (struct ieee80211_hdr_3addr);
 
-	pframe = rtw_set_ie(pframe, _SSID_IE_, pmlmeext->sitesurvey_res.ss_ssidlen, pmlmeext->sitesurvey_res.ss_ssid, &(pattrib->pktlen));
+	if(pssid)
+		pframe = rtw_set_ie(pframe, _SSID_IE_, pssid->SsidLength, pssid->Ssid, &(pattrib->pktlen));
+	else
+		pframe = rtw_set_ie(pframe, _SSID_IE_, 0, NULL, &(pattrib->pktlen));
 
 	get_rate_set(padapter, bssrate, &bssrate_len);
 
@@ -5689,10 +5702,13 @@ void issue_auth(_adapter *padapter, struct sta_info *psta, unsigned short status
 	struct mlme_ext_priv	*pmlmeext = &(padapter->mlmeextpriv);
 	struct mlme_ext_info	*pmlmeinfo = &(pmlmeext->mlmext_info);
 
-	// Because of AP's not receiving deauth before
-	// AP may: 1)not response auth or 2)deauth us after link is complete
-	// issue deauth before issuing auth to deal with the situation
-	issue_deauth(padapter, (&(pmlmeinfo->network))->MacAddress, WLAN_REASON_DEAUTH_LEAVING);
+
+	if(pmlmeinfo->auth_seq != 3) {		
+		// Because of AP's not receiving deauth before
+		// AP may: 1)not response auth or 2)deauth us after link is complete
+		// issue deauth before issuing auth to deal with the situation
+		issue_deauth(padapter, (&(pmlmeinfo->network))->MacAddress, WLAN_REASON_DEAUTH_LEAVING);
+	}
 
 
 	if ((pmgntframe = alloc_mgtxmitframe(pxmitpriv)) == NULL)
@@ -7119,10 +7135,19 @@ void site_survey(_adapter *padapter)
 			else
 #endif //CONFIG_P2P
 			{
+				int i;
+				for(i=0;i<RTW_SSID_SCAN_AMOUNT;i++){
+					if(pmlmeext->sitesurvey_res.ssid[i].SsidLength) {
+						//todo: to issue two probe req???
+						issue_probereq(padapter, &(pmlmeext->sitesurvey_res.ssid[i]),1);
+						//rtw_msleep_os(SURVEY_TO>>1);
+						issue_probereq(padapter, &(pmlmeext->sitesurvey_res.ssid[i]),1);
+					}
+				}
 				//todo: to issue two probe req???
-				issue_probereq(padapter, 1);
+				issue_probereq(padapter, NULL, 1);
 				//rtw_msleep_os(SURVEY_TO>>1);
-				issue_probereq(padapter, 1);
+				issue_probereq(padapter, NULL, 1);
 			}
 		}
 
@@ -8193,8 +8218,8 @@ void linked_status_chk(_adapter *padapter)
 				{
 					if(pmlmeext->retry==0)
 					{
-						_rtw_memcpy(pmlmeext->sitesurvey_res.ss_ssid, pmlmeinfo->network.Ssid.Ssid, pmlmeinfo->network.Ssid.SsidLength);
-						pmlmeext->sitesurvey_res.ss_ssidlen = pmlmeinfo->network.Ssid.SsidLength;
+						//_rtw_memcpy(pmlmeext->sitesurvey_res.ss_ssid, pmlmeinfo->network.Ssid.Ssid, pmlmeinfo->network.Ssid.SsidLength);
+						//pmlmeext->sitesurvey_res.ss_ssidlen = pmlmeinfo->network.Ssid.SsidLength;
 						pmlmeext->sitesurvey_res.scan_mode = SCAN_ACTIVE;
 						pmlmeext->sitesurvey_res.state = SCAN_DISABLE;
 						#ifdef DBG_CONFIG_ERROR_DETECT	
@@ -8206,9 +8231,9 @@ void linked_status_chk(_adapter *padapter)
 					
 						//	In order to know the AP's current state, try to send the probe request 
 						//	to trigger the AP to send the probe response.
-						issue_probereq(padapter, 0);
-						issue_probereq(padapter, 0);
-						issue_probereq(padapter, 0);
+						issue_probereq(padapter, &(pmlmeinfo->network.Ssid), 0);
+						issue_probereq(padapter, &(pmlmeinfo->network.Ssid), 0);
+						issue_probereq(padapter, &(pmlmeinfo->network.Ssid), 0);
 					}
 					
 					pmlmeext->retry++;
@@ -8351,17 +8376,17 @@ void link_timer_hdl(_adapter *padapter)
 		//re-auth timer
 		if (++pmlmeinfo->reauth_count > REAUTH_LIMIT)
 		{
-			if (pmlmeinfo->auth_algo != dot11AuthAlgrthm_Auto)
-			{
+			//if (pmlmeinfo->auth_algo != dot11AuthAlgrthm_Auto)
+			//{
 				pmlmeinfo->state = 0;
 				report_join_res(padapter, -1);
 				return;
-			}
-			else
-			{
-				pmlmeinfo->auth_algo = dot11AuthAlgrthm_Shared;
-				pmlmeinfo->reauth_count = 0;
-			}
+			//}
+			//else
+			//{
+			//	pmlmeinfo->auth_algo = dot11AuthAlgrthm_Shared;
+			//	pmlmeinfo->reauth_count = 0;
+			//}
 		}
 		
 		DBG_871X("link_timer_hdl: auth timeout and try again\n");
@@ -8811,7 +8836,17 @@ u8 sitesurvey_cmd_hdl(_adapter *padapter, u8 *pbuf)
 		pmlmeext->sitesurvey_res.state = SCAN_START;
 		pmlmeext->sitesurvey_res.bss_cnt = 0;
 		pmlmeext->sitesurvey_res.channel_idx = 0;
-		
+
+		#if 1
+		for(i=0;i<RTW_SSID_SCAN_AMOUNT;i++){
+			if(le32_to_cpu(pparm->ssid[i].SsidLength)) {
+				_rtw_memcpy(pmlmeext->sitesurvey_res.ssid[i].Ssid, pparm->ssid[i].Ssid, IW_ESSID_MAX_SIZE);
+				pmlmeext->sitesurvey_res.ssid[i].SsidLength= le32_to_cpu(pparm->ssid[i].SsidLength);
+			} else {
+				pmlmeext->sitesurvey_res.ssid[i].SsidLength= 0;
+			}	
+		}
+		#else
 		if (le32_to_cpu(pparm->ss_ssidlen))
 		{
 			_rtw_memcpy(pmlmeext->sitesurvey_res.ss_ssid, pparm->ss_ssid, le32_to_cpu(pparm->ss_ssidlen));
@@ -8822,6 +8857,7 @@ u8 sitesurvey_cmd_hdl(_adapter *padapter, u8 *pbuf)
 		}	
 		
 		pmlmeext->sitesurvey_res.ss_ssidlen = le32_to_cpu(pparm->ss_ssidlen);
+		#endif
 
 #ifdef CONFIG_TDLS
 		if(pmlmeinfo->tdls_ch_sensing==1)

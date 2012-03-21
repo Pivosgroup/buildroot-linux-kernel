@@ -1800,8 +1800,8 @@ VOID RTUSBWatchDog(IN RTMP_ADAPTER *pAd)
 		RTMP_IO_WRITE32(pAd, PBF_CFG, 0xf40012);
 		while((MACValue &0xff) != 0 && (idx++ < 10))
 		{
-			RTMP_IO_READ32(pAd, TXRXQ_PCNT, &MACValue);
-			RTMPusecDelay(1);
+		        RTMP_IO_READ32(pAd, TXRXQ_PCNT, &MACValue);
+		        RTMPusecDelay(1);
 		}
 		RTMP_IO_WRITE32(pAd, PBF_CFG, 0xf40006);
 	}

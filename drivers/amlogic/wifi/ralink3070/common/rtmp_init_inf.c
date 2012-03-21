@@ -431,7 +431,6 @@ int rt28xx_init(
 #endif /* RTMP_MAC_USB */
 	}/* end of else*/
 
-
 	/* Set up the Mac address*/
 #ifdef CONFIG_STA_SUPPORT
 	RtmpOSNetDevAddrSet(pAd->OpMode, pAd->net_dev, &pAd->CurrentAddress[0], (PUCHAR)(pAd->StaCfg.dev_name));
@@ -462,10 +461,6 @@ int rt28xx_init(
 
 
 
-#ifdef HW_ANTENNA_DIVERSITY_SUPPORT
-	if (pAd->chipCap.FlgIsHwAntennaDiversitySup == TRUE)
-		SetHWAntennaDivsersity(pAd, pAd->bHardwareAntennaDivesity);
-#endif // HW_ANTENNA_DIVERSITY_SUPPORT //
 
 	RTMP_CHIP_SPECIFIC(pAd, RTMP_CHIP_SPEC_STATE_INIT,
 						RTMP_CHIP_SPEC_INITIALIZATION, NULL, 0);
@@ -569,6 +564,9 @@ VOID RTMPDrvOpen(
 		MlmeAutoReconnectLastSSID(pAd);
 #endif /* CONFIG_STA_SUPPORT */
 
+
+
+
 }
 
 
@@ -602,7 +600,7 @@ VOID RTMPDrvClose(
 #ifdef RTMP_MAC_USB
 		RTMP_SET_FLAG(pAd, fRTMP_ADAPTER_REMOVE_IN_PROGRESS);
 #endif /* RTMP_MAC_USB */
-		
+
 	}
 #endif /* CONFIG_STA_SUPPORT */
 
@@ -657,20 +655,7 @@ VOID RTMPDrvClose(
 	/* Close kernel threads*/
 	RtmpMgmtTaskExit(pAd);
 
-#if 0
-	{
-		PBF_SYS_CTRL_STRUC PbfSysCtrl = {{0}};
-		DBGPRINT(RT_DEBUG_TRACE, ("%s::  Reset MCU !!!\n", __FUNCTION__));
-		/* Reset MCU */
-		RTMP_IO_READ32(pAd, PBF_SYS_CTRL, &PbfSysCtrl.word);
-		PbfSysCtrl.field.MCU_RESET = 1;
-		RTMP_IO_WRITE32(pAd, PBF_SYS_CTRL, PbfSysCtrl.word);
 
-		/* Clear MCU mapping memory */
-		for (i=0; i<8192; i=i+4)
-			RTMP_IO_WRITE32(pAd, FIRMWARE_IMAGE_BASE + i, 0x0);
-	}
-#endif
 	/* Free IRQ*/
 	if (RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_INTERRUPT_IN_USE))
 	{
@@ -863,7 +848,7 @@ static void	WriteConfToDatFile(
 	LONG			rv, fileLen = 0;
 	char			*offset = 0;
 	PSTRING			pTempStr = 0;
-//	MINT				tempStrLen = 0;
+//	int				tempStrLen = 0;
 
 	DBGPRINT(RT_DEBUG_TRACE, ("-----> WriteConfToDatFile\n"));
 
@@ -1002,7 +987,7 @@ out:
 }
 
 
-MINT write_dat_file_thread (
+int write_dat_file_thread (
     IN ULONG Context)
 {
 	RTMP_OS_TASK *pTask;
@@ -1029,8 +1014,8 @@ MINT write_dat_file_thread (
 
 	/* Update ssid, auth mode and encr type to DAT file */
 	WriteConfToDatFile(pAd);
-		
-	RtmpOSTaskNotifyToExit(pTask);
+	
+		RtmpOSTaskNotifyToExit(pTask);
 	
 	return 0;
 }

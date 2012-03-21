@@ -28,219 +28,220 @@
 #include	"rt_config.h"
 
 
-MINT	Show_SSID_Proc(
+int	Show_SSID_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-MINT	Show_WirelessMode_Proc(
+int	Show_WirelessMode_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-MINT	Show_TxBurst_Proc(
+int	Show_TxBurst_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-MINT	Show_TxPreamble_Proc(
+int	Show_TxPreamble_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-MINT	Show_TxPower_Proc(
+int	Show_TxPower_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-MINT	Show_Channel_Proc(
+int	Show_Channel_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-MINT	Show_BGProtection_Proc(
+int	Show_BGProtection_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-MINT	Show_RTSThreshold_Proc(
+int	Show_RTSThreshold_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-MINT	Show_FragThreshold_Proc(
+int	Show_FragThreshold_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
 #ifdef DOT11_N_SUPPORT
-MINT	Show_HtBw_Proc(
+int	Show_HtBw_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-MINT	Show_HtMcs_Proc(
+int	Show_HtMcs_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-MINT	Show_HtGi_Proc(
+int	Show_HtGi_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-MINT	Show_HtOpMode_Proc(
+int	Show_HtOpMode_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-MINT	Show_HtExtcha_Proc(
+int	Show_HtExtcha_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-MINT	Show_HtMpduDensity_Proc(
+int	Show_HtMpduDensity_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-MINT	Show_HtBaWinSize_Proc(
+int	Show_HtBaWinSize_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-MINT	Show_HtRdg_Proc(
+int	Show_HtRdg_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-MINT	Show_HtAmsdu_Proc(
+int	Show_HtAmsdu_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-MINT	Show_HtAutoBa_Proc(
+int	Show_HtAutoBa_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 #endif /* DOT11_N_SUPPORT */
 
-MINT	Show_CountryRegion_Proc(
+int	Show_CountryRegion_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-MINT	Show_CountryRegionABand_Proc(
+int	Show_CountryRegionABand_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-MINT	Show_CountryCode_Proc(
+int	Show_CountryCode_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
 #ifdef AGGREGATION_SUPPORT
-MINT	Show_PktAggregate_Proc(
+int	Show_PktAggregate_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 #endif /* AGGREGATION_SUPPORT */
 
 #ifdef WMM_SUPPORT
-MINT	Show_WmmCapable_Proc(
+int	Show_WmmCapable_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 #endif /* WMM_SUPPORT */
 
-MINT	Show_IEEE80211H_Proc(
+int	Show_IEEE80211H_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
 #ifdef CONFIG_STA_SUPPORT
-MINT	Show_NetworkType_Proc(
+int	Show_NetworkType_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
 
-MINT	Show_WPAPSK_Proc(
+int	Show_WPAPSK_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-MINT	Show_AutoReconnect_Proc(
+int	Show_AutoReconnect_Proc(
 	IN	PRTMP_ADAPTER	pAd,
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
 #endif /* CONFIG_STA_SUPPORT */
 
-MINT	Show_AuthMode_Proc(
+int	Show_AuthMode_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-MINT	Show_EncrypType_Proc(
+int	Show_EncrypType_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-MINT	Show_DefaultKeyID_Proc(
+int	Show_DefaultKeyID_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-MINT	Show_Key1_Proc(
+int	Show_Key1_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-MINT	Show_Key2_Proc(
+int	Show_Key2_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-MINT	Show_Key3_Proc(
+int	Show_Key3_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-MINT	Show_Key4_Proc(
+int	Show_Key4_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-MINT	Show_PMK_Proc(
+int	Show_PMK_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen);
 
-extern MINT	Set_AP_WscConfStatus_Proc(
+
+extern int	Set_AP_WscConfStatus_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-extern MINT	Set_AP_AuthMode_Proc(
+extern int	Set_AP_AuthMode_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-extern MINT	Set_AP_EncrypType_Proc(
+extern int	Set_AP_EncrypType_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-extern MINT	Set_AP_SSID_Proc(
+extern int	Set_AP_SSID_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-extern MINT	Set_AP_WPAPSK_Proc(
+extern int	Set_AP_WPAPSK_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
 static struct {
 	PSTRING name;
-	MINT (*show_proc)(PRTMP_ADAPTER pAdapter, PSTRING arg, ULONG BufLen);
+	int (*show_proc)(PRTMP_ADAPTER pAdapter, PSTRING arg, ULONG BufLen);
 } *PRTMP_PRIVATE_STA_SHOW_CFG_VALUE_PROC, RTMP_PRIVATE_STA_SHOW_CFG_VALUE_PROC[] = {
 #ifdef DBG
 	{"SSID",					Show_SSID_Proc}, 
@@ -300,7 +301,7 @@ static struct {
     Return:
     ==========================================================================
 */
-MINT Set_DriverVersion_Proc(
+int Set_DriverVersion_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -322,7 +323,7 @@ MINT Set_DriverVersion_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT Set_CountryRegion_Proc(
+int Set_CountryRegion_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -354,7 +355,7 @@ MINT Set_CountryRegion_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT Set_CountryRegionABand_Proc(
+int Set_CountryRegionABand_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -377,12 +378,12 @@ MINT Set_CountryRegionABand_Proc(
 }
 
 
-MINT	Set_Cmm_WirelessMode_Proc(
+int	Set_Cmm_WirelessMode_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg,
 	IN	BOOLEAN			FlgIsDiffMbssModeUsed)
 {
-	MINT	success = TRUE;
+	int	success = TRUE;
 	UINT32 i = 0;
 
 
@@ -455,7 +456,7 @@ MINT	Set_Cmm_WirelessMode_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT	Set_WirelessMode_Proc(
+int	Set_WirelessMode_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -470,11 +471,11 @@ MINT	Set_WirelessMode_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT	Set_Channel_Proc(
+int	Set_Channel_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
- 	MINT		success = TRUE;
+ 	int		success = TRUE;
 	UCHAR	Channel;	
 
 	Channel = (UCHAR) simple_strtol(arg, 0, 10);
@@ -544,7 +545,7 @@ MINT	Set_Channel_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT	Set_ShortSlot_Proc(
+int	Set_ShortSlot_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -566,12 +567,12 @@ MINT	Set_ShortSlot_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT	Set_TxPower_Proc(
+int	Set_TxPower_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
 	LONG TxPower;
-	MINT   success = FALSE;
+	int   success = FALSE;
 
 	TxPower = simple_strtol(arg, 0, 10);
 	if (TxPower <= 100)
@@ -602,7 +603,7 @@ MINT	Set_TxPower_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT	Set_BGProtection_Proc(
+int	Set_BGProtection_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -635,7 +636,7 @@ MINT	Set_BGProtection_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT	Set_TxPreamble_Proc(
+int	Set_TxPreamble_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -682,7 +683,7 @@ MINT	Set_TxPreamble_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT	Set_RTSThreshold_Proc(
+int	Set_RTSThreshold_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -712,7 +713,7 @@ MINT	Set_RTSThreshold_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT	Set_FragThreshold_Proc(
+int	Set_FragThreshold_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -759,7 +760,7 @@ MINT	Set_FragThreshold_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT	Set_TxBurst_Proc(
+int	Set_TxBurst_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -790,7 +791,7 @@ MINT	Set_TxBurst_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT	Set_PktAggregate_Proc(
+int	Set_PktAggregate_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -814,7 +815,7 @@ MINT	Set_PktAggregate_Proc(
 
 
 #ifdef INF_PPA_SUPPORT
-MINT	Set_INF_AMAZON_SE_PPA_Proc(
+int	Set_INF_AMAZON_SE_PPA_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PUCHAR			arg)
 {
@@ -925,7 +926,7 @@ MINT	Set_INF_AMAZON_SE_PPA_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT	Set_IEEE80211H_Proc(
+int	Set_IEEE80211H_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -955,7 +956,7 @@ MINT	Set_IEEE80211H_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT	Set_Debug_Proc(
+int	Set_Debug_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -970,7 +971,7 @@ MINT	Set_Debug_Proc(
 }
 #endif
 
-MINT	Show_DescInfo_Proc(
+int	Show_DescInfo_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -991,7 +992,7 @@ MINT	Show_DescInfo_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT	Set_ResetStatCounter_Proc(
+int	Set_ResetStatCounter_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -1232,7 +1233,7 @@ NDIS_STATUS RTMPWPARemoveKeyProc(
 	BOOLEAN 	bKeyRSC;		/* indicate the receive  SC set by KeyRSC value.*/
 								/* Otherwise, it will set by the NIC.*/
 	BOOLEAN 	bAuthenticator; /* indicate key is set by authenticator.*/
-	MINT 		i;
+	int 		i;
 	DBGPRINT(RT_DEBUG_TRACE,("---> RTMPWPARemoveKeyProc\n"));
 	
 	pKey = (PNDIS_802_11_REMOVE_KEY) pBuf;
@@ -1385,7 +1386,7 @@ VOID	RTMPSetPhyMode(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	ULONG phymode)
 {
-	MINT i;
+	int i;
 	/* the selected phymode must be supported by the RF IC encoded in E2PROM*/
 
 	pAd->CommonCfg.PhyMode = (UCHAR)phymode;
@@ -1565,8 +1566,8 @@ VOID	RTMPSetHT(
 	}
 	else
 	{
-	pAd->CommonCfg.HtCapability.HtCapParm.MaxRAmpduFactor = 3;
-	pAd->CommonCfg.DesiredHtPhy.MaxRAmpduFactor = 3;
+		pAd->CommonCfg.HtCapability.HtCapParm.MaxRAmpduFactor = 3;
+		pAd->CommonCfg.DesiredHtPhy.MaxRAmpduFactor = 3;
 	}
 
 	DBGPRINT(RT_DEBUG_TRACE, ("RTMPSetHT : RxBAWinLimit = %d\n", pAd->CommonCfg.BACapability.field.RxBAWinLimit));
@@ -1951,7 +1952,7 @@ VOID RTMPDisableDesiredHtInfo(
 }
 
 
-MINT	SetCommonHT(
+int	SetCommonHT(
 	IN	PRTMP_ADAPTER	pAd)
 {
 	OID_SET_HT_PHYMODE		SetHT;
@@ -2189,7 +2190,7 @@ VOID	RTMPCommSiteSurveyData(
 	IN  PBSS_ENTRY	pBss,
 	IN  UINT32		MsgLen)
 {
-	MINT         Rssi = 0;
+	int         Rssi = 0;
 	UINT        Rssi_Quality = 0;
 	NDIS_802_11_NETWORK_TYPE    wireless_mode;
 	CHAR		Ssid[MAX_LEN_OF_SSID +1];
@@ -2206,7 +2207,7 @@ VOID	RTMPCommSiteSurveyData(
 		NdisMoveMemory(Ssid, pBss->Ssid, pBss->SsidLen);
 	else
 	{
-		MINT idx = 0;
+		int idx = 0;
 		sprintf(Ssid, "0x");
 		for (idx = 0; (idx < 14) && (idx < pBss->SsidLen); idx++)
 			sprintf(Ssid + 2 + (idx*2), "%02X", (UCHAR)pBss->Ssid[idx]);
@@ -2315,7 +2316,7 @@ VOID	RTMPCommSiteSurveyData(
 	sprintf(msg+strlen(msg), "%-23s", SecurityStr);
 
 		/* Rssi*/
-		Rssi = (MINT)pBss->Rssi;
+		Rssi = (int)pBss->Rssi;
 		if (Rssi >= -50)
 			Rssi_Quality = 100;
 		else if (Rssi >= -80)    /* between -50 ~ -80dbm*/
@@ -2374,10 +2375,10 @@ VOID RTMPIoctlGetSiteSurvey(
 	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq)
 {
 	PSTRING		msg;
-	MINT 		i=0;	 
-	MINT			WaitCnt;
-	MINT 		Status=0;	
-    MINT         max_len = LINE_LEN;		
+	int 		i=0;	 
+	int			WaitCnt;
+	int 		Status=0;	
+    int         max_len = LINE_LEN;		
 	PBSS_ENTRY	pBss;
 	UINT32 TotalLen, BufLen = IW_SCAN_MAX_DATA;
 
@@ -2443,12 +2444,12 @@ VOID RTMPIoctlGetSiteSurvey(
 
 
 
-#define	MAC_LINE_LEN	(14+4+4+10+10+10+6+6)	/* Addr+aid+psm+datatime+rxbyte+txbyte+current tx rate+last tx rate*/
+#define	MAC_LINE_LEN	(1+14+4+4+4+4+10+10+10+6+6+1)	/* "\n"+Addr+AP+aid+psm+AUTH+datatime+rxbyte+txbyte+current tx rate+last tx rate+"\n" */
 VOID RTMPIoctlGetMacTable(
 	IN PRTMP_ADAPTER pAd, 
 	IN RTMP_IOCTL_INPUT_STRUCT *wrq)
 {
-	MINT i;
+	int i;
 /*	RT_802_11_MAC_TABLE MacTab;*/
 	RT_802_11_MAC_TABLE *pMacTab = NULL;
 	char *msg;
@@ -2502,7 +2503,7 @@ VOID RTMPIoctlGetMacTable(
 
 
 /*	msg = kmalloc(sizeof(CHAR)*(MAX_LEN_OF_MAC_TABLE*MAC_LINE_LEN), MEM_ALLOC_FLAG);*/
-	os_alloc_mem(NULL, (UCHAR **)&msg, sizeof(CHAR)*(MAX_LEN_OF_MAC_TABLE*MAC_LINE_LEN)+100);
+	os_alloc_mem(NULL, (UCHAR **)&msg, sizeof(CHAR)*(MAX_LEN_OF_MAC_TABLE*MAC_LINE_LEN));
 	if (msg == NULL)
 	{
 		DBGPRINT(RT_DEBUG_ERROR, ("%s():Alloc memory failed\n", __FUNCTION__));
@@ -2552,14 +2553,14 @@ LabelOK:
 #endif/* INF_AR9 */
 
 #ifdef DOT11_N_SUPPORT
-MINT	Set_BASetup_Proc(
+int	Set_BASetup_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
     UCHAR mac[6], tid;
 	PSTRING token;
 	STRING sepValue[] = ":", DASH = '-';
-	MINT i;
+	int i;
     MAC_TABLE_ENTRY *pEntry;
 
 /*
@@ -2607,7 +2608,7 @@ MINT	Set_BASetup_Proc(
 
 }
 
-MINT	Set_BADecline_Proc(
+int	Set_BADecline_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -2633,14 +2634,14 @@ MINT	Set_BADecline_Proc(
 	return TRUE;
 }
 
-MINT	Set_BAOriTearDown_Proc(
+int	Set_BAOriTearDown_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
     UCHAR mac[6], tid;
 	PSTRING token;
 	STRING sepValue[] = ":", DASH = '-';
-	MINT i;
+	int i;
     MAC_TABLE_ENTRY *pEntry;
 
     /*DBGPRINT(RT_DEBUG_TRACE,("\n%s\n", arg));*/
@@ -2687,14 +2688,14 @@ MINT	Set_BAOriTearDown_Proc(
 
 }
 
-MINT	Set_BARecTearDown_Proc(
+int	Set_BARecTearDown_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
     UCHAR mac[6], tid;
 	PSTRING token;
 	STRING sepValue[] = ":", DASH = '-';
-	MINT i;
+	int i;
     MAC_TABLE_ENTRY *pEntry;
 
     /*DBGPRINT(RT_DEBUG_TRACE,("\n%s\n", arg));*/
@@ -2741,7 +2742,7 @@ MINT	Set_BARecTearDown_Proc(
 
 }
 
-MINT	Set_HtBw_Proc(
+int	Set_HtBw_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -2762,7 +2763,7 @@ MINT	Set_HtBw_Proc(
 	return TRUE;
 }
 
-MINT	Set_HtMcs_Proc(
+int	Set_HtMcs_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -2822,7 +2823,7 @@ MINT	Set_HtMcs_Proc(
 	return TRUE;
 }
 
-MINT	Set_HtGi_Proc(
+int	Set_HtGi_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -2845,7 +2846,7 @@ MINT	Set_HtGi_Proc(
 }
 
 
-MINT	Set_HtTxBASize_Proc(
+int	Set_HtTxBASize_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -2863,7 +2864,7 @@ MINT	Set_HtTxBASize_Proc(
 	return TRUE;
 }
 
-MINT	Set_HtDisallowTKIP_Proc(
+int	Set_HtDisallowTKIP_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -2886,7 +2887,7 @@ MINT	Set_HtDisallowTKIP_Proc(
 	return TRUE;
 }
 
-MINT	Set_HtOpMode_Proc(
+int	Set_HtOpMode_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -2910,7 +2911,7 @@ MINT	Set_HtOpMode_Proc(
 
 }	
 
-MINT	Set_HtStbc_Proc(
+int	Set_HtStbc_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -2933,7 +2934,7 @@ MINT	Set_HtStbc_Proc(
 	return TRUE;											
 }
 
-MINT	Set_HtHtc_Proc(
+int	Set_HtHtc_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -2953,7 +2954,7 @@ MINT	Set_HtHtc_Proc(
 	return TRUE;		
 }
 			
-MINT	Set_HtExtcha_Proc(
+int	Set_HtExtcha_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -2976,7 +2977,7 @@ MINT	Set_HtExtcha_Proc(
 	return TRUE;			
 }
 
-MINT	Set_HtMpduDensity_Proc(
+int	Set_HtMpduDensity_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -2996,7 +2997,7 @@ MINT	Set_HtMpduDensity_Proc(
 	return TRUE;																																	
 }
 
-MINT	Set_HtBaWinSize_Proc(
+int	Set_HtBaWinSize_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -3023,7 +3024,7 @@ MINT	Set_HtBaWinSize_Proc(
 	return TRUE;																																	
 }		
 
-MINT	Set_HtRdg_Proc(
+int	Set_HtRdg_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -3048,7 +3049,7 @@ MINT	Set_HtRdg_Proc(
 	return TRUE;																																	
 }		
 
-MINT	Set_HtLinkAdapt_Proc(																																																																																																																																																																																																																																																																																																																			
+int	Set_HtLinkAdapt_Proc(																																																																																																																																																																																																																																																																																																																			
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -3070,7 +3071,7 @@ MINT	Set_HtLinkAdapt_Proc(
 	return TRUE;																																	
 }		
 
-MINT	Set_HtAmsdu_Proc(
+int	Set_HtAmsdu_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -3091,7 +3092,7 @@ MINT	Set_HtAmsdu_Proc(
 	return TRUE;																																	
 }			
 
-MINT	Set_HtAutoBa_Proc(
+int	Set_HtAutoBa_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -3121,7 +3122,7 @@ MINT	Set_HtAutoBa_Proc(
 		
 }		
 																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																						
-MINT	Set_HtProtect_Proc(
+int	Set_HtProtect_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -3140,14 +3141,14 @@ MINT	Set_HtProtect_Proc(
 	return TRUE;
 }
 
-MINT	Set_SendPSMPAction_Proc(
+int	Set_SendPSMPAction_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
     UCHAR mac[6], mode;
 	PSTRING token;
 	STRING sepValue[] = ":", DASH = '-';
-	MINT i;
+	int i;
     MAC_TABLE_ENTRY *pEntry;
 
     /*DBGPRINT(RT_DEBUG_TRACE,("\n%s\n", arg));*/
@@ -3194,7 +3195,7 @@ MINT	Set_SendPSMPAction_Proc(
 
 }
 
-MINT	Set_HtMIMOPSmode_Proc(
+int	Set_HtMIMOPSmode_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -3215,7 +3216,7 @@ MINT	Set_HtMIMOPSmode_Proc(
 }
 
 
-MINT	Set_ForceShortGI_Proc(
+int	Set_ForceShortGI_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -3238,7 +3239,7 @@ MINT	Set_ForceShortGI_Proc(
 
 
 
-MINT	Set_ForceGF_Proc(
+int	Set_ForceGF_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -3259,7 +3260,7 @@ MINT	Set_ForceGF_Proc(
 	return TRUE;
 }
 
-MINT	Set_HtMimoPs_Proc(
+int	Set_HtMimoPs_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -3280,7 +3281,7 @@ MINT	Set_HtMimoPs_Proc(
 
 
 #ifdef DOT11N_DRAFT3
-MINT Set_HT_BssCoex_Proc(
+int Set_HT_BssCoex_Proc(
 	IN	PRTMP_ADAPTER		pAd,
 	IN	PSTRING				pParam)
 {
@@ -3294,7 +3295,7 @@ MINT Set_HT_BssCoex_Proc(
 }
 
 
-MINT Set_HT_BssCoexApCntThr_Proc(
+int Set_HT_BssCoexApCntThr_Proc(
 	IN	PRTMP_ADAPTER		pAd,
 	IN	PSTRING				pParam)
 {
@@ -3309,11 +3310,11 @@ MINT Set_HT_BssCoexApCntThr_Proc(
 #endif /* DOT11_N_SUPPORT */
 
 
-MINT	Set_FixedTxMode_Proc(
+int	Set_FixedTxMode_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
-	MINT	fix_tx_mode = FIXED_TXMODE_HT;
+	int	fix_tx_mode = FIXED_TXMODE_HT;
 
 	fix_tx_mode = RT_CfgSetFixedTxPhyMode(arg);
 	
@@ -3328,7 +3329,7 @@ MINT	Set_FixedTxMode_Proc(
 }
 
 #ifdef CONFIG_APSTA_MIXED_SUPPORT
-MINT	Set_OpMode_Proc(
+int	Set_OpMode_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -3360,7 +3361,7 @@ MINT	Set_OpMode_Proc(
 
 
 #if defined(RT305x)||defined(RT3070)
-MINT Set_HiPower_Proc(
+int Set_HiPower_Proc(
     IN  PRTMP_ADAPTER   pAdapter, 
     IN  PSTRING          arg)
 {
@@ -3379,7 +3380,7 @@ MINT Set_HiPower_Proc(
 }
 #endif
 
-MINT Set_LongRetryLimit_Proc(
+int Set_LongRetryLimit_Proc(
 	IN	PRTMP_ADAPTER	pAdapter, 
 	IN	PSTRING			arg)
 {
@@ -3393,7 +3394,7 @@ MINT Set_LongRetryLimit_Proc(
 	return TRUE;
 }
 
-MINT Set_ShortRetryLimit_Proc(
+int Set_ShortRetryLimit_Proc(
 	IN	PRTMP_ADAPTER	pAdapter, 
 	IN	PSTRING			arg)
 {
@@ -3407,7 +3408,7 @@ MINT Set_ShortRetryLimit_Proc(
 	return TRUE;
 }
 
-MINT Set_AutoFallBack_Proc(
+int Set_AutoFallBack_Proc(
 	IN	PRTMP_ADAPTER	pAdapter, 
 	IN	PSTRING			arg)
 {
@@ -3466,13 +3467,13 @@ PSTRING RTMPGetRalinkEncryModeStr(
 	}
 }
 
-MINT RTMPShowCfgValue(
+int RTMPShowCfgValue(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			pName,
 	IN	PSTRING			pBuf,
 	IN	UINT32			MaxLen)
 {
-	MINT	Status = 0;	
+	int	Status = 0;	
 	
 	for (PRTMP_PRIVATE_STA_SHOW_CFG_VALUE_PROC = RTMP_PRIVATE_STA_SHOW_CFG_VALUE_PROC; PRTMP_PRIVATE_STA_SHOW_CFG_VALUE_PROC->name; PRTMP_PRIVATE_STA_SHOW_CFG_VALUE_PROC++)
 	{
@@ -3498,7 +3499,7 @@ MINT RTMPShowCfgValue(
 	return Status;
 }
 
-MINT	Show_SSID_Proc(
+int	Show_SSID_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3519,7 +3520,7 @@ MINT	Show_SSID_Proc(
 	return 0;
 }
 
-MINT	Show_WirelessMode_Proc(
+int	Show_WirelessMode_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3572,7 +3573,7 @@ MINT	Show_WirelessMode_Proc(
 }
 
 
-MINT	Show_TxBurst_Proc(
+int	Show_TxBurst_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3581,7 +3582,7 @@ MINT	Show_TxBurst_Proc(
 	return 0;
 }
 
-MINT	Show_TxPreamble_Proc(
+int	Show_TxPreamble_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3605,7 +3606,7 @@ MINT	Show_TxPreamble_Proc(
 	return 0;
 }
 
-MINT	Show_TxPower_Proc(
+int	Show_TxPower_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3614,7 +3615,7 @@ MINT	Show_TxPower_Proc(
 	return 0;
 }
 
-MINT	Show_Channel_Proc(
+int	Show_Channel_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3623,7 +3624,7 @@ MINT	Show_Channel_Proc(
 	return 0;
 }
 
-MINT	Show_BGProtection_Proc(
+int	Show_BGProtection_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3646,7 +3647,7 @@ MINT	Show_BGProtection_Proc(
 	return 0;
 }
 
-MINT	Show_RTSThreshold_Proc(
+int	Show_RTSThreshold_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3655,7 +3656,7 @@ MINT	Show_RTSThreshold_Proc(
 	return 0;
 }
 
-MINT	Show_FragThreshold_Proc(
+int	Show_FragThreshold_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3665,7 +3666,7 @@ MINT	Show_FragThreshold_Proc(
 }
 
 #ifdef DOT11_N_SUPPORT
-MINT	Show_HtBw_Proc(
+int	Show_HtBw_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3681,7 +3682,7 @@ MINT	Show_HtBw_Proc(
 	return 0;
 }
 
-MINT	Show_HtMcs_Proc(
+int	Show_HtMcs_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3694,7 +3695,7 @@ MINT	Show_HtMcs_Proc(
 	return 0;
 }
 
-MINT	Show_HtGi_Proc(
+int	Show_HtGi_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3714,7 +3715,7 @@ MINT	Show_HtGi_Proc(
 	return 0;
 }
 
-MINT	Show_HtOpMode_Proc(
+int	Show_HtOpMode_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3734,7 +3735,7 @@ MINT	Show_HtOpMode_Proc(
 	return 0;
 }
 
-MINT	Show_HtExtcha_Proc(
+int	Show_HtExtcha_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3755,7 +3756,7 @@ MINT	Show_HtExtcha_Proc(
 }
 
 
-MINT	Show_HtMpduDensity_Proc(
+int	Show_HtMpduDensity_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3764,7 +3765,7 @@ MINT	Show_HtMpduDensity_Proc(
 	return 0;
 }
 
-MINT	Show_HtBaWinSize_Proc(
+int	Show_HtBaWinSize_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3773,7 +3774,7 @@ MINT	Show_HtBaWinSize_Proc(
 	return 0;
 }
 
-MINT	Show_HtRdg_Proc(
+int	Show_HtRdg_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3782,7 +3783,7 @@ MINT	Show_HtRdg_Proc(
 	return 0;
 }
 
-MINT	Show_HtAmsdu_Proc(
+int	Show_HtAmsdu_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3791,7 +3792,7 @@ MINT	Show_HtAmsdu_Proc(
 	return 0;
 }
 
-MINT	Show_HtAutoBa_Proc(
+int	Show_HtAutoBa_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3801,7 +3802,7 @@ MINT	Show_HtAutoBa_Proc(
 }
 #endif /* DOT11_N_SUPPORT */
 
-MINT	Show_CountryRegion_Proc(
+int	Show_CountryRegion_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3810,7 +3811,7 @@ MINT	Show_CountryRegion_Proc(
 	return 0;
 }
 
-MINT	Show_CountryRegionABand_Proc(
+int	Show_CountryRegionABand_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3819,7 +3820,7 @@ MINT	Show_CountryRegionABand_Proc(
 	return 0;
 }
 
-MINT	Show_CountryCode_Proc(
+int	Show_CountryCode_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3829,7 +3830,7 @@ MINT	Show_CountryCode_Proc(
 }
 
 #ifdef AGGREGATION_SUPPORT
-MINT	Show_PktAggregate_Proc(
+int	Show_PktAggregate_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3840,7 +3841,7 @@ MINT	Show_PktAggregate_Proc(
 #endif /* AGGREGATION_SUPPORT */
 
 #ifdef WMM_SUPPORT
-MINT	Show_WmmCapable_Proc(
+int	Show_WmmCapable_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3855,7 +3856,7 @@ MINT	Show_WmmCapable_Proc(
 }
 #endif /* WMM_SUPPORT */
 
-MINT	Show_IEEE80211H_Proc(
+int	Show_IEEE80211H_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3865,7 +3866,7 @@ MINT	Show_IEEE80211H_Proc(
 }
 
 #ifdef CONFIG_STA_SUPPORT
-MINT	Show_NetworkType_Proc(
+int	Show_NetworkType_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3892,7 +3893,7 @@ MINT	Show_NetworkType_Proc(
 }
 
 
-MINT	Show_WPAPSK_Proc(
+int	Show_WPAPSK_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3902,7 +3903,7 @@ MINT	Show_WPAPSK_Proc(
 		snprintf(pBuf, BufLen, "\tWPAPSK = %s", pAd->StaCfg.WpaPassPhrase);
 	else
 	{
-		MINT idx;
+		int idx;
 		snprintf(pBuf, BufLen, "\tWPAPSK = ");
 		for (idx = 0; idx < 32; idx++)
 			snprintf(pBuf+strlen(pBuf), BufLen-strlen(pBuf), "%02X", pAd->StaCfg.WpaPassPhrase[idx]);	
@@ -3911,7 +3912,7 @@ MINT	Show_WPAPSK_Proc(
 	return 0;
 }
 
-MINT	Show_AutoReconnect_Proc(
+int	Show_AutoReconnect_Proc(
 	IN	PRTMP_ADAPTER	pAd,
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3922,7 +3923,7 @@ MINT	Show_AutoReconnect_Proc(
 
 #endif /* CONFIG_STA_SUPPORT */
 
-MINT	Show_AuthMode_Proc(
+int	Show_AuthMode_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3943,7 +3944,7 @@ MINT	Show_AuthMode_Proc(
 	return 0;
 }
 
-MINT	Show_EncrypType_Proc(
+int	Show_EncrypType_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3964,7 +3965,7 @@ MINT	Show_EncrypType_Proc(
 	return 0;
 }
 
-MINT	Show_DefaultKeyID_Proc(
+int	Show_DefaultKeyID_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -3981,14 +3982,14 @@ MINT	Show_DefaultKeyID_Proc(
 	return 0;
 }
 
-MINT	Show_WepKey_Proc(
+int	Show_WepKey_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
-	IN  MINT				KeyIdx,
+	IN  int				KeyIdx,
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
 {
 	UCHAR   Key[16] = {0}, KeyLength = 0;
-	MINT		index = BSS0;
+	int		index = BSS0;
 
 	KeyLength = pAd->SharedKey[index][KeyIdx].KeyLen;
 	NdisMoveMemory(Key, pAd->SharedKey[index][KeyIdx].Key, KeyLength);		
@@ -4006,7 +4007,7 @@ MINT	Show_WepKey_Proc(
 	return 0;
 }
 
-MINT	Show_Key1_Proc(
+int	Show_Key1_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -4015,7 +4016,7 @@ MINT	Show_Key1_Proc(
 	return 0;
 }
 
-MINT	Show_Key2_Proc(
+int	Show_Key2_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -4024,7 +4025,7 @@ MINT	Show_Key2_Proc(
 	return 0;
 }
 
-MINT	Show_Key3_Proc(
+int	Show_Key3_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -4033,7 +4034,7 @@ MINT	Show_Key3_Proc(
 	return 0;
 }
 
-MINT	Show_Key4_Proc(
+int	Show_Key4_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
@@ -4042,12 +4043,12 @@ MINT	Show_Key4_Proc(
 	return 0;
 }
 
-MINT	Show_PMK_Proc(
+int	Show_PMK_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	OUT	PSTRING			pBuf,
 	IN	ULONG			BufLen)
 {
-	MINT 	idx;
+	int 	idx;
 	UCHAR	PMK[32] = {0};
 
 
@@ -4073,7 +4074,7 @@ MINT	Show_PMK_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT	Set_VCORecalibrationThreshold_Proc(
+int	Set_VCORecalibrationThreshold_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -4092,12 +4093,12 @@ MINT	Set_VCORecalibrationThreshold_Proc(
 
 
 #ifdef APCLI_SUPPORT
- MINT RTMPIoctlConnStatus(
+ int RTMPIoctlConnStatus(
 	IN	PRTMP_ADAPTER	pAd, 
  	IN	PSTRING			arg)
 {
  
- 	MINT i=0;
+ 	int i=0;
  	POS_COOKIE pObj;
  	UCHAR ifIndex;
 	BOOLEAN bConnect=FALSE;
@@ -4150,7 +4151,7 @@ MINT	Set_VCORecalibrationThreshold_Proc(
 void  getRate(HTTRANSMIT_SETTING HTSetting, ULONG* fLastTxRxRate)
 
 {
-	 MINT MCSMappingRateTable[] =
+	 int MCSMappingRateTable[] =
 	{2,  4,   11,  22, /* CCK*/
 	12, 18,   24,  36, 48, 72, 96, 108, /* OFDM*/
 	13, 26,   39,  52,  78, 104, 117, 130, 26,  52,  78, 104, 156, 208, 234, 260, /* 20MHz, 800ns GI, MCS: 0 ~ 15*/
@@ -4190,3 +4191,84 @@ void  getRate(HTTRANSMIT_SETTING HTSetting, ULONG* fLastTxRxRate)
 	return;
 }
 
+int	Set_Antenna_Proc(
+	IN	PRTMP_ADAPTER	pAd, 
+	IN	PSTRING			arg)
+{
+	ANT_DIVERSITY_TYPE UsedAnt;
+	DBGPRINT(RT_DEBUG_OFF, ("==> Set_Antenna_Proc *******************\n"));
+
+	UsedAnt = simple_strtol(arg, 0, 10);
+#ifdef ANT_DIVERSITY_SUPPORT
+    pAd->CommonCfg.bRxAntDiversity = UsedAnt;
+#endif /* ANT_DIVERSITY_SUPPORT */
+
+	switch (UsedAnt)
+	{
+#ifdef ANT_DIVERSITY_SUPPORT
+		/* 0: Disabe --> set Antenna CON1*/
+		case ANT_DIVERSITY_DISABLE:
+#endif /* ANT_DIVERSITY_SUPPORT */
+		/* 2: Fix in the PHY Antenna CON1*/
+		case ANT_FIX_ANT0:
+			AsicSetRxAnt(pAd, 0);
+			DBGPRINT(RT_DEBUG_OFF, ("<== Set_Antenna_Proc(Fix in Ant CON1), (%d,%d)\n", 
+					pAd->RxAnt.Pair1PrimaryRxAnt, pAd->RxAnt.Pair1SecondaryRxAnt));
+			break;
+#ifdef ANT_DIVERSITY_SUPPORT
+		/* 1: Enable --> HW/SW Antenna diversity*/
+		case ANT_DIVERSITY_ENABLE:
+			if ((pAd->chipCap.FlgIsHwAntennaDiversitySup) && (pAd->chipOps.HwAntEnable)) // HW_ANT_DIV (PPAD)
+			{
+				pAd->chipOps.HwAntEnable(pAd);
+				pAd->CommonCfg.bRxAntDiversity = ANT_HW_DIVERSITY_ENABLE;
+			}	
+			else // SW_ANT_DIV
+			{
+				pAd->RxAnt.EvaluateStableCnt = 0;
+				pAd->CommonCfg.bRxAntDiversity = ANT_SW_DIVERSITY_ENABLE;
+			}
+
+			DBGPRINT(RT_DEBUG_OFF, ("<== Set_Antenna_Proc(Auto Switch Mode), (%d,%d)\n", 
+					pAd->RxAnt.Pair1PrimaryRxAnt, pAd->RxAnt.Pair1SecondaryRxAnt));
+			break;
+#endif /* ANT_DIVERSITY_SUPPORT */
+    	/* 3: Fix in the PHY Antenna CON2*/
+		case ANT_FIX_ANT1:
+			AsicSetRxAnt(pAd, 1);
+			DBGPRINT(RT_DEBUG_OFF, ("<== Set_Antenna_Proc(Fix in Ant CON2), (%d,%d)\n", 
+					pAd->RxAnt.Pair1PrimaryRxAnt, pAd->RxAnt.Pair1SecondaryRxAnt));
+			break;
+#ifdef ANT_DIVERSITY_SUPPORT
+		/* 4: Enable SW Antenna Diversity */
+		case ANT_SW_DIVERSITY_ENABLE:
+			pAd->RxAnt.EvaluateStableCnt = 0;
+			DBGPRINT(RT_DEBUG_OFF, ("<== Set_Antenna_Proc(Auto Switch Mode --> SW), (%d,%d)\n", 
+					pAd->RxAnt.Pair1PrimaryRxAnt, pAd->RxAnt.Pair1SecondaryRxAnt));
+			break;
+		/* 5: Enable HW Antenna Diversity - PPAD */
+		case ANT_HW_DIVERSITY_ENABLE:
+			if ((pAd->chipCap.FlgIsHwAntennaDiversitySup) && (pAd->chipOps.HwAntEnable)) // HW_ANT_DIV (PPAD)
+				pAd->chipOps.HwAntEnable(pAd);
+			DBGPRINT(RT_DEBUG_OFF, ("<== Set_Antenna_Proc(Auto Switch Mode --> HW), (%d,%d)\n", 
+					pAd->RxAnt.Pair1PrimaryRxAnt, pAd->RxAnt.Pair1SecondaryRxAnt));
+			break;
+#endif /* ANT_DIVERSITY_SUPPORT */
+		default:
+			DBGPRINT(RT_DEBUG_ERROR, ("<== Set_Antenna_Proc(N/A cmd: %d), (%d,%d)\n", UsedAnt,
+					pAd->RxAnt.Pair1PrimaryRxAnt, pAd->RxAnt.Pair1SecondaryRxAnt));
+			break;
+	}
+	
+	return TRUE;
+}
+			
+
+#ifdef RT5350
+int Set_Hw_Antenna_Div_Proc(
+	IN	PRTMP_ADAPTER	pAd,
+	IN	PSTRING			arg)
+{
+	return Set_Antenna_Proc(pAd, arg);	
+}
+#endif // RT5350 //

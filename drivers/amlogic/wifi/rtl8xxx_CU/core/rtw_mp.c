@@ -597,7 +597,7 @@ s32 mp_start_test(PADAPTER padapter)
 	if (check_fwstate(pmlmepriv, _FW_LINKED) == _TRUE) {
 		rtw_disassoc_cmd(padapter);
 		rtw_indicate_disconnect(padapter);
-		rtw_free_assoc_resources(padapter);
+		rtw_free_assoc_resources(padapter, 1);
 	}
 	pmppriv->prev_fw_state = get_fwstate(pmlmepriv);
 	pmlmepriv->fw_state = WIFI_MP_STATE;
@@ -682,7 +682,7 @@ void mp_stop_test(PADAPTER padapter)
 	rtw_indicate_disconnect(padapter);
 
 	//3 2. clear psta used in mp test mode.
-//	rtw_free_assoc_resources(padapter);
+//	rtw_free_assoc_resources(padapter, 1);
 	psta = rtw_get_stainfo(&padapter->stapriv, tgt_network->network.MacAddress);
 	if (psta) rtw_free_stainfo(padapter, psta);
 

@@ -118,11 +118,11 @@ VOID RT5390_ChipSwitchChannel(
 VOID RT5390_InitDesiredTSSITable(
 	IN struct _RTMP_ADAPTER		*pAd);
 
-MINT RT5390_ATETssiCalibration(
+int RT5390_ATETssiCalibration(
 	IN struct _RTMP_ADAPTER		*pAd,
 	IN PSTRING					arg);
 
-MINT RT5390_ATETssiCalibrationExtend(
+int RT5390_ATETssiCalibrationExtend(
 	IN struct _RTMP_ADAPTER		*pAd,
 	IN PSTRING					arg);
 
@@ -145,7 +145,7 @@ LONG Rounding(
 #endif /* RTMP_INTERNAL_TX_ALC */
 
 #ifdef RTMP_TEMPERATURE_COMPENSATION
-MINT RT5392_ATEReadExternalTSSI(
+int RT5392_ATEReadExternalTSSI(
 	IN struct _RTMP_ADAPTER		*pAd,
 	IN PSTRING					arg);
 #endif /* RTMP_TEMPERATURE_COMPENSATION */

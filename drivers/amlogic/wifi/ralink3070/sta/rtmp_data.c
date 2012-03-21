@@ -681,6 +681,9 @@ VOID STAHandleRxMgmtFrame(
 	IN PRTMP_ADAPTER pAd,
 	IN RX_BLK *pRxBlk)
 {
+#ifdef ANT_DIVERSITY_SUPPORT
+	PRT28XX_RXD_STRUC pRxD = &(pRxBlk->RxD);
+#endif /* ANT_DIVERSITY_SUPPORT */
 	PRXWI_STRUC pRxWI = pRxBlk->pRxWI;
 	PHEADER_802_11 pHeader = pRxBlk->pHeader;
 	PNDIS_PACKET pRxPacket = pRxBlk->pRxPacket;
@@ -720,6 +723,23 @@ VOID STAHandleRxMgmtFrame(
 						   pRxWI);
 		}
 #ifdef RT30xx
+#ifdef ANT_DIVERSITY_SUPPORT
+		/* collect rssi information for antenna diversity */
+		if (((pAd->NicConfig2.field.AntDiversity) 
+#if TXRX_SW_ANTDIV_SUPPORT
+			|| (pAd->chipCap.bTxRxSwAntDiv)	
+#endif
+			) && (pAd->CommonCfg.bRxAntDiversity != ANT_DIVERSITY_DISABLE)) {
+			if ((pRxD->U2M)
+			    || ((pHeader->FC.SubType == SUBTYPE_BEACON)
+				&&
+				(MAC_ADDR_EQUAL
+				 (&pAd->CommonCfg.Bssid, &pHeader->Addr2)))) {
+				STA_COLLECT_RX_ANTENNA_AVERAGE_RSSI(pAd, ConvertToRssi(pAd, (UCHAR) pRxWI->RSSI0, RSSI_0), 0);	/* Note: RSSI2 not used on RT73 */
+				pAd->StaCfg.NumOfAvgRssiSample++;
+			}
+		}
+#endif /* ANT_DIVERSITY_SUPPORT */
 #endif /* RT30xx */
 
 		/* First check the size, it MUST not exceed the mlme queue size */
@@ -920,7 +940,6 @@ BOOLEAN STARxDoneInterruptHandle(
 				pAd->FreqCalibrationCtrl.BeaconPhyMode =
 				    (UCHAR) (pRxWI->PHYMODE);
 
-#if 0
 				DBGPRINT(RT_DEBUG_TRACE,
 					 ("%s: Beacon, CRC error = %d, pHeader->Sequence = %d, SA = %02X:%02X:%02X:%02X:%02X:%02X, frequency offset = %d, MCS = %d, BW = %d PHYMODE = %d\n",
 					  __FUNCTION__, pRxD->Crc,
@@ -930,7 +949,6 @@ BOOLEAN STARxDoneInterruptHandle(
 					  pHeader->Addr2[5],
 					  ((CHAR) (pRxWI->FOFFSET)), pRxWI->MCS,
 					  pRxWI->BW, pRxWI->PHYMODE));
-#endif
 			}
 #endif /* RTMP_FREQ_CALIBRATION_SUPPORT */
 
@@ -1649,7 +1667,7 @@ VOID STABuildCommon802_11Header(
 	HEADER_802_11 *pHeader_802_11;
 #ifdef QOS_DLS_SUPPORT
 	BOOLEAN bDLSFrame = FALSE;
-	MINT DlsEntryIndex = 0;
+	int DlsEntryIndex = 0;
 #endif /* QOS_DLS_SUPPORT */
 
 	/* MAKE A COMMON 802.11 HEADER */
@@ -1796,7 +1814,7 @@ VOID STABuildCache802_11Header(
 		   If packet can be sent through DLS, then force aggregation disable. (Hard to determine peer STA's capability) */
 #ifdef QOS_DLS_SUPPORT
 		BOOLEAN bDLSFrame = FALSE;
-		MINT DlsEntryIndex = 0;
+		int DlsEntryIndex = 0;
 
 		DlsEntryIndex = RTMPCheckDLSFrame(pAd, pTxBlk->pSrcBufHeader);
 		if (DlsEntryIndex >= 0)

@@ -172,8 +172,13 @@ struct	ss_res
 	int	bss_cnt;
 	int	channel_idx;
 	int	scan_mode;
-	int	ss_ssidlen;
-	unsigned char	ss_ssid[IW_ESSID_MAX_SIZE + 1];
+
+	#if 1
+	NDIS_802_11_SSID ssid[RTW_SSID_SCAN_AMOUNT];
+	#else
+	int	ss_ssidlen[RTW_SSID_SCAN_AMOUNT];
+	unsigned char	ss_ssid[RTW_SSID_SCAN_AMOUNT][IW_ESSID_MAX_SIZE + 1];
+	#endif
 };
 
 //#define AP_MODE				0x0C
@@ -471,7 +476,7 @@ void issue_auth(_adapter *padapter, struct sta_info *psta, unsigned short status
 //	Added by Albert 2010/07/26
 //	blnbc: 1 -> broadcast probe request
 //	blnbc: 0 -> unicast probe request. The address 1 will be the BSSID.
-void issue_probereq(_adapter *padapter, u8 blnbc);
+void issue_probereq(_adapter *padapter, NDIS_802_11_SSID *pssid, u8 blnbc);
 void issue_nulldata(_adapter *padapter, unsigned int power_mode);
 void issue_qos_nulldata(_adapter *padapter, unsigned char *da, u16 tid);
 void issue_deauth(_adapter *padapter, unsigned char *da, unsigned short reason);

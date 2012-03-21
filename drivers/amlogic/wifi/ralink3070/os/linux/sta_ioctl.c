@@ -1071,7 +1071,6 @@ int rt_ioctl_giwscan(struct net_device *dev,
 	data->length = current_ev - extra;
 /*    pAd->StaCfg.bScanReqIsFromWebUI = FALSE; */
 /*	DBGPRINT(RT_DEBUG_ERROR ,("===>rt_ioctl_giwscan. %d(%d) BSS returned, data->length = %d\n",i , pAd->ScanTab.BssNr, data->length)); */
- 	os_free_mem(NULL, pIoctlScan->pBssTable);
 
 	RTMP_STA_IoctlHandle(pAd, NULL, CMD_RTPRIV_IOCTL_STA_SCAN_END, 0, NULL, data->length, dev->priv_flags);
 	return 0;
@@ -1506,7 +1505,7 @@ static int
 rt_private_get_statistics(struct net_device *dev, struct iw_request_info *info,
 		struct iw_point *wrq, char *extra)
 {
-	MINT				Status = 0;
+	int				Status = 0;
     VOID   *pAd = NULL;
 
 	GET_PAD_FROM_NET_DEV(pAd, dev);
@@ -1543,7 +1542,7 @@ rt_private_show(struct net_device *dev, struct iw_request_info *info,
 		struct iw_point *wrq, PSTRING extra)
 {
 	RTMP_IOCTL_INPUT_STRUCT wrqin;
-	MINT				Status = 0;
+	int				Status = 0;
 	VOID   			*pAd;
 /*	POS_COOKIE		pObj; */
 	u32             subcmd = wrq->flags;
@@ -1948,6 +1947,8 @@ int rt_ioctl_siwgenie(struct net_device *dev,
 	if (RTMP_STA_IoctlHandle(pAd, NULL, CMD_RTPRIV_IOCTL_STA_SIOCSIWGENIE, 0,
 						extra, wrqu->data.length, dev->priv_flags) != NDIS_STATUS_SUCCESS)
 		return -EINVAL;
+	else
+		return 0;
 #endif /* WPA_SUPPLICANT_SUPPORT */
 
 	return -EOPNOTSUPP;
@@ -1990,7 +1991,7 @@ int rt_ioctl_siwpmksa(struct net_device *dev,
 {
 	VOID   *pAd = NULL;
 	struct iw_pmksa *pPmksa = (struct iw_pmksa *)wrqu->data.pointer;
-/*	MINT	CachedIdx = 0, idx = 0; */
+/*	int	CachedIdx = 0, idx = 0; */
 	RT_CMD_STA_IOCTL_PMA_SA IoctlPmaSa, *pIoctlPmaSa = &IoctlPmaSa;
 
 	GET_PAD_FROM_NET_DEV(pAd, dev);	
@@ -2033,7 +2034,7 @@ rt_private_ioctl_bbp(struct net_device *dev, struct iw_request_info *info,
 		struct iw_point *wrq, char *extra)
 {
 	RTMP_IOCTL_INPUT_STRUCT wrqin;
-	MINT					Status = 0;
+	int					Status = 0;
     VOID       			*pAd = NULL;
 
 	GET_PAD_FROM_NET_DEV(pAd, dev);	
@@ -2312,17 +2313,17 @@ const struct iw_handler_def rt28xx_iw_handler_def =
 };
 
 
-MINT rt28xx_sta_ioctl(
+int rt28xx_sta_ioctl(
 	IN	struct net_device	*net_dev, 
 	IN	OUT	struct ifreq	*rq, 
-	IN	MINT					cmd)
+	IN	int					cmd)
 {
 /*	POS_COOKIE			pObj; */
 	VOID        		*pAd = NULL;
 	struct iwreq        *wrqin = (struct iwreq *) rq;
 	RTMP_IOCTL_INPUT_STRUCT rt_wrq, *wrq = &rt_wrq;
 /*	BOOLEAN				StateMachineTouched = FALSE; */
-	MINT					Status = NDIS_STATUS_SUCCESS;
+	int					Status = NDIS_STATUS_SUCCESS;
 	USHORT				subcmd;
 	UINT32				org_len;
 

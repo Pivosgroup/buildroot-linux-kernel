@@ -1,6 +1,5 @@
 # Support ATE function
-HAS_ATE=n
-
+HAS_ATE=y
 # Support ATE NEW TXCONT solution
 HAS_NEW_TXCONT=n
 
@@ -36,7 +35,7 @@ endif
 #-----------------------------------------------#
 
 # Support QA ATE function
-HAS_QA_SUPPORT=n
+HAS_QA_SUPPORT=y
 
 HAS_RSSI_FEEDBACK=n
 
@@ -54,11 +53,11 @@ HAS_LLTD=n
 HAS_APCLI=n
 
 # Support Wpa_Supplicant
-HAS_WPA_SUPPLICANT=y
+HAS_WPA_SUPPLICANT=n
 
 
 # Support Native WpaSupplicant for Network Maganger
-HAS_NATIVE_WPA_SUPPLICANT_SUPPORT=y
+HAS_NATIVE_WPA_SUPPLICANT_SUPPORT=n
 
 #Support Net interface block while Tx-Sw queue full
 HAS_BLOCK_NET_IF=n
@@ -97,7 +96,7 @@ HAS_IDS_SUPPORT=n
 HAS_SNMP_SUPPORT=n
 
 #Support features of 802.11n Draft3
-HAS_DOT11N_DRAFT3_SUPPORT=y
+HAS_DOT11N_DRAFT3_SUPPORT=n
 
 #Support features of Single SKU. 
 HAS_SINGLE_SKU_SUPPORT=n
@@ -122,27 +121,22 @@ HAS_KTHREAD_SUPPORT=n
 HAS_AUTO_CH_SELECT_ENHANCE=n
 
 #Support statistics count
-HAS_STATS_COUNT=y
+HAS_STATS_COUNT=n
 
 
 #Support USB_BULK_BUF_ALIGMENT
 HAS_USB_BULK_BUF_ALIGMENT=n
 
-
-#Support USB_BULK_BUF_ALIGMENT
-HAS_USB_BULK_BUF_ALIGMENT2=y
-
-
 #Support for USB_SUPPORT_SELECTIVE_SUSPEND
-HAS_USB_SUPPORT_SELECTIVE_SUSPEND=y
-
-
-#Support ANDROID_SUPPORT
-HAS_ANDROID_SUPPORT=y
+HAS_USB_SUPPORT_SELECTIVE_SUSPEND=n
 
 
 
 
+
+
+#Support Antenna Diversity
+HAS_ANTENNA_DIVERSITY_SUPPORT=n
 
 #Client support WDS function
 HAS_CLIENT_WDS_SUPPORT=n
@@ -286,20 +280,6 @@ ifeq ($(HAS_STATS_COUNT),y)
 WFLAGS += -DSTATS_COUNT_SUPPORT
 endif
 
-ifeq ($(HAS_USB_BULK_BUF_ALIGMENT),y)
-WFLAGS += -DUSB_BULK_BUF_ALIGMENT
-endif
-
-ifeq ($(HAS_USB_BULK_BUF_ALIGMENT2),y)
-WFLAGS += -DUSB_BULK_BUF_ALIGMENT2
-endif
-
-
-ifeq ($(HAS_ANDROID_SUPPORT),y)
-WFLAGS += -DANDROID_SUPPORT
-endif
-
-
 ifeq ($(HAS_USB_SUPPORT_SELECTIVE_SUSPEND),y)
 WFLAGS += -DUSB_SUPPORT_SELECTIVE_SUSPEND -DCONFIG_PM
 endif
@@ -334,6 +314,9 @@ WFLAGS += -DOS_ABL_OS_STA_SUPPORT
 endif
 endif
 
+ifeq ($(HAS_ANTENNA_DIVERSITY_SUPPORT),y)
+WFLAGS += -DANT_DIVERSITY_SUPPORT
+endif
 
 
 ifeq ($(HAS_WIDI_SUPPORT),y)
@@ -655,11 +638,6 @@ ifeq ($(PLATFORM),ST)
 WFLAGS += -DST
 endif
 
-ifeq ($(PLATFORM),JZSOC)
-        EXTRA_CFLAGS := $(WFLAGS) -I$(RT28xx_DIR)/include
-        export EXTRA_CFLAGS
-endif
-
 #kernel build options for 2.4
 # move to Makefile outside LINUX_SRC := /opt/star/kernel/linux-2.4.27-star
 
@@ -680,7 +658,7 @@ export CFLAGS
 endif
 
 ifeq ($(PLATFORM),SIGMA)
-CFLAGS := -D__KERNEL__ -I$(RT28xx_DIR)/include -I$(LINUX_SRC)/include -I$(LINUX_SRC)/include/asm/gcc -I$(LINUX_SRC)/include/asm-mips/mach-tango2 -I$(LINUX_SRC)/include/asm-mips/mach-tango2 -DEM86XX_CHIP=EM86XX_CHIPID_TANGO2 -DEM86XX_REVISION=6 -I$(LINUX_SRC)/include/asm-mips/mach-generic -I$(RT2860_DIR)/include -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -ffreestanding -O2 -fomit-frame-pointer -G 0 -mno-abicalls -fno-pic -pipe  -mabi=32 -march=mips32r2 -Wa,-32 -Wa,-march=mips32r2 -Wa,-mips32r2 -Wa,--trap -DMODULE $(WFLAGS) -DSIGMA863X_PLATFORM
+CFLAGS := -D__KERNEL__ -I$(RT28xx_DIR)/include -I$(LINUX_SRC)/include -I$(LINUX_SRC)/include/asm/gcc -I$(LINUX_SRC)/include/asm-mips/mach-tango2 -I$(LINUX_SRC)/include/asm-mips/mach-tango2 -DEM86XX_CHIP=EM86XX_CHIPID_TANGO2 -DEM86XX_REVISION=6 -I$(LINUX_SRC)/include/asm-mips/mach-generic -I$(RT2860_DIR)/include -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -ffreestanding -O2     -fomit-frame-pointer -G 0 -mno-abicalls -fno-pic -pipe  -mabi=32 -march=mips32r2 -Wa,-32 -Wa,-march=mips32r2 -Wa,-mips32r2 -Wa,--trap -DMODULE $(WFLAGS) -DSIGMA863X_PLATFORM
 
 export CFLAGS
 endif

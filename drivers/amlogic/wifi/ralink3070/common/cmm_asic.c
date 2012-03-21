@@ -535,7 +535,7 @@ VOID 	AsicUpdateProtect(
 	ProtCfg.field.RTSThEn = 1;
 	ProtCfg.field.ProtectNav = ASIC_SHORTNAV;
 
-	/* update PHY mode and rate */
+	/* update PHY mode and rate*/
 	if (pAd->OpMode == OPMODE_AP)
 	{
 		/* update PHY mode and rate*/
@@ -832,6 +832,67 @@ VOID AsicLockChannel(
 	
 	==========================================================================
  */
+#ifdef ANT_DIVERSITY_SUPPORT
+VOID	AsicAntennaSelect(
+	IN	PRTMP_ADAPTER	pAd,
+	IN	UCHAR			Channel) 
+{
+
+#ifdef CONFIG_STA_SUPPORT
+	if(RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_IDLE_RADIO_OFF))
+		return;
+
+	IF_DEV_CONFIG_OPMODE_ON_STA(pAd)
+	if (pAd->Mlme.OneSecPeriodicRound % 2 == 1)
+#endif /* CONFIG_STA_SUPPORT */
+	{
+		/* patch for AsicSetRxAnt failed*/
+		pAd->RxAnt.EvaluatePeriod = 0;
+
+		/* check every 2 second. If rcv-beacon less than 5 in the past 2 second, then AvgRSSI is no longer a */
+		/* valid indication of the distance between this AP and its clients.*/
+		if (OPSTATUS_TEST_FLAG(pAd, fOP_STATUS_MEDIA_STATE_CONNECTED)  ||
+			OPSTATUS_TEST_FLAG(pAd, fOP_AP_STATUS_MEDIA_STATE_CONNECTED)) 
+		{
+			SHORT	realavgrssi1;
+
+			/* if no traffic then reset average rssi to trigger evaluation*/
+#ifdef CONFIG_STA_SUPPORT
+			if (pAd->StaCfg.NumOfAvgRssiSample < 5)
+			{
+				pAd->RxAnt.Pair1LastAvgRssi = (-99);
+				pAd->RxAnt.Pair2LastAvgRssi = (-99);
+				DBGPRINT(RT_DEBUG_TRACE, ("MlmePeriodicExec: no traffic/beacon, reset RSSI\n"));
+			}
+
+			pAd->StaCfg.NumOfAvgRssiSample = 0;
+			realavgrssi1 = (pAd->RxAnt.Pair1AvgRssi[pAd->RxAnt.Pair1PrimaryRxAnt] >> 3);
+#endif /* CONFIG_STA_SUPPORT */
+
+			DBGPRINT(RT_DEBUG_TRACE,("Ant-realrssi0(%d), Lastrssi0(%d), EvaluateStableCnt=%d\n", realavgrssi1, pAd->RxAnt.Pair1LastAvgRssi, pAd->RxAnt.EvaluateStableCnt));
+
+			/* if the difference between two rssi is larger or less than 5, then evaluate the other antenna*/
+			if ((pAd->RxAnt.EvaluateStableCnt < 2) || (realavgrssi1 > (pAd->RxAnt.Pair1LastAvgRssi + 5)) || (realavgrssi1 < (pAd->RxAnt.Pair1LastAvgRssi - 5)))
+				AsicEvaluateRxAnt(pAd);
+
+				pAd->RxAnt.Pair1LastAvgRssi = realavgrssi1;
+		}
+		else
+		{
+			/* if not connected, always switch antenna to try to connect*/
+			UCHAR	temp;
+
+			temp = pAd->RxAnt.Pair1PrimaryRxAnt;
+			pAd->RxAnt.Pair1PrimaryRxAnt = pAd->RxAnt.Pair1SecondaryRxAnt;
+			pAd->RxAnt.Pair1SecondaryRxAnt = temp;
+
+			DBGPRINT(RT_DEBUG_TRACE, ("MlmePeriodicExec: no connect, switch to another one to try connection\n"));
+
+			AsicSetRxAnt(pAd, pAd->RxAnt.Pair1PrimaryRxAnt);
+		}
+	}
+}
+#endif /* ANT_DIVERSITY_SUPPORT */
 
 #ifdef RTMP_INTERNAL_TX_ALC
 
@@ -856,7 +917,7 @@ VOID AsicGetAutoAgcOffset(
 	IN PCHAR pTotalDeltaPwr,
 	IN PCHAR pAgcCompensate,
 	IN PUCHAR pBbpR49)
-	{
+{
 	CHAR            DeltaPwr = 0;
 	BOOLEAN		bAutoTxAgc = FALSE;
 	UCHAR		TssiRef, *pTssiMinusBoundary, *pTssiPlusBoundary, TxAgcStep;
@@ -867,20 +928,20 @@ VOID AsicGetAutoAgcOffset(
 	CHAR		TotalDeltaPower = 0; /* (non-positive number) including the transmit power controlled by the MAC and the BBP R1*/
 #ifdef RTMP_INTERNAL_TX_ALC
 /*	UCHAR desiredTSSI = 0, currentTSSI = 0; */
-//	PTX_POWER_TUNING_ENTRY_STRUCT pTxPowerTuningEntry = NULL;
-//	UCHAR RFValue = 0;
+	PTX_POWER_TUNING_ENTRY_STRUCT pTxPowerTuningEntry = NULL;
+	UCHAR RFValue = 0;
 #endif /* RTMP_INTERNAL_TX_ALC */
 #if defined(RT5370) || defined(RT5372) || defined(RT5390) || defined(RT5392)
 	PTX_POWER_TUNING_ENTRY_STRUCT pTxPowerTuningEntry2 = NULL;
 	UCHAR BbpValue = 0;
-	MINT CurrentTemp = 0;
-	MINT LookupTableIndex = pAd->TxPowerCtrl.LookupTableIndex + TEMPERATURE_COMPENSATION_LOOKUP_TABLE_OFFSET;
+	int CurrentTemp = 0;
+	int LookupTableIndex = pAd->TxPowerCtrl.LookupTableIndex + TEMPERATURE_COMPENSATION_LOOKUP_TABLE_OFFSET;
 	BOOLEAN bTempSuccess = FALSE;	
 #endif /* defined(RT5370) || defined(RT5372) || defined(RT5390) || defined(RT5392) */
 
 
 	BbpR49.byte = 0;
-	
+
 #ifdef RTMP_INTERNAL_TX_ALC
 	/* Locate the internal Tx ALC tuning entry*/
 	if (pAd->TxPowerCtrl.bInternalTxALC == TRUE)
@@ -913,81 +974,81 @@ VOID AsicGetAutoAgcOffset(
 			pTssiPlusBoundary  = &pAd->TssiPlusBoundaryA[0];
 			TxAgcStep          = pAd->TxAgcStepA;
 			pTxAgcCompensate   = &pAd->TxAgcCompensateA;
-	}
+		}
 
 		if (bAutoTxAgc)
-	{
+		{
 #ifdef RTMP_TEMPERATURE_COMPENSATION 
 			if (IS_RT5392(pAd))
-		{
+			{
 				BbpR49.byte = 0;
-
+				
 				/* If temperature compensation is enabled */
 				if (pAd->CommonCfg.TempComp != 0)
-	{
+				{
 					/*RTMP_BBP_IO_READ8_BY_REG_ID(pAd, BBP_R49, &BbpR49); */
 					/*DBGPRINT(RT_DEBUG_TRACE, ("[temp. compensation] BBP_R49 = 0x%x\n", BbpR49)); */
 
 					/* For method 1, the value is set before and /after reading temperature */
 					if (pAd->CommonCfg.TempComp == 1)
-		{
+					{
 						/* Set [7:6] = 1 */
 						RT30xxReadRFRegister(pAd, RF_R27, (PUCHAR)(&RFValue));
 						RFValue = (RFValue & 0x7f);
 						RFValue = (RFValue | 0x40);
 						RT30xxWriteRFRegister(pAd, RF_R27, RFValue);
-	
+
 						/* Set BBP_R47[2] = 1 */
 						RTMP_BBP_IO_READ8_BY_REG_ID(pAd, BBP_R47, &BbpValue);
 						BbpValue = (BbpValue | 0x04);
 						RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R47, BbpValue);
-	
+
 						RTMPusecDelay(1000);
 
 						BbpValue = 0;
 						RTMP_BBP_IO_READ8_BY_REG_ID(pAd, BBP_R47, &BbpValue);
-	
+
 						/* if R47[2] == 0, it means reading temperature succeeds. */
 						if ((BbpValue & 0x04) == 0)
-		{
+						{
 							bTempSuccess = TRUE;
 
 							/* Current temperature */
-	RTMP_BBP_IO_READ8_BY_REG_ID(pAd, BBP_R49, &BbpR49.byte);
+							RTMP_BBP_IO_READ8_BY_REG_ID(pAd, BBP_R49, &BbpR49.byte);
 							CurrentTemp = (CHAR)BbpR49.byte;
 							DBGPRINT(RT_DEBUG_TRACE, ("[temp. compensation] BBP_R49 = %02x, current temp = %d\n", BbpR49.byte, CurrentTemp));
-}
+						}
 						else
-{
+						{
 							bTempSuccess = FALSE;
 
 							/* set R47[2] = 0 */
 							BbpValue = BbpValue & 0xfb;
 							RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R47, BbpValue);
-		}
-	
+						}
+
 						/* Set [7:6] = 0 */
 						RT30xxReadRFRegister(pAd, RF_R27, (PUCHAR)(&RFValue));
 						RFValue = (RFValue & 0x3f);
 						RT30xxWriteRFRegister(pAd, RF_R27, RFValue);
-	}
+					}
 					else if (pAd->CommonCfg.TempComp == 2)
-	{
+					{
 						bTempSuccess = TRUE;
 
 						/* Current temperature */
 						RTMP_BBP_IO_READ8_BY_REG_ID(pAd, BBP_R49, &BbpR49.byte);
 						CurrentTemp = (CHAR)BbpR49.byte;
 						DBGPRINT(RT_DEBUG_TRACE, ("[temp. compensation] BBP_R49 = %02x, current temp = %d\n", BbpR49.byte, CurrentTemp));
-		}
+					}
 
 					if (!bTempSuccess)
 					{
 						DBGPRINT(RT_DEBUG_TRACE, ("[temp. compensation] Fail to read temperature.\n"));
 						return;
-	}
+					}
 					else
-	{
+					{
 						DBGPRINT(RT_DEBUG_TRACE, ("[temp. compensation] RefTempG = %d\n", pAd->TxPowerCtrl.RefTempG));
 
 						DBGPRINT(RT_DEBUG_TRACE, ("[temp. compensation] index = %d\n", pAd->TxPowerCtrl.LookupTableIndex));
@@ -996,28 +1057,28 @@ VOID AsicGetAutoAgcOffset(
 						DBGPRINT(RT_DEBUG_TRACE, ("[temp. compensation] f(%d)= %d\n", pAd->TxPowerCtrl.LookupTableIndex + 1, pAd->TxPowerCtrl.LookupTable[LookupTableIndex + 1]));
 						if (CurrentTemp > pAd->TxPowerCtrl.RefTempG + pAd->TxPowerCtrl.LookupTable[LookupTableIndex + 1] + ((pAd->TxPowerCtrl.LookupTable[LookupTableIndex + 1] - pAd->TxPowerCtrl.LookupTable[LookupTableIndex]) >> 2) &&
 							LookupTableIndex < 32)
-		{
+						{
 							DBGPRINT(RT_DEBUG_TRACE, ("[temp. compensation] ++\n"));
 							LookupTableIndex++;
 							pAd->TxPowerCtrl.LookupTableIndex++;
-		}
+						}
 						else if (CurrentTemp < pAd->TxPowerCtrl.RefTempG + pAd->TxPowerCtrl.LookupTable[LookupTableIndex] - ((pAd->TxPowerCtrl.LookupTable[LookupTableIndex] - pAd->TxPowerCtrl.LookupTable[LookupTableIndex - 1]) >> 2) &&
 							LookupTableIndex > 0)
-		{
+						{
 							DBGPRINT(RT_DEBUG_TRACE, ("[temp. compensation] --\n"));
 							LookupTableIndex--;
 							pAd->TxPowerCtrl.LookupTableIndex--;
-		}
-		else
-		{
+						}
+						else
+						{
 							DBGPRINT(RT_DEBUG_TRACE, ("[temp. compensation] ==\n"));
-		}
+						}
 
-		
+
 						DBGPRINT(RT_DEBUG_TRACE, ("[temp. compensation] idxTxPowerTable %d, idxTxPowerTable2 %d\n",
 							pAd->TxPowerCtrl.idxTxPowerTable + pAd->TxPowerCtrl.LookupTableIndex,
 							pAd->TxPowerCtrl.idxTxPowerTable2 + pAd->TxPowerCtrl.LookupTableIndex));
-		
+
 						pTxPowerTuningEntry = &TxPowerTuningTableOver5390[pAd->TxPowerCtrl.idxTxPowerTable + pAd->TxPowerCtrl.LookupTableIndex + TX_POWER_TUNING_ENTRY_OFFSET_OVER_5390];
 						pTxPowerTuningEntry2 = &TxPowerTuningTableOver5390[pAd->TxPowerCtrl.idxTxPowerTable2 + pAd->TxPowerCtrl.LookupTableIndex + TX_POWER_TUNING_ENTRY_OFFSET_OVER_5390];
 						DBGPRINT(RT_DEBUG_TRACE, ("[temp. compensation] (tx0)RF_R12_Value = %x, MAC_PowerDelta = %d\n",
@@ -1029,9 +1090,9 @@ VOID AsicGetAutoAgcOffset(
 						RT30xxReadRFRegister(pAd, RF_R49, &RFValue);
 						RFValue = ((RFValue & ~0x3F) | pTxPowerTuningEntry->RF_R12_Value);
 						if ((RFValue & 0x3F) > 0x27) /* The valid range of the RF R49 (<5:0>tx0_alc<5:0>) is 0x00~0x27 */
-			{
+						{
 							RFValue = ((RFValue & ~0x3F) | 0x27);
-			}
+						}
 						DBGPRINT(RT_DEBUG_TRACE, ("[temp. compensation] Update RF_R49[0:5] to 0x%x\n", pTxPowerTuningEntry->RF_R12_Value));
 						RT30xxWriteRFRegister(pAd, RF_R49, RFValue);
 
@@ -1039,17 +1100,17 @@ VOID AsicGetAutoAgcOffset(
 						RT30xxReadRFRegister(pAd, RF_R50, &RFValue);
 						RFValue = ((RFValue & ~0x3F) | pTxPowerTuningEntry2->RF_R12_Value);
 						if ((RFValue & 0x3F) > 0x27) /* The valid range of the RF R49 (<5:0>tx0_alc<5:0>) is 0x00~0x27 */
-			{
+						{
 							RFValue = ((RFValue & ~0x3F) | 0x27);
-			}
+						}
 						DBGPRINT(RT_DEBUG_TRACE, ("[temp. compensation] Update RF_R50[0:5] to 0x%x\n", pTxPowerTuningEntry2->RF_R12_Value));
 						RT30xxWriteRFRegister(pAd, RF_R50, RFValue);
-		}
-	}
-		}
-		else
+					}
+				}
+			}
+			else
 #endif /* RTMP_TEMPERATURE_COMPENSATION */
-		{
+			{
 			/* BbpR1 is unsigned char */
 			RTMP_BBP_IO_READ8_BY_REG_ID(pAd, BBP_R49, &BbpR49.byte);
 			/* (p) TssiPlusBoundaryG[0] = 0 = (m) TssiMinusBoundaryG[0] */
@@ -1160,7 +1221,7 @@ VOID AsicGetAutoAgcOffset(
 VOID AsicAdjustSingleSkuTxPower(
 	IN PRTMP_ADAPTER pAd) 
 {
-	MINT			i, j;
+	int			i, j;
 	CHAR		DeltaPwr = 0;
 	UCHAR		BbpR1 = 0, BbpR49 = 0, BbpR1Offset = 0;
 	CHAR		TxAgcCompensate;
@@ -1328,7 +1389,7 @@ VOID AsicAdjustSingleSkuTxPower(
 	/* calculate delta power based on the percentage specified from UI */
 	/* E2PROM setting is calibrated for maximum TX power (i.e. 100%)*/
 	/* We lower TX power here according to the percentage specified from UI*/
-	if (pAd->CommonCfg.TxPowerPercentage == 0xffffffff)       /* AUTO TX POWER control*/
+	if (pAd->CommonCfg.TxPowerPercentage >= 100)       /* AUTO TX POWER control*/
 	{
 #ifdef CONFIG_STA_SUPPORT
 		IF_DEV_CONFIG_OPMODE_ON_STA(pAd)
@@ -1504,7 +1565,7 @@ VOID AsicAdjustSingleSkuTxPower(
 VOID AsicAdjustTxPower(
 	IN PRTMP_ADAPTER pAd) 
 {
-	MINT			i, j;
+	int			i, j;
 	CHAR		DeltaPwr = 0;
 	UCHAR		BbpR1 = 0, BbpR49 = 0;
 	CHAR		TxAgcCompensate;
@@ -1574,7 +1635,7 @@ VOID AsicAdjustTxPower(
 	/* calculate delta power based on the percentage specified from UI */
 	/* E2PROM setting is calibrated for maximum TX power (i.e. 100%)*/
 	/* We lower TX power here according to the percentage specified from UI*/
-	if (pAd->CommonCfg.TxPowerPercentage == 0xffffffff)       /* AUTO TX POWER control*/
+	if (pAd->CommonCfg.TxPowerPercentage >= 100)       /* AUTO TX POWER control*/
 	{
 #ifdef CONFIG_STA_SUPPORT
 		IF_DEV_CONFIG_OPMODE_ON_STA(pAd)
@@ -1582,11 +1643,11 @@ VOID AsicAdjustTxPower(
 			/* to patch high power issue with some APs, like Belkin N1.*/
 			if (Rssi > -35)
 			{
-				BbpR1 |= 0x02;		/* DeltaPwr -= 12;*/
+				DeltaPwr -= 12;
 			}
 			else if (Rssi > -40)
 			{
-				BbpR1 |= 0x01;		/* DeltaPwr -= 6;*/
+				DeltaPwr -= 6;
 			}
 			else
 		;
@@ -2050,11 +2111,11 @@ VOID AsicAdjustTxPower(
 				/* pFinalTxPwr->field.Byte2 += pTxPowerTuningEntry->MAC_PowerDelta; */
 				/* pFinalTxPwr->field.Byte3 += pTxPowerTuningEntry->MAC_PowerDelta; */
 				DBGPRINT(RT_DEBUG_TRACE, ("[temp. compensation] AsicAdjustTxPower(%x), after %x\n", TX_PWR_CFG_8, (UINT)TxPwrCfg8Over5392));
-		}
+			}
 			else
 			{
 				DBGPRINT(RT_DEBUG_TRACE, ("AsicAdjustTxPower %x -> %x.\n", TX_PWR_CFG_8, (UINT)TxPwrCfg8Over5392));
-	}
+			}
 			RTMP_IO_WRITE32(pAd, TX_PWR_CFG_8, TxPwrCfg8Over5392);
 
 			pFinalTxPwr = (PTX_PWR_CFG_STRUC)&TxPwrCfg9Over5390;
@@ -2100,16 +2161,16 @@ IN PRTMP_ADAPTER pAd)
 {
 	BBP_CSR_CFG_STRUC	BbpCsr;
 
-	/* Still need to find why BBP agent keeps busy, but in fact, hardware still function ok. Now clear busy first.	*/
+	/* Still need to find why BBP agent keeps busy, but in fact, hardware still function ok. Now clear busy first. */
 	/* IF chipOps.AsicResetBbpAgent == NULL, run "else" part */
 	RTMP_CHIP_ASIC_RESET_BBP_AGENT(pAd);
 	else
 	{
 		DBGPRINT(RT_DEBUG_INFO, ("Reset BBP Agent busy bit.!! \n"));
-	RTMP_IO_READ32(pAd, H2M_BBP_AGENT, &BbpCsr.word);
-	BbpCsr.field.Busy = 0;
-	RTMP_IO_WRITE32(pAd, H2M_BBP_AGENT, BbpCsr.word);
-}
+		RTMP_IO_READ32(pAd, H2M_BBP_AGENT, &BbpCsr.word);
+		BbpCsr.field.Busy = 0;
+		RTMP_IO_WRITE32(pAd, H2M_BBP_AGENT, BbpCsr.word);
+		}
 
 }
 #ifdef CONFIG_STA_SUPPORT
@@ -2651,19 +2712,23 @@ VOID AsicSetEdcaParm(
 		Ac3Cfg.field.Cwmax = pEdcaParm->Cwmax[QID_AC_VO];
 		Ac3Cfg.field.Aifsn = pEdcaParm->Aifsn[QID_AC_VO];
 
+
+
 /*#ifdef WIFI_TEST*/
 		if (pAd->CommonCfg.bWiFiTest)
 		{
 			if (Ac3Cfg.field.AcTxop == 102)
 			{
-				Ac0Cfg.field.AcTxop = pEdcaParm->Txop[QID_AC_BE] ? pEdcaParm->Txop[QID_AC_BE] : 10;
+			Ac0Cfg.field.AcTxop = pEdcaParm->Txop[QID_AC_BE] ? pEdcaParm->Txop[QID_AC_BE] : 10;
 				Ac0Cfg.field.Aifsn  = pEdcaParm->Aifsn[QID_AC_BE]-1; /* AIFSN must >= 1 */
-				Ac1Cfg.field.AcTxop = pEdcaParm->Txop[QID_AC_BK];
+			Ac1Cfg.field.AcTxop = pEdcaParm->Txop[QID_AC_BK];
 				Ac1Cfg.field.Aifsn  = pEdcaParm->Aifsn[QID_AC_BK];
-				Ac2Cfg.field.AcTxop = pEdcaParm->Txop[QID_AC_VI];
+			Ac2Cfg.field.AcTxop = pEdcaParm->Txop[QID_AC_VI];
 			} /* End of if */
 		}
 /*#endif  WIFI_TEST */
+#ifdef CONFIG_STA_SUPPORT
+#endif /* CONFIG_STA_SUPPORT */
 
 		RTMP_IO_WRITE32(pAd, EDCA_AC0_CFG, Ac0Cfg.word);
 		RTMP_IO_WRITE32(pAd, EDCA_AC1_CFG, Ac1Cfg.word);
@@ -3114,7 +3179,7 @@ VOID AsicAddPairwiseKeyEntry(
 	IN UCHAR			WCID,
 	IN PCIPHER_KEY		pCipherKey)
 {
-	MINT i;
+	int i;
 	ULONG 		offset;
 	PUCHAR		 pKey = pCipherKey->Key;
 	PUCHAR		 pTxMic = pCipherKey->TxMic;

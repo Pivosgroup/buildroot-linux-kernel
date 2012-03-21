@@ -109,7 +109,7 @@ VOID	RTMPReportMicError(
 #ifdef WPA_SUPPLICANT_SUPPORT
 #define	LENGTH_EAP_H    4
 /* If the received frame is EAP-Packet ,find out its EAP-Code (Request(0x01), Response(0x02), Success(0x03), Failure(0x04)). */
-MINT	    WpaCheckEapCode(
+int	    WpaCheckEapCode(
 	IN  PRTMP_ADAPTER   		pAd,
 	IN  PUCHAR				pFrame,
 	IN  USHORT				FrameLen,
@@ -117,7 +117,7 @@ MINT	    WpaCheckEapCode(
 {
 	
 	PUCHAR	pData;
-	MINT	result = 0;
+	int	result = 0;
 		
 	if( FrameLen < OffSet + LENGTH_EAPOL_H + LENGTH_EAP_H ) 
 		return result;

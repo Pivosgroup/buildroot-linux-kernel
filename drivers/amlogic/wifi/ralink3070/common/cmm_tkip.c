@@ -162,7 +162,7 @@ ULONG	RTMPTkipGetUInt32(
 	IN	PUCHAR	pMICKey)
 {  	
 	ULONG	res = 0; 
-	MINT		i;
+	int		i;
 	
 	for (i = 0; i < 4; i++) 
 	{ 
@@ -195,7 +195,7 @@ VOID	RTMPTkipPutUInt32(
 	IN OUT	PUCHAR		pDst,
 	IN		ULONG		val)					  
 { 	
-	MINT i;
+	int i;
 	
 	for(i = 0; i < 4; i++) 
 	{ 
@@ -599,8 +599,8 @@ VOID RTMPTkipMixKey(
 	UINT ppk4; 
 	UINT ppk5; 
 
-	MINT i; 
-	MINT j; 
+	int i; 
+	int j; 
 
 	tsc0 = (unsigned int)((pnh >> 16) % 65536); /* msb */ 
 	tsc1 = (unsigned int)(pnh % 65536); 

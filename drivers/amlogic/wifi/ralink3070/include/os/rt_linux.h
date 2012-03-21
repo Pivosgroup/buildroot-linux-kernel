@@ -132,7 +132,7 @@ typedef struct usb_ctrlrequest devctrlrequest;
 #else
 #define STA_PROFILE_PATH			"/etc/Wireless/RT2870STA/RT2870STA.dat"
 #endif
-#define STA_DRIVER_VERSION			"2.5.0.2.android"
+#define STA_DRIVER_VERSION			"2.5.0.3"
 #ifdef MULTIPLE_CARD_SUPPORT
 #define CARD_INFO_PATH			"/etc/Wireless/RT2870STA/RT2870STACard.dat"
 #endif /* MULTIPLE_CARD_SUPPORT */
@@ -154,7 +154,7 @@ extern	const struct iw_handler_def rt28xx_ap_iw_handler_def;
 #define IN
 #define OUT
 #define INOUT
-#define NDIS_STATUS		INT32
+#define NDIS_STATUS		int
 
 
 /***********************************************************************************
@@ -514,7 +514,7 @@ do { \
 #define ATE_KILL_THREAD_PID(PID)		KILL_THREAD_PID(PID, SIGTERM, 1)
 
 typedef int (*cast_fn)(void *);
-typedef MINT  (*RTMP_OS_TASK_CALLBACK)(ULONG);
+typedef int (*RTMP_OS_TASK_CALLBACK)(ULONG);
 typedef struct tasklet_struct  OS_NET_TASK_STRUCT;
 typedef struct tasklet_struct  *POS_NET_TASK_STRUCT;
 
@@ -634,8 +634,8 @@ struct os_cookie {
 
 	RTMP_OS_PID			apd_pid; /*802.1x daemon pid */
 	unsigned long			apd_pid_nr;
-	MINT						ioctl_if_type;
-	MINT 					ioctl_if;
+	int						ioctl_if_type;
+	int 					ioctl_if;
 };
 
 typedef struct os_cookie	* POS_COOKIE;
@@ -1117,10 +1117,10 @@ struct net_device *alloc_netdev(int sizeof_priv, const char *mask, void (*setup)
 
 
 
-MINT rt28xx_ioctl(
+int rt28xx_ioctl(
 	IN	PNET_DEV		net_dev,
 	IN	OUT	struct ifreq	*rq, 
-	IN	MINT			cmd);
+	IN	int			cmd);
 
 extern int ra_mtd_write(int num, loff_t to, size_t len, const u_char *buf);
 extern int ra_mtd_read(int num, loff_t from, size_t len, u_char *buf);
@@ -1150,7 +1150,7 @@ typedef struct usb_device_id USB_DEVICE_ID;
 #ifdef INF_AMAZON_SE
 #define BULKAGGRE_SIZE				30
 #else
-#define BULKAGGRE_SIZE				100 /* 100 */
+#define BULKAGGRE_SIZE				60 /* 100 */
 #endif /* INF_AMAZON_SE */
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,5,0)
@@ -1164,7 +1164,7 @@ typedef struct usb_device_id USB_DEVICE_ID;
 #define RTUSB_URB_ALLOC_BUFFER(_dev, _size, _dma)	usb_alloc_coherent(_dev, _size, GFP_ATOMIC, _dma)
 #define RTUSB_URB_FREE_BUFFER(_dev, _size, _addr, _dma)	usb_free_coherent(_dev, _size, _addr, _dma)
 #else
-#define RTUSB_URB_ALLOC_BUFFER(_dev, _size, _dma)		usb_buffer_alloc(_dev, _size, GFP_ATOMIC, _dma)
+#define RTUSB_URB_ALLOC_BUFFER(_dev, _size, _dma)	usb_buffer_alloc(_dev, _size, GFP_ATOMIC, _dma)
 #define RTUSB_URB_FREE_BUFFER(_dev, _size, _addr, _dma)	usb_buffer_free(_dev, _size, _addr, _dma)
 #endif
 #else
@@ -1477,7 +1477,7 @@ USBHST_STATUS ATE_RTUSBBulkOutDataPacketComplete(URBCompleteStatus Status, purbb
 #endif /* RALINK_ATE */
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,31)
-MINT RtmpOSNetDevOpsAlloc(
+int RtmpOSNetDevOpsAlloc(
 	IN PVOID *pNetDevOps);
 #endif
 

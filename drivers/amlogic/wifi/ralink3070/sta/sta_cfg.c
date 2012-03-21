@@ -29,11 +29,11 @@
 
 
 
-MINT Set_AutoReconnect_Proc(
+int Set_AutoReconnect_Proc(
     IN  PRTMP_ADAPTER	pAd, 
     IN  PSTRING			arg);
 
-MINT Set_AdhocN_Proc(
+int Set_AdhocN_Proc(
     IN  PRTMP_ADAPTER	pAd, 
     IN  PSTRING			arg);
 
@@ -41,7 +41,7 @@ MINT Set_AdhocN_Proc(
 
 static struct {
 	PSTRING name;
-	MINT (*set_proc)(PRTMP_ADAPTER pAdapter, PSTRING arg);
+	int (*set_proc)(PRTMP_ADAPTER pAdapter, PSTRING arg);
 } *PRTMP_PRIVATE_SET_PROC, RTMP_PRIVATE_SUPPORT_PROC[] = {
 	{"DriverVersion",				Set_DriverVersion_Proc},
 	{"CountryRegion",				Set_CountryRegion_Proc},	
@@ -197,8 +197,13 @@ static struct {
 	{"efuseBufferModeWriteBack",		set_eFuseBufferModeWriteBack_Proc},
 #endif /* RALINK_ATE */
 #endif /* RTMP_EFUSE_SUPPORT */
+	{"ant",					Set_Antenna_Proc},
 #endif /* RT30xx */
-/*2008/09/11:KH add to support efuse--> */
+
+#ifdef RT5350
+    {"HwAntDiv",                Set_Hw_Antenna_Div_Proc},
+#endif // RT5350 //
+
 	{"BeaconLostTime",				Set_BeaconLostTime_Proc},
 	{"AutoRoaming",					Set_AutoRoaming_Proc},
 	{"SiteSurvey",					Set_SiteSurvey_Proc},
@@ -220,7 +225,7 @@ static struct {
 };
 
 
-MINT RTMPSTAPrivIoctlSet(
+int RTMPSTAPrivIoctlSet(
 	IN RTMP_ADAPTER *pAd, 
 	IN PSTRING SetProcName,
 	IN PSTRING ProcArg)
@@ -258,7 +263,7 @@ MINT RTMPSTAPrivIoctlSet(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT Set_SSID_Proc(
+int Set_SSID_Proc(
     IN  PRTMP_ADAPTER   pAd, 
     IN  PSTRING          arg)
 {
@@ -291,13 +296,11 @@ MINT Set_SSID_Proc(
 	}	 
         pSsid = &Ssid;
 
-
-         if (pAd->Mlme.CntlMachine.CurrState != CNTL_IDLE)
-         {
-             RTMP_MLME_RESET_STATE_MACHINE(pAd);
-             DBGPRINT(RT_DEBUG_TRACE, ("!!! MLME busy, reset MLME state machine !!!\n"));
-         }
- 
+        if (pAd->Mlme.CntlMachine.CurrState != CNTL_IDLE)
+        {
+            RTMP_MLME_RESET_STATE_MACHINE(pAd);
+            DBGPRINT(RT_DEBUG_TRACE, ("!!! MLME busy, reset MLME state machine !!!\n"));
+        }
 
 		if ((pAd->StaCfg.WpaPassPhraseLen >= 8) &&
 			(pAd->StaCfg.WpaPassPhraseLen <= 64))
@@ -328,17 +331,14 @@ MINT Set_SSID_Proc(
         pAd->StaCfg.bScanReqIsFromWebUI = FALSE;
 		pAd->bConfigChanged = TRUE;
         pAd->StaCfg.bNotFirstScan = FALSE;     
-        
 
-        MlmeEnqueue(pAd, 
-                    MLME_CNTL_STATE_MACHINE, 
-                    OID_802_11_SSID,
-                    sizeof(NDIS_802_11_SSID),
-                    (VOID *)pSsid, 0);
+	MlmeEnqueue(pAd, 
+		MLME_CNTL_STATE_MACHINE, 
+		OID_802_11_SSID,
+		sizeof(NDIS_802_11_SSID),
+		(VOID *)pSsid, 0);
 
-        StateMachineTouched = TRUE;
-
-        
+	StateMachineTouched = TRUE;	
 
 		if (Ssid.SsidLength == MAX_LEN_OF_SSID)
 			hex_dump("Set_SSID_Proc::Ssid", Ssid.Ssid, Ssid.SsidLength);
@@ -363,7 +363,7 @@ MINT Set_SSID_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT	Set_WmmCapable_Proc(
+int	Set_WmmCapable_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -397,7 +397,7 @@ MINT	Set_WmmCapable_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT Set_NetworkType_Proc(
+int Set_NetworkType_Proc(
     IN  PRTMP_ADAPTER   pAd, 
     IN  PSTRING          arg)
 {
@@ -614,7 +614,7 @@ MINT Set_NetworkType_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT Set_AuthMode_Proc(
+int Set_AuthMode_Proc(
     IN  PRTMP_ADAPTER   pAd, 
     IN  PSTRING          arg)
 {
@@ -654,7 +654,7 @@ MINT Set_AuthMode_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT Set_EncrypType_Proc(
+int Set_EncrypType_Proc(
     IN  PRTMP_ADAPTER   pAd, 
     IN  PSTRING          arg)
 {
@@ -719,7 +719,7 @@ MINT Set_EncrypType_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT Set_DefaultKeyID_Proc(
+int Set_DefaultKeyID_Proc(
     IN  PRTMP_ADAPTER   pAdapter, 
     IN  PSTRING          arg)
 {
@@ -744,7 +744,7 @@ MINT Set_DefaultKeyID_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT Set_Key1_Proc(
+int Set_Key1_Proc(
     IN  PRTMP_ADAPTER   pAdapter, 
     IN  PSTRING          arg)
 {
@@ -822,7 +822,7 @@ MINT Set_Key1_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT Set_Key2_Proc(
+int Set_Key2_Proc(
     IN  PRTMP_ADAPTER   pAdapter, 
     IN  PSTRING          arg)
 {
@@ -898,7 +898,7 @@ MINT Set_Key2_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT Set_Key3_Proc(
+int Set_Key3_Proc(
     IN  PRTMP_ADAPTER   pAdapter, 
     IN  PSTRING          arg)
 {
@@ -974,7 +974,7 @@ MINT Set_Key3_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT Set_Key4_Proc(
+int Set_Key4_Proc(
     IN  PRTMP_ADAPTER   pAdapter, 
     IN  PSTRING          arg)
 {
@@ -1051,7 +1051,7 @@ MINT Set_Key4_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT Set_WPAPSK_Proc(
+int Set_WPAPSK_Proc(
     IN  PRTMP_ADAPTER   pAd, 
     IN  PSTRING          arg)
 {
@@ -1099,7 +1099,7 @@ MINT Set_WPAPSK_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT Set_PSMode_Proc(
+int Set_PSMode_Proc(
     IN  PRTMP_ADAPTER   pAdapter, 
     IN  PSTRING          arg)
 {
@@ -1176,7 +1176,7 @@ MINT Set_PSMode_Proc(
         TRUE if all parameters are OK, FALSE otherwise
     ==========================================================================
 */
-MINT Set_Wpa_Support(
+int Set_Wpa_Support(
     IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -1199,7 +1199,7 @@ MINT Set_Wpa_Support(
 
 
 
-MINT Set_TGnWifiTest_Proc(
+int Set_TGnWifiTest_Proc(
     IN  PRTMP_ADAPTER   pAd, 
     IN  PSTRING          arg)
 {
@@ -1213,7 +1213,7 @@ MINT Set_TGnWifiTest_Proc(
 }
 
 #ifdef EXT_BUILD_CHANNEL_LIST
-MINT Set_Ieee80211dClientMode_Proc(
+int Set_Ieee80211dClientMode_Proc(
     IN  PRTMP_ADAPTER   pAdapter, 
     IN  PSTRING          arg)
 {
@@ -1232,7 +1232,7 @@ MINT Set_Ieee80211dClientMode_Proc(
 #endif /* EXT_BUILD_CHANNEL_LIST */
 
 #ifdef CARRIER_DETECTION_SUPPORT
-MINT Set_CarrierDetect_Proc(
+int Set_CarrierDetect_Proc(
     IN  PRTMP_ADAPTER   pAd, 
     IN  PSTRING         arg)
 {
@@ -1247,12 +1247,12 @@ MINT Set_CarrierDetect_Proc(
 #endif /* CARRIER_DETECTION_SUPPORT */
 
 
-MINT	Show_Adhoc_MacTable_Proc(
+int	Show_Adhoc_MacTable_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			extra,
 	IN	UINT32			size)
 {
-	MINT i;
+	int i;
 	
 	sprintf(extra, "\n");
 
@@ -1294,7 +1294,7 @@ MINT	Show_Adhoc_MacTable_Proc(
 }
 
 
-MINT Set_BeaconLostTime_Proc(
+int Set_BeaconLostTime_Proc(
     IN  PRTMP_ADAPTER   pAd, 
     IN  PSTRING         arg)
 {
@@ -1307,7 +1307,7 @@ MINT Set_BeaconLostTime_Proc(
 	return TRUE;
 }
 
-MINT Set_AutoRoaming_Proc(
+int Set_AutoRoaming_Proc(
     IN  PRTMP_ADAPTER   pAd, 
     IN  PSTRING         arg)
 {
@@ -1338,7 +1338,7 @@ MINT Set_AutoRoaming_Proc(
     ==========================================================================
 */
 
-MINT Set_ForceTxBurst_Proc(
+int Set_ForceTxBurst_Proc(
     IN  PRTMP_ADAPTER   pAd, 
     IN  PSTRING         arg)
 {
@@ -1353,7 +1353,7 @@ MINT Set_ForceTxBurst_Proc(
 
 
 #ifdef XLINK_SUPPORT
-MINT Set_XlinkMode_Proc(
+int Set_XlinkMode_Proc(
     IN  PRTMP_ADAPTER   pAd, 
     IN  PSTRING         arg)
 {
@@ -1618,7 +1618,7 @@ VOID StaSiteSurvey(
 	RTMP_MLME_HANDLER(pAd);
 }
 
-MINT Set_AutoReconnect_Proc(
+int Set_AutoReconnect_Proc(
     IN  PRTMP_ADAPTER	pAd, 
     IN  PSTRING			arg)
 {
@@ -1631,7 +1631,7 @@ MINT Set_AutoReconnect_Proc(
 	return TRUE;
 }
 
-MINT Set_AdhocN_Proc(
+int Set_AdhocN_Proc(
     IN  PRTMP_ADAPTER	pAd, 
     IN  PSTRING			arg)
 {
@@ -1647,10 +1647,10 @@ MINT Set_AdhocN_Proc(
 
 
 
-MINT RTMPSetInformation(
+int RTMPSetInformation(
     IN  PRTMP_ADAPTER pAd,
     IN  OUT RTMP_IOCTL_INPUT_STRUCT	*rq,
-    IN  MINT                 cmd)
+    IN  int                 cmd)
 {
     RTMP_IOCTL_INPUT_STRUCT				*wrq = (RTMP_IOCTL_INPUT_STRUCT *) rq;
     NDIS_802_11_SSID                    Ssid;
@@ -1673,7 +1673,7 @@ MINT RTMPSetInformation(
     NDIS_802_11_NETWORK_TYPE            NetType;
     ULONG                               Now;
     UINT                                KeyIdx = 0;
-    MINT                                 Status = NDIS_STATUS_SUCCESS, MaxPhyMode = PHY_11G;
+    int                                 Status = NDIS_STATUS_SUCCESS, MaxPhyMode = PHY_11G;
     ULONG                               PowerTemp;
     BOOLEAN                             RadioState;
     BOOLEAN                             StateMachineTouched = FALSE;
@@ -1740,7 +1740,7 @@ MINT RTMPSetInformation(
 			/*Benson add 20080527, when radio off, sta don't need to scan */
 			if (RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_RADIO_OFF))
 				break;
-
+				
 			if (pAd->RalinkCounters.LastOneSecTotalTxCount > 100)
             {
                 DBGPRINT(RT_DEBUG_TRACE, ("!!! Link UP, ignore this set::OID_802_11_BSSID_LIST_SCAN\n"));
@@ -3124,10 +3124,10 @@ MINT RTMPSetInformation(
     return Status;
 }
 
-MINT RTMPQueryInformation(
+int RTMPQueryInformation(
     IN  PRTMP_ADAPTER pAd,
     IN  OUT RTMP_IOCTL_INPUT_STRUCT    *rq,
-    IN  MINT                 cmd)
+    IN  int                 cmd)
 {
     RTMP_IOCTL_INPUT_STRUCT				*wrq = (RTMP_IOCTL_INPUT_STRUCT *) rq;
     NDIS_802_11_BSSID_LIST_EX           *pBssidList = NULL;
@@ -3148,7 +3148,7 @@ MINT RTMPQueryInformation(
     ULONG                               BssBufSize, ulInfo=0, NetworkTypeList[4], apsd = 0, RateValue=0;
     USHORT                              BssLen = 0;
     PUCHAR                              pBuf = NULL, pPtr;
-    MINT                                 Status = NDIS_STATUS_SUCCESS;
+    int                                 Status = NDIS_STATUS_SUCCESS;
     UINT                                we_version_compiled;
     UCHAR                               i, Padding = 0;
     BOOLEAN                             RadioState;
@@ -3160,7 +3160,7 @@ MINT RTMPQueryInformation(
 #ifdef SNMP_SUPPORT	
 	/*for snmp, kathy */
 	DefaultKeyIdxValue			*pKeyIdxValue;
-	MINT							valueLen;
+	int							valueLen;
 	TX_RTY_CFG_STRUC			tx_rty_cfg;
 	ULONG						ShortRetryLimit, LongRetryLimit;
 	UCHAR						tmp[64];
@@ -4116,7 +4116,7 @@ VOID RTMPIoctlMAC(
 {
 	PSTRING				this_char;
 	PSTRING				value;
-	MINT					j = 0, k = 0;
+	int					j = 0, k = 0;
 /*	STRING				msg[1024]; */
 	STRING				*msg = NULL;
 /*	STRING				arg[255]; */
@@ -4125,7 +4125,7 @@ VOID RTMPIoctlMAC(
 	UCHAR				temp[16];
 	STRING				temp2[16];
 	UINT32				macValue = 0;
-	MINT					Status;
+	int					Status;
 	BOOLEAN				bIsPrintAllMAC = FALSE;
 
 
@@ -4339,7 +4339,7 @@ VOID RTMPIoctlE2PROM(
 {
 	PSTRING				this_char;
 	PSTRING				value;
-	MINT					j = 0, k = 0;
+	int					j = 0, k = 0;
 /*	STRING				msg[1024]; */
 	STRING				*msg = NULL;
 /*	STRING				arg[255]; */
@@ -4565,7 +4565,7 @@ VOID RTMPIoctlRF(
 	CHAR				*mpool, *msg; /*msg[2048]; */
 	CHAR				*arg; /*arg[255]; */
 	CHAR				*ptr;
-	MINT					rfId;
+	int					rfId;
 	LONG				rfValue;
 	BOOLEAN				bIsPrintAllRF = FALSE;
 	int 				maxRFIdx;
@@ -4829,7 +4829,7 @@ void	getBaInfo(
 	IN	PSTRING			pOutBuf,
 	IN	UINT32			size)
 {
-	MINT i, j;
+	int i, j;
 	BA_ORI_ENTRY *pOriBAEntry;
 	BA_REC_ENTRY *pRecBAEntry;
 
@@ -4884,7 +4884,7 @@ VOID RTMPIoctlShow(
 {
 	RT_CMD_STA_IOCTL_SHOW *pIoctlShow = (RT_CMD_STA_IOCTL_SHOW *)pData;
 	POS_COOKIE pObj;
-	MINT Status = 0;
+	int Status = 0;
 	char *extra = (char *)pIoctlShow->pData;
 	UINT32 size = (UINT32)(pIoctlShow->MaxSize);
 
@@ -5110,8 +5110,6 @@ VOID RTMPIoctlShow(
 		return RtmpIoctl_rt_ioctl_giwrate(__pAd, __pData, __Data);			\
 	case CMD_RTPRIV_IOCTL_STA_SIOCGIFHWADDR:								\
 		return RtmpIoctl_rt_ioctl_gifhwaddr(__pAd, __pData, __Data);		\
-	case CMD_RTPRIV_IOCTL_STA_SIOCSIWPRIVRSSI:								\
-		return RtmpIoctl_rt_ioctl_rssi(__pAd, __pData, __Data);		\
 	case CMD_RTPRIV_IOCTL_STA_IW_SET_WSC_U32_ITEM:							\
 		return RtmpIoctl_rt_private_set_wsc_u32_item(__pAd, __pData, __Data);\
 	case CMD_RTPRIV_IOCTL_STA_IW_SET_WSC_STR_ITEM:							\
@@ -5137,7 +5135,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_siwfreq(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -5145,24 +5143,22 @@ RtmpIoctl_rt_ioctl_siwfreq(
 {
 	RT_CMD_STA_IOCTL_FREQ *pIoctlFreq = (RT_CMD_STA_IOCTL_FREQ *)pData;
 	int 	chan = -1;
- 	ULONG   freq;	
+	ULONG	freq;
+	
+	if ( pIoctlFreq->m > 100000000 )
+		freq = pIoctlFreq->m / 100000;
+	else if ( pIoctlFreq->m > 100000 )
+		freq = pIoctlFreq->m / 100;
+	else
+		freq = pIoctlFreq->m;
 
 
-       if ( pIoctlFreq->m > 100000000 )
-                freq = pIoctlFreq->m / 100000;
-        else if ( pIoctlFreq->m > 100000 )
-                freq = pIoctlFreq->m / 100;
-        else
-                freq = pIoctlFreq->m;
-
-
-        if((pIoctlFreq->e == 0) && (freq <= 1000))
-                chan = pIoctlFreq->m;   /* Setting by channel number */
-        else
-        {
-                MAP_KHZ_TO_CHANNEL_ID( freq , chan); /* Setting by frequency - search the table , like 2.412G, 2.422G, */
-        }
-
+	if((pIoctlFreq->e == 0) && (freq <= 1000))
+		chan = pIoctlFreq->m;	/* Setting by channel number */
+	else
+	{
+		MAP_KHZ_TO_CHANNEL_ID( freq , chan); /* Setting by frequency - search the table , like 2.412G, 2.422G, */
+	}
 
     if (ChannelSanity(pAd, chan) == TRUE)
     {
@@ -5171,16 +5167,6 @@ RtmpIoctl_rt_ioctl_siwfreq(
 			Save the channel on MlmeAux for CntlOidRTBssidProc used.
 		*/
 		pAd->MlmeAux.Channel = pAd->CommonCfg.Channel;
-
-#ifdef ANDROID_SUPPORT
-
-		pAd->StaARCfg.BssEntry.CentralChannel = pAd->CommonCfg.Channel;	
-		pAd->StaARCfg.BssEntry.Channel= pAd->CommonCfg.Channel;	
-
-#endif /* ANDROID_SUPPORT */
-
-
-
 	DBGPRINT(RT_DEBUG_ERROR, ("==>rt_ioctl_siwfreq::SIOCSIWFREQ(Channel=%d)\n", pAd->CommonCfg.Channel));
     }
     else
@@ -5206,7 +5192,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_giwfreq(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -5241,7 +5227,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_siwmode(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -5282,7 +5268,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_giwmode(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -5316,7 +5302,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_siwap(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -5372,7 +5358,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_giwap(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -5407,7 +5393,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_siwscan(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -5444,7 +5430,6 @@ RtmpIoctl_rt_ioctl_siwscan(
 	do{
 
 #ifdef WPA_SUPPLICANT_SUPPORT
-#ifndef ANDROID_SUPPORT
 		if (((pAd->StaCfg.WpaSupplicantUP & 0x7F) == WPA_SUPPLICANT_ENABLE) &&
 			(pAd->StaCfg.WpaSupplicantScanCount > 3))
 		{
@@ -5452,9 +5437,8 @@ RtmpIoctl_rt_ioctl_siwscan(
 			Status = NDIS_STATUS_SUCCESS;
 			break;
 		}
-#endif /* ANDROID_SUPPORT */
 #endif /* WPA_SUPPLICANT_SUPPORT */
-#ifndef ANDROID_SUPPORT
+
 		if ((OPSTATUS_TEST_FLAG(pAd, fOP_STATUS_MEDIA_STATE_CONNECTED)) &&
 			((pAd->StaCfg.AuthMode == Ndis802_11AuthModeWPA) || 
 				(pAd->StaCfg.AuthMode == Ndis802_11AuthModeWPAPSK) ||
@@ -5466,7 +5450,7 @@ RtmpIoctl_rt_ioctl_siwscan(
 			Status = NDIS_STATUS_SUCCESS;
 			break;
 		}
-#endif /* ANDROID_SUPPORT */
+
 #ifdef WPA_SUPPLICANT_SUPPORT
 		if (pConfig->FlgScanThisSsid)
 		{
@@ -5479,7 +5463,6 @@ RtmpIoctl_rt_ioctl_siwscan(
 		}
 		else
 #endif /* WPA_SUPPLICANT_SUPPORT */
-#ifndef ANDROID_SUPPORT
                if (pAd->RalinkCounters.LastOneSecTotalTxCount > 30)
                {
                          DBGPRINT(RT_DEBUG_TRACE, ("!!! Link UP, ignore this set::OID_802_11_BSSID_LIST_SCAN\n"));
@@ -5487,7 +5470,6 @@ RtmpIoctl_rt_ioctl_siwscan(
                          break;
                }
                else
-#endif /* ANDROID_SUPPORT */
 		StaSiteSurvey(pAd, NULL, SCAN_ACTIVE);
 	}while(0);
 
@@ -5553,7 +5535,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_giwscan(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -5644,7 +5626,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_siwessid(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -5706,7 +5688,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_giwessid(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -5761,7 +5743,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_siwnickn(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -5789,7 +5771,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_giwnickn(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -5824,7 +5806,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_siwrts(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -5851,7 +5833,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_giwrts(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -5878,7 +5860,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_siwfrag(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -5905,7 +5887,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_giwfrag(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -5935,7 +5917,7 @@ Note:
 #define NR_WEP_KEYS 				4
 #define MAX_WEP_KEY_SIZE			13
 #define MIN_WEP_KEY_SIZE			5
-MINT
+int
 RtmpIoctl_rt_ioctl_siwencode(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -5957,8 +5939,7 @@ RtmpIoctl_rt_ioctl_siwencode(
 				pIoctlSec->flags & RT_CMD_STA_IOCTL_SECURITY_OPEN)
 	{
 	    /*pAd->StaCfg.PortSecured = WPA_802_1X_PORT_SECURED; */
-	    /*STA_PORT_SECURED(pAd);*/
-		pAd->StaCfg.PortSecured = WPA_802_1X_PORT_SECURED;
+		STA_PORT_SECURED(pAd);
 		pAd->StaCfg.PairCipher = Ndis802_11WEPEnabled;
 		pAd->StaCfg.GroupCipher = Ndis802_11WEPEnabled;
 		pAd->StaCfg.WepStatus = Ndis802_11WEPEnabled;
@@ -6054,7 +6035,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_giwencode(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -6122,7 +6103,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_siwmlme(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -6160,18 +6141,6 @@ RtmpIoctl_rt_ioctl_siwmlme(
 			break;
 		case RT_CMD_STA_IOCTL_IW_MLME_DISASSOC:
 			DBGPRINT(RT_DEBUG_TRACE, ("====> %s - IW_MLME_DISASSOC\n", __FUNCTION__));
-#ifdef ANDROID_SUPPORT
-			RtmpOSWrielessEventSend(pAd->net_dev, RT_WLAN_EVENT_CGIWAP, -1, NULL, NULL, 0);
-			NdisZeroMemory(pAd->StaARCfg.BssEntry.Ssid, MAX_LEN_OF_SSID);
-			NdisZeroMemory(pAd->StaARCfg.BssEntry.Bssid, MAC_ADDR_LEN);
-			pAd->StaARCfg.BssEntry.SsidLen = 0;
-			pAd->StaARCfg.BssEntry.BssType = 1;
-			pAd->StaARCfg.BssEntry.Channel = 0;
-//                        RTMPSendWirelessEvent(pAd, IW_SCAN_COMPLETED_EVENT_FLAG, NULL, BSS0, 0);
-//			RTMP_MLME_RESET_STATE_MACHINE(pAd);
-//			printk("IW_MLME_DISASSOC  RTMP_MLME_RESET_STATE_MACHINE \n");
-#endif /* ANDROID_SUPPORT */
-
 			COPY_MAC_ADDR(DisAssocReq.Addr, pAd->CommonCfg.Bssid);
 			DisAssocReq.Reason =  reason_code;
 
@@ -6208,7 +6177,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_siwauth(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -6311,9 +6280,8 @@ RtmpIoctl_rt_ioctl_siwauth(
 #endif /* NATIVE_WPA_SUPPLICANT_SUPPORT */
             else if (pIoctlWpa->value == 0)
             {
-		/*ralink debug*/
-                pAd->StaCfg.PortSecured = WPA_802_1X_PORT_SECURED;
-		/*		STA_PORT_SECURED(pAd);*/
+                /*pAd->StaCfg.PortSecured = WPA_802_1X_PORT_SECURED; */
+				STA_PORT_SECURED(pAd);
             }
             DBGPRINT(RT_DEBUG_TRACE, ("%s::IW_AUTH_KEY_MGMT - param->value = %d!\n", __FUNCTION__, pIoctlWpa->value));
             break;
@@ -6334,23 +6302,18 @@ RtmpIoctl_rt_ioctl_siwauth(
                 pAd->StaCfg.PortSecured = WPA_802_1X_PORT_NOT_SECURED;
 			else
 			{
-		/*ralink debug*/
-                pAd->StaCfg.PortSecured = WPA_802_1X_PORT_SECURED; 
-			/*	STA_PORT_SECURED(pAd);*/
+                /*pAd->StaCfg.PortSecured = WPA_802_1X_PORT_SECURED; */
+				STA_PORT_SECURED(pAd);
 			}
             DBGPRINT(RT_DEBUG_TRACE, ("%s::IW_AUTH_DROP_UNENCRYPTED - param->value = %d!\n", __FUNCTION__, pIoctlWpa->value));
     		break;
     	case RT_CMD_STA_IOCTL_WPA_AUTH_80211_AUTH_ALG: 
-/*ralink debug*/
-/*
 			if (pIoctlWpa->value == RT_CMD_STA_IOCTL_WPA_AUTH_80211_AUTH_ALG_OPEN)
 				pAd->StaCfg.AuthMode = Ndis802_11AuthModeOpen;
 			else if (pIoctlWpa->value == RT_CMD_STA_IOCTL_WPA_AUTH_80211_AUTH_ALG_SHARED)
 				pAd->StaCfg.AuthMode = Ndis802_11AuthModeShared;
             else
-*/
 				pAd->StaCfg.AuthMode = Ndis802_11AuthModeAutoSwitch;
-
             DBGPRINT(RT_DEBUG_TRACE, ("%s::IW_AUTH_80211_AUTH_ALG - param->value = %d!\n", __FUNCTION__, pIoctlWpa->value));
 			break;
     	case RT_CMD_STA_IOCTL_WPA_AUTH_WPA_ENABLED:
@@ -6378,7 +6341,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_giwauth(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -6425,7 +6388,7 @@ Note:
 */
 void fnSetCipherKey(
     IN  PRTMP_ADAPTER   pAd,
-    IN  MINT             keyIdx,    
+    IN  int             keyIdx,    
     IN  UCHAR           CipherAlg,
     IN  BOOLEAN         bGTK,
     IN  UCHAR			*pKey)
@@ -6470,7 +6433,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_siwencodeext(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -6624,7 +6587,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_giwencodeext(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -6722,7 +6685,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_siwgenie(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -6782,7 +6745,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_giwgenie(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -6853,14 +6816,14 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_siwpmksa(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
 	IN	ULONG					Data)
 {
 	RT_CMD_STA_IOCTL_PMA_SA *pIoctlPmaSa = (RT_CMD_STA_IOCTL_PMA_SA *)pData;
-	MINT	CachedIdx = 0, idx = 0;
+	int	CachedIdx = 0, idx = 0;
 
 
 	switch(pIoctlPmaSa->Cmd)
@@ -6942,7 +6905,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_siwrate(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -7014,7 +6977,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_giwrate(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -7074,40 +7037,13 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_gifhwaddr(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
 	IN	ULONG					Data)
 {
 	memcpy(pData, pAd->CurrentAddress, ETH_ALEN);
-	return NDIS_STATUS_SUCCESS;
-}
-
-/*
-========================================================================
-Routine Description:
-	Handler for CMD_RTPRIV_IOCTL_STA_SIOCSIWPRIVRSSI.
-
-Arguments:
-	pAd				- WLAN control block pointer
-	*pData			- the communication data pointer
-	Data			- the communication data
-
-Return Value:
-	NDIS_STATUS_SUCCESS or NDIS_STATUS_FAILURE
-
-Note:
-========================================================================
-*/
-MINT
-RtmpIoctl_rt_ioctl_rssi(
-	IN	RTMP_ADAPTER			*pAd,
-	IN	VOID					*pData,
-	IN	ULONG					Data)
-{
-
-        (*(CHAR *)pData) =  pAd->StaCfg.RssiSample.AvgRssi0;
 	return NDIS_STATUS_SUCCESS;
 }
 
@@ -7128,7 +7064,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_ioctl_setparam(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -7163,7 +7099,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_private_set_wsc_u32_item(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -7190,7 +7126,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_private_set_wsc_string_item(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -7217,7 +7153,7 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT
+int
 RtmpIoctl_rt_private_get_statistics(
 	IN	RTMP_ADAPTER			*pAd,
 	IN	VOID					*pData,
@@ -7303,10 +7239,10 @@ Return Value:
 Note:
 ========================================================================
 */
-MINT RTMP_STA_IoctlHandle(
+int RTMP_STA_IoctlHandle(
 	IN	VOID					*pAdSrc,
 	IN	RTMP_IOCTL_INPUT_STRUCT	*pRequest,
-	IN	MINT						Command,
+	IN	int						Command,
 	IN	USHORT					Subcmd,
 	IN	VOID					*pData,
 	IN  ULONG					Data,
@@ -7314,7 +7250,7 @@ MINT RTMP_STA_IoctlHandle(
 {
 	PRTMP_ADAPTER pAd = (PRTMP_ADAPTER)pAdSrc;
 	POS_COOKIE pObj = (POS_COOKIE)pAd->OS_Cookie;
-	MINT Status = NDIS_STATUS_SUCCESS;
+	int Status = NDIS_STATUS_SUCCESS;
 
 	{	/* determine this ioctl command is comming from which interface. */
 		pObj->ioctl_if_type = INT_MAIN;

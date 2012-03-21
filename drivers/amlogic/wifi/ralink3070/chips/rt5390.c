@@ -244,7 +244,7 @@ REG_PAIR RF5392RegTable[] =
 	{RF_R29,		0x10}, 
 	{RF_R30,		0x10},
 	{RF_R31,		0x80}, 
-	{RF_R32,		0x80}, 
+	{RF_R32,		0x20}, /* 20110621 update */
 	{RF_R33,		0xC0}, /* Spare */
 	{RF_R34,		0x07}, 
 	{RF_R35,		0x12}, 
@@ -496,7 +496,13 @@ VOID RT5390_Init(
 	pChipOps->AsicReverseRfFromSleepMode = RT5390ReverseRFSleepModeSetup;
 	pChipCap->FlgIsHwWapiSup = TRUE;
 	pChipCap->FlgIsVcoReCalSup = FALSE;/*is RT5390 need to do VCORecalibration ?*/
-	pChipCap->FlgIsHwAntennaDiversitySup = FALSE; /*Do RT5390 support HwAntennaDiversity  ?*/
+	if (IS_RT5370G(pAd) || IS_RT5390R(pAd))
+	{
+		DBGPRINT(RT_DEBUG_OFF, ("\x1b[31m%s: FlgIsHwAntennaDiversitySup --> True\x1b[m\n", __FUNCTION__));
+		pChipCap->FlgIsHwAntennaDiversitySup = TRUE; 
+	}
+	else
+		pChipCap->FlgIsHwAntennaDiversitySup = FALSE; /*Do RT5390 support HwAntennaDiversity  ?*/
 	/* init operator */
 	pChipOps->AsicBbpInit = NICInitRT5390BbpRegisters;
 	pChipOps->AsicMacInit = NICInitRT5390MacRegisters;
@@ -545,7 +551,18 @@ VOID RT5390_Init(
 	pChipOps->AsicFreqOffsetGet = GetFrequencyOffset;
 #endif /* CONFIG_STA_SUPPORT */
 #endif /* RTMP_FREQ_CALIBRATION_SUPPORT */
-	pChipOps->SetRxAnt = RT5390SetRxAnt;
+	if (!IS_RT5392(pAd)) /* 1T1R only */
+	{
+		pChipOps->SetRxAnt = RT5390SetRxAnt;
+#ifdef ANT_DIVERSITY_SUPPORT
+		pChipOps->HwAntEnable = HWAntennaDiversityEnable;
+#endif /* ANT_DIVERSITY_SUPPORT */
+#ifdef TXRX_SW_ANTDIV_SUPPORT
+		pChipCap->bTxRxSwAntDiv = FALSE;
+#endif /* TXRX_SW_ANTDIV_SUPPORT */
+
+		pAd->Mlme.bEnableAutoAntennaCheck = FALSE;
+	}
 	pChipOps->RTMPSetAGCInitValue = RT5390_RTMPSetAGCInitValue;
 	pChipOps->AsicResetBbpAgent = RT5390_AsicResetBbpAgent;
 	RtmpChipBcnSpecInit(pAd);
@@ -555,7 +572,7 @@ VOID RT5390_Init(
 
 VOID NICInitRT5390RFRegisters(IN PRTMP_ADAPTER pAd)
 {
-		MINT i;
+		int i;
 		ULONG		RfReg = 0, data;
 	/* Init RF calibration */
 	/* Driver should toggle RF R30 bit7 before init RF registers */
@@ -684,7 +701,9 @@ VOID NICInitRT5390RFRegisters(IN PRTMP_ADAPTER pAd)
 	RTMP_IO_WRITE32(pAd, TX_SW_CFG2, 0x0);
 
 	/* set default antenna as main */
-	RT5390SetRxAnt(pAd, pAd->RxAnt.Pair1PrimaryRxAnt);
+
+	if (!IS_RT5392(pAd)) /* 1T1R only */
+		RT5390SetRxAnt(pAd, pAd->RxAnt.Pair1PrimaryRxAnt);
 
 	/* patch RSSI inaccurate issue, due to design change */
 	RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R79, 0x13);
@@ -745,27 +764,84 @@ VOID RT5390SetRxAnt(
 		return;
 	}
 
-if (IS_RT5390(pAd)
+	if ((IS_RT5390(pAd)) && (!IS_RT5392(pAd))
 		)
 	{
 		UCHAR BbpValue = 0;
-		
-		if (Ant == 0) /* 0: Main antenna */
-		{
-			RTMP_BBP_IO_READ8_BY_REG_ID(pAd, BBP_R152, &BbpValue);
-			BbpValue = ((BbpValue & ~0x80) | (0x80));
-			RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R152, BbpValue);
 
-			DBGPRINT(RT_DEBUG_TRACE, ("AsicSetRxAnt, switch to main antenna\n"));
-		}
-		else /* 1: Aux. antenna */
-		{
-			RTMP_BBP_IO_READ8_BY_REG_ID(pAd, BBP_R152, &BbpValue);
-			BbpValue = ((BbpValue & ~0x80) | (0x00));
-			RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R152, BbpValue);
+#ifdef TXRX_SW_ANTDIV_SUPPORT
+        /* EEPROM 34h bit 13 = 1, support SW antenna diverity TX/RX boundle switch */
 
-			DBGPRINT(RT_DEBUG_TRACE, ("AsicSetRxAnt, switch to aux. antenna\n"));
-		}
+        if (pAd->chipCap.bTxRxSwAntDiv) /* Mini card with TX/RX Diversity (RT5390U) & USB with TX/RX Diversity (RT5370) */
+        {
+            RTMP_BBP_IO_READ8_BY_REG_ID(pAd, BBP_R152, &BbpValue);
+            BbpValue = (BbpValue  | 0x80); /* MSB =1 , TX/RX is the same path */
+            RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R152, BbpValue);
+
+
+            if (Ant == 0) /* 0: Main antenna */
+            {
+                RTMP_IO_READ32(pAd, GPIO_CTRL_CFG, &Value);
+                DBGPRINT(RT_DEBUG_ERROR, ("AsicSetRxTxAnt, before switch to main antenna(%X)\n", Value));
+                Value &= ~(0x04000808); /* GPIO3 = 0, GIPO10 = 1 */
+                Value |= (0x00040000);
+                RTMP_IO_WRITE32(pAd, GPIO_CTRL_CFG, Value);
+                DBGPRINT(RT_DEBUG_ERROR, ("AsicSetRxTxAnt, after switch to main antenna(%X)\n", Value));
+            }
+            else if (Ant == 1) /* 1: Aux. antenna */
+            {
+                RTMP_IO_READ32(pAd, GPIO_CTRL_CFG, &Value);
+                DBGPRINT(RT_DEBUG_ERROR, ("AsicSetRxTxAnt, before switch to aux antenna(%X)\n", Value));
+                Value &= ~(0x04040800); /* GPIO3 = 1, GIPO10 = 0 */
+                Value |= (0x8);
+                RTMP_IO_WRITE32(pAd, GPIO_CTRL_CFG, Value);
+                DBGPRINT(RT_DEBUG_ERROR, ("AsicSetRxTxAnt, after switch to aux antenna(%X)\n", Value));
+            }
+        }else
+#endif  /* TXRX_SW_ANTDIV_SUPPORT */
+
+		if (IS_RT5370G(pAd) || IS_RT5390R(pAd)) /*PPAD support */
+		{
+    		/* For PPAD Debug, BBP R153[7] = 1 --> Main Ant, R153[7] = 0 --> Aux Ant */
+			if (Ant == 0)
+			{
+				RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R150, 0x00); // Disable ANTSW_OFDM		
+				RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R151, 0x00); // Disable ANTSW_CCK			
+				RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R152, 0x80); // Main Ant				
+				RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R154, 0x00); // Clear R154[4], Rx Ant is not bound to the previous rx packet selected Ant
+
+				DBGPRINT(RT_DEBUG_OFF, ("\x1b[31m%s: rt5370G/rt5390R --> switch to main\x1b[m\n", __FUNCTION__));
+			}
+			else
+			{
+				RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R150, 0x00); // Disable ANTSW_OFDM		
+				RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R151, 0x00); // Disable ANTSW_CCK			
+				RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R152, 0x00); // Aux Ant				
+				RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R154, 0x00); // Clear R154[4], Rx Ant is not bound to the previous rx packet selected Ant
+				DBGPRINT(RT_DEBUG_OFF, ("\x1b[31m%s: rt5370G/rt5390R --> switch to aux\x1b[m\n", __FUNCTION__));
+			}
+			
+			
+		}	
+		else
+		{
+			if (Ant == 0) /* 0: Main antenna */
+			{
+				RTMP_BBP_IO_READ8_BY_REG_ID(pAd, BBP_R152, &BbpValue);
+				BbpValue = ((BbpValue & ~0x80) | (0x80));
+				RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R152, BbpValue);
+
+				DBGPRINT(RT_DEBUG_OFF, ("AsicSetRxAnt, switch to main antenna\n"));
+			}
+			else /* 1: Aux. antenna */
+			{
+				RTMP_BBP_IO_READ8_BY_REG_ID(pAd, BBP_R152, &BbpValue);
+				BbpValue = ((BbpValue & ~0x80) | (0x00));
+				RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R152, BbpValue);
+
+				DBGPRINT(RT_DEBUG_OFF, ("AsicSetRxAnt, switch to aux. antenna\n"));
+			}
+		}	
 	}
 }
 
@@ -1086,6 +1162,9 @@ VOID NICInitRT5390BbpRegisters(
 			RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R84, 0x19); /* Rx AGC VGA/LNA delay */
 		RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R86, 0x38); /* Rx AGC high gain threshold in dB */
 		
+		if (IS_RT5392(pAd))
+			RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R88, 0x90); // 2011-0503, add this register
+		
 		RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R91, 0x04); /* Guard interval delay counter for 20M band */
 		RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R92, 0x02); /* Guard interval delay counter for 40M band */
 
@@ -1100,7 +1179,7 @@ VOID NICInitRT5390BbpRegisters(
 		RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R105, 0x3C); /* FEQ control */
 
 		if (IS_RT5392(pAd))
-			RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R106, 0x05); /* GI remover */
+			RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R106, 0x12); /* GI remover 2011-0513, from 05 to 12*/
 		else			
 			RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R106, 0x03); /* GI remover */
 
@@ -1116,36 +1195,12 @@ VOID NICInitRT5390BbpRegisters(
 
 
 	}
-	/* KH Notice:Ian codes has the following part, but Zero remove it. Why? */
-	{
-			if (pAd->NicConfig2.field.AntOpt == 1)
-			{
-				if (pAd->NicConfig2.field.AntDiversity == 0) // 0: Main antenna
-				{
-					RTMP_BBP_IO_READ8_BY_REG_ID(pAd, BBP_R152, &BbpReg);
-					BbpReg = ((BbpReg & ~0x80) | (0x80));
-					RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R152, BbpReg);
 
-					DBGPRINT(RT_DEBUG_TRACE, ("%s, switch to main antenna\n", __FUNCTION__));
-				}
-				else // 1: Aux. antenna
-				{
-					RTMP_BBP_IO_READ8_BY_REG_ID(pAd, BBP_R152, &BbpReg);
-					BbpReg = ((BbpReg & ~0x80) | (0x00));
-					RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R152, BbpReg);
 
-					DBGPRINT(RT_DEBUG_TRACE, ("%s, switch to aux. antenna\n", __FUNCTION__));
-				}
-			}
-			else if (pAd->NicConfig2.field.AntDiversity == 0)	// Diversity is Off, set to Main Antenna as default
-			{
-					RTMP_BBP_IO_READ8_BY_REG_ID(pAd, BBP_R152, &BbpReg);
-					BbpReg = ((BbpReg & ~0x80) | (0x80));
-					RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R152, BbpReg);
+
+
 	
-					DBGPRINT(RT_DEBUG_TRACE, ("%s, switch to main antenna as default ...... 3\n", __FUNCTION__));
-			}
-		}
+
 	if (!IS_RT5392(pAd))
 		RTMP_BBP_IO_WRITE8_BY_REG_ID(pAd, BBP_R154, 0x0); /* Disable HW Antenna Diversity (5390/5370 only) */
 	DBGPRINT(RT_DEBUG_TRACE, ("<-- %s\n", __FUNCTION__));
@@ -1536,6 +1591,12 @@ VOID RT5390_ChipSwitchChannel(
 				RFValue = ((RFValue & ~0x0F) | 0x0F); /* Enable rf_block_en, pll_en, rx0_en and tx0_en */
 				}
 				RT30xxWriteRFRegister(pAd, RF_R01, (UCHAR)RFValue);
+				          RT30xxReadRFRegister(pAd, RF_R02, (PUCHAR)&RFValue);
+                                RFValue |= 0x80;
+                                RT30xxWriteRFRegister(pAd, RF_R02, (UCHAR)RFValue);
+                                RTMPusecDelay(1000);
+                                RFValue &= 0x7F;
+                                RT30xxWriteRFRegister(pAd, RF_R02, (UCHAR)RFValue);   
 #ifdef CONFIG_STA_SUPPORT
 #ifdef RTMP_FREQ_CALIBRATION_SUPPORT
 				if (pAd->FreqCalibrationCtrl.bEnableFrequencyCalibration == TRUE)
@@ -1543,11 +1604,8 @@ VOID RT5390_ChipSwitchChannel(
 				        if (INFRA_ON(pAd)) /* Update the frequency offset from the adaptive frequency offset */
 					{
 						RT30xxReadRFRegister(pAd, RF_R17, (PUCHAR)&RFValue);
-/*						pAd->PreRFXCodeValue = (UCHAR)RFValue;*/
 						PreRFValue = RFValue;
 						RFValue = ((RFValue & ~0x7F) | (pAd->FreqCalibrationCtrl.AdaptiveFreqOffset & 0x7F)); /* xo_code (C1 value control) - Crystal calibration */
-/*						RFValue = min((MINT)RFValue, 0x5F);
-						RFMultiStepXoCode(pAd, RF_R17, (UCHAR)RFValue,pAd->PreRFXCodeValue);*/
 						RFValue = min(RFValue, 0x5F);
 						if (PreRFValue != RFValue)
 						{
@@ -1557,11 +1615,8 @@ VOID RT5390_ChipSwitchChannel(
 					else /* Update the frequency offset from EEPROM */
 					{
 						RT30xxReadRFRegister(pAd, RF_R17, (PUCHAR)&RFValue);
-/*						pAd->PreRFXCodeValue = (UCHAR)RFValue;*/
 						PreRFValue = RFValue;
 						RFValue = ((RFValue & ~0x7F) | (pAd->RfFreqOffset & 0x7F)); /* xo_code (C1 value control) - Crystal calibration */
-/*						RFValue = min((MINT)RFValue, 0x5F);
-						RFMultiStepXoCode(pAd, RF_R17, (UCHAR)RFValue,pAd->PreRFXCodeValue);*/
 						RFValue = min(RFValue, 0x5F);
 						if (PreRFValue != RFValue)
 						{
@@ -1574,11 +1629,8 @@ VOID RT5390_ChipSwitchChannel(
 #endif /* CONFIG_STA_SUPPORT */					
 				{
 					RT30xxReadRFRegister(pAd, RF_R17, (PUCHAR)&RFValue);
-/*					pAd->PreRFXCodeValue = (UCHAR)RFValue;*/
 					PreRFValue = RFValue;
 					RFValue = ((RFValue & ~0x7F) | (pAd->RfFreqOffset & 0x7F)); /* xo_code (C1 value control) - Crystal calibration */
-/*					RFValue = min((MINT)RFValue, 0x5F);
-					RFMultiStepXoCode(pAd, RF_R17, (UCHAR)RFValue,pAd->PreRFXCodeValue);*/
 					RFValue = min(RFValue, 0x5F);
 					if (PreRFValue != RFValue)
 					{
@@ -1926,7 +1978,7 @@ VOID RT5390_InitDesiredTSSITable(
 	CHAR DesiredTssi = 0;
 	USHORT Value = 0;
 	UCHAR BbpR47 = 0;
-	MINT		i=0;
+	int		i=0;
 #if defined(RT5370) || defined(RT5372) || defined(RT5390) || defined(RT5392)
 
 	BOOLEAN bExtendedTssiMode = FALSE;
@@ -2911,9 +2963,9 @@ LONG Rounding(
 
 	DBGPRINT(RT_DEBUG_INFO, ("%s: Integer = %d, Fraction = %d, DenominatorOfTssiRatio = %d\n", 
 		__FUNCTION__, 
-		(MINT)Integer, 
-		(MINT)Fraction, 
-		(MINT)DenominatorOfTssiRatio));
+		(int)Integer, 
+		(int)Fraction, 
+		(int)DenominatorOfTssiRatio));
 
 	if (Fraction >= 0)
 	{
@@ -2957,7 +3009,7 @@ LONG Rounding(
 				}
 			} while (1);
 
-			DBGPRINT(RT_DEBUG_INFO, ("%s: [+] temp = %d, Fraction = %d\n", __FUNCTION__, (MINT)temp, (MINT)Fraction));
+			DBGPRINT(RT_DEBUG_INFO, ("%s: [+] temp = %d, Fraction = %d\n", __FUNCTION__, (int)temp, (int)Fraction));
 
 			if (Fraction >= 5)
 			{
@@ -2996,7 +3048,7 @@ LONG Rounding(
 				}
 			} while (1);
 
-			DBGPRINT(RT_DEBUG_INFO, ("%s: [-] temp = %d, Fraction = %d\n", __FUNCTION__, (MINT)temp, (MINT)Fraction));
+			DBGPRINT(RT_DEBUG_INFO, ("%s: [-] temp = %d, Fraction = %d\n", __FUNCTION__, (int)temp, (int)Fraction));
 
 			if (Fraction <= -5)
 			{
@@ -3295,7 +3347,7 @@ BOOLEAN GetDesiredTssiAndCurrentTssi(
 }
 
 #ifdef RALINK_ATE
-MINT RT5390_ATETssiCalibration(
+int RT5390_ATETssiCalibration(
 	IN	PRTMP_ADAPTER		pAd,
 	IN	PSTRING				arg)
 {    
@@ -3574,7 +3626,7 @@ CHAR GetPowerDeltaFromTssiRatio(CHAR TssiOfChannel, CHAR TssiBase)
 	return (PowerDelta);
 }
 
-MINT RT5390_ATETssiCalibrationExtend(
+int RT5390_ATETssiCalibrationExtend(
 	IN	PRTMP_ADAPTER		pAd,
 	IN	PSTRING				arg)
 {  
@@ -3704,7 +3756,7 @@ MINT RT5390_ATETssiCalibrationExtend(
 #endif /* RTMP_INTERNAL_TX_ALC */
 
 #ifdef RTMP_TEMPERATURE_COMPENSATION
-MINT RT5392_ATEReadExternalTSSI(
+int RT5392_ATEReadExternalTSSI(
 	IN	PRTMP_ADAPTER		pAd,
 	IN	PSTRING				arg)
 {
@@ -3846,14 +3898,32 @@ VOID RT5390_ChipResumeMsduTransmission(
 VOID RT5390_AsicResetBbpAgent(
 	IN PRTMP_ADAPTER		pAd)	
 {	
+	if (IS_RT5392(pAd))
+	{
 	ULONG loop = 0;
 	UINT8 BBPValue = 0;
 	UINT32 MacValue = 0;
-	RTMP_IO_READ32(pAd,0x1004,&MacValue);
-	MacValue|=0x2;
-	printk("MacValue1=%x\n",MacValue);
-	RTMP_IO_WRITE32(pAd,0x1004,MacValue);
-	MacValue&=~(0x2);
-	printk("MacValue2=%x\n",MacValue);
-	RTMP_IO_WRITE32(pAd,0x1004,MacValue);
+		
+	/* step 1: disable PA. */
+	RTMP_IO_READ32(pAd, 0x1328, &MacValue);
+	RTMP_IO_WRITE32(pAd, 0x1328, (MacValue & 0xfffff0f0));
+
+	/* step 2: re-calibarate BBP IQ. */
+	BBP_IO_WRITE8_BY_REG_ID(pAd,158,0x00);
+	BBP_IO_WRITE8_BY_REG_ID(pAd,159,0x80);
+
+	/* step3: check re-calibarate BBP IQ done. */
+	do
+	{
+		BBP_IO_READ8_BY_REG_ID(pAd,159,&BBPValue);
+		RTMPusecDelay(5);
+	} while ((BBPValue != 0) || (loop++ <= 100));
+		
+	if (loop == 101)
+		DBGPRINT(RT_DEBUG_OFF, ("BBP re-calibaration fail! \n"));
+
+	/* step4: enable PA. */
+	RTMP_IO_READ32(pAd, 0x1328, &MacValue);
+	RTMP_IO_WRITE32(pAd, 0x1328, (MacValue | 0x00050f0f));	
+	}
 }

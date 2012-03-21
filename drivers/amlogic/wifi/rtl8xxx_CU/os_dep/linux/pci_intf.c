@@ -1409,7 +1409,7 @@ static void rtw_dev_unload(_adapter *padapter)
 		//s2-2.  indicate disconnect to os
 		rtw_indicate_disconnect(padapter);
 		//s2-3.
-		rtw_free_assoc_resources(padapter);
+		rtw_free_assoc_resources(padapter, 1);
 		//s2-4.
 		rtw_free_network_queue(padapter, _TRUE);*/
 

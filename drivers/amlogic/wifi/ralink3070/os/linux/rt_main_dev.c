@@ -31,7 +31,7 @@
 #include "rtmp_comm.h"
 #include "rt_os_util.h"
 #include "rt_os_net.h"
-MODULE_LICENSE("GPL");
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,24)
 #ifndef SA_SHIRQ
 #define SA_SHIRQ IRQF_SHARED
@@ -76,7 +76,7 @@ int rt28xx_close(VOID *net_dev);
 int rt28xx_open(VOID *net_dev);
 
 /* private function prototype */
-static MINT rt28xx_send_packets(IN struct sk_buff *skb_p, IN struct net_device *net_dev);
+static int rt28xx_send_packets(IN struct sk_buff *skb_p, IN struct net_device *net_dev);
 
 
 
@@ -121,7 +121,7 @@ int MainVirtualIF_close(IN struct net_device *net_dev)
 	RTMPInfClose(pAd);
 
 
-/*	VIRTUAL_IF_DOWN(pAd);*/
+	VIRTUAL_IF_DOWN(pAd);
 
 	RT_MOD_DEC_USE_COUNT();
 
@@ -158,10 +158,10 @@ int MainVirtualIF_open(IN struct net_device *net_dev)
 	if (pAd == NULL)
 		return 0; /* close ok */
 
-/*
+
 	if (VIRTUAL_IF_UP(pAd) != 0)
 		return -1;
-*/
+
 	/* increase MODULE use count */
 	RT_MOD_INC_USE_COUNT();
 
@@ -247,7 +247,7 @@ int rt28xx_open(VOID *dev)
 #ifdef USB_SUPPORT_SELECTIVE_SUSPEND
 	struct usb_interface *intf;
 	struct usb_device		*pUsb_Dev;
-	MINT 		pm_usage_cnt;
+	int 		pm_usage_cnt;
 	UCHAR	Flag;
 #endif /* USB_SUPPORT_SELECTIVE_SUSPEND */
 #endif /* CONFIG_PM */
@@ -288,12 +288,11 @@ int rt28xx_open(VOID *dev)
 		if(pm_usage_cnt == 0)
 		{
 			int res=1;
-#if 0
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
 		if(pUsb_Dev->autosuspend_disabled  ==0)
 #else
 		if(pUsb_Dev->auto_pm ==1)
-#endif
 #endif
 			{
 				res = usb_autopm_get_interface(intf);
@@ -311,7 +310,6 @@ so we must clear fkag here;
 					return (-1);;
 				}			
 			}
-#if 0
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33)
 			else
 			{
@@ -320,7 +318,6 @@ so we must clear fkag here;
 				RTMP_DRIVER_ADAPTER_SUSPEND_SET(pAd);
 				return (-1);
 			}
-#endif
 #endif
 
 		}
@@ -646,13 +643,13 @@ struct iw_statistics *rt28xx_get_wireless_stats(
 
 
 
-MINT rt28xx_ioctl(
+int rt28xx_ioctl(
 	IN	PNET_DEV	net_dev, 
 	IN	OUT	struct ifreq	*rq, 
-	IN	MINT					cmd)
+	IN	int					cmd)
 {
 	VOID			*pAd = NULL;
-	MINT				ret = 0;
+	int				ret = 0;
 	ULONG			OpMode;
 
 	GET_PAD_FROM_NET_DEV(pAd, net_dev);	

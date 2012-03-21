@@ -481,7 +481,9 @@ typedef union _BBP_R182_STRUC {
 } BBP_R182_STRUC, *PBBP_R182_STRUC;
 #endif /* RT_BIG_ENDIAN */
 
-#ifdef RT30xx
+#if defined(RT5370) || defined(RT5390) //for hw antenna diversity (PPAD)
+	#define MAX_BBP_ID	255
+#elif RT30xx
 	/* edit by johnli, RF power sequence setup, add BBP R138 for ADC dynamic on/off control */
 	#define MAX_BBP_ID	185
 #elif defined(RT2883)
@@ -541,6 +543,42 @@ typedef union _BBP_R182_STRUC {
 
 
 #ifdef RT30xx
+#ifdef ANT_DIVERSITY_SUPPORT
+/*Need to collect each ant's rssi concurrently */
+/*rssi1 is report to pair2 Ant and rss2 is reprot to pair1 Ant when 4 Ant */
+
+#ifdef CONFIG_STA_SUPPORT
+#define STA_COLLECT_RX_ANTENNA_AVERAGE_RSSI(_pAd, _rssi1, _rssi2)					\
+{																				\
+	SHORT	AvgRssi;															\
+	UCHAR	UsedAnt;															\
+	if (_pAd->RxAnt.EvaluatePeriod == 0)									\
+	{																		\
+		UsedAnt = _pAd->RxAnt.Pair1PrimaryRxAnt;							\
+		AvgRssi = _pAd->RxAnt.Pair1AvgRssi[UsedAnt];						\
+		if (AvgRssi < 0)													\
+			AvgRssi = AvgRssi - (AvgRssi >> 3) + _rssi1;					\
+		else																\
+			AvgRssi = _rssi1 << 3;											\
+		_pAd->RxAnt.Pair1AvgRssi[UsedAnt] = AvgRssi;						\
+	}																		\
+	else																	\
+	{																		\
+		UsedAnt = _pAd->RxAnt.Pair1SecondaryRxAnt;							\
+		AvgRssi = _pAd->RxAnt.Pair1AvgRssi[UsedAnt];						\
+		if ((AvgRssi < 0) && (_pAd->RxAnt.FirstPktArrivedWhenEvaluate))		\
+			AvgRssi = AvgRssi - (AvgRssi >> 3) + _rssi1;					\
+		else																\
+		{																	\
+			_pAd->RxAnt.FirstPktArrivedWhenEvaluate = TRUE;					\
+			AvgRssi = _rssi1 << 3;											\
+		}																	\
+		_pAd->RxAnt.Pair1AvgRssi[UsedAnt] = AvgRssi;						\
+		_pAd->RxAnt.RcvPktNumWhenEvaluate++;								\
+	}																		\
+}
+#endif /* CONFIG_STA_SUPPORT */
+#endif /* ANT_DIVERSITY_SUPPORT */
 
 #define RTMP_ASIC_MMPS_DISABLE(_pAd)							\
 	do{															\

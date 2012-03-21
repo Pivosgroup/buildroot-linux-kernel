@@ -1071,18 +1071,19 @@ VOID PeerPairMsg3Action(
 	/* Update WpaState*/
 	pEntry->WpaState = AS_PTKINITDONE;	 	
 
+
 	/* Update pairwise key		*/
 #ifdef CONFIG_STA_SUPPORT
 	IF_DEV_CONFIG_OPMODE_ON_STA(pAd)
 	{
 		{
-			NdisMoveMemory(pAd->StaCfg.PTK, pEntry->PTK, LEN_PTK);
-			WPAInstallPairwiseKey(pAd, 
-								  BSS0, 
-								  pEntry, 
-								  FALSE);
-			NdisMoveMemory(&pAd->SharedKey[BSS0][0], &pEntry->PairwiseKey, sizeof(CIPHER_KEY));
-		}
+		NdisMoveMemory(pAd->StaCfg.PTK, pEntry->PTK, LEN_PTK);
+		WPAInstallPairwiseKey(pAd, 
+							  BSS0, 
+							  pEntry, 
+							  FALSE);
+		NdisMoveMemory(&pAd->SharedKey[BSS0][0], &pEntry->PairwiseKey, sizeof(CIPHER_KEY));
+	}
 	}
 #endif /* CONFIG_STA_SUPPORT */
 
@@ -1180,7 +1181,8 @@ VOID PeerPairMsg4Action(
 
 			/* send wireless event - for set key done WPA2*/
 				RTMPSendWirelessEvent(pAd, IW_SET_KEY_DONE_WPA2_EVENT_FLAG, pEntry->Addr, pEntry->apidx, 0); 
-	 
+	
+ 
 	        DBGPRINT(RT_DEBUG_OFF, ("AP SETKEYS DONE - WPA2, AuthMode(%d)=%s, WepStatus(%d)=%s, GroupWepStatus(%d)=%s\n\n", 
 									pEntry->AuthMode, GetAuthMode(pEntry->AuthMode), 
 									pEntry->WepStatus, GetEncryptType(pEntry->WepStatus), 
@@ -1567,7 +1569,7 @@ VOID PeerGroupMsg2Action(
 */
 BOOLEAN	WpaMsgTypeSubst(
 	IN	UCHAR	EAPType,
-	OUT	MINT		*MsgType)	
+	OUT	int		*MsgType)	
 {
 	switch (EAPType)
 	{
@@ -1641,12 +1643,12 @@ void inc_iv_byte(UCHAR *iv, UINT len, UINT cnt)
 
 	Arguments:
 		UCHAR	*key,		-	the key material for HMAC_SHA1 use
-		MINT		key_len		-	the length of key
+		int		key_len		-	the length of key
 		UCHAR	*prefix		-	a prefix label
-		MINT		prefix_len	-	the length of the label
+		int		prefix_len	-	the length of the label
 		UCHAR	*data		-	a specific data with variable length		
-		MINT		data_len	-	the length of a specific data	
-		MINT		len			-	the output lenght
+		int		data_len	-	the length of a specific data	
+		int		len			-	the output lenght
 
 	Return Value:
 		UCHAR	*output		-	the calculated result 
@@ -1658,18 +1660,18 @@ void inc_iv_byte(UCHAR *iv, UINT len, UINT cnt)
 */
 VOID	PRF(
 	IN	UCHAR	*key,
-	IN	MINT		key_len,
+	IN	int		key_len,
 	IN	UCHAR	*prefix,
-	IN	MINT		prefix_len,
+	IN	int		prefix_len,
 	IN	UCHAR	*data,
-	IN	MINT		data_len,
+	IN	int		data_len,
 	OUT	UCHAR	*output,
-	IN	MINT		len)
+	IN	int		len)
 {
-	MINT		i;
+	int		i;
     UCHAR   *input;
-	MINT		currentindex = 0;
-	MINT		total_len;
+	int		currentindex = 0;
+	int		total_len;
 
 	/* Allocate memory for input*/
 	os_alloc_mem(NULL, (PUCHAR *)&input, 1024);
@@ -1753,7 +1755,7 @@ static void F(char *password, unsigned char *ssid, int ssidlength, int iteration
 * ssidlength - length of ssid in octets 
 * output must be 40 octets in length and outputs 256 bits of key 
 */ 
-int RtmpPasswordHash(PSTRING password, PUCHAR ssid, MINT ssidlength, PUCHAR output) 
+int RtmpPasswordHash(PSTRING password, PUCHAR ssid, int ssidlength, PUCHAR output) 
 { 
     if ((strlen(password) > 63) || (ssidlength > 32))
         return 0; 
@@ -1794,18 +1796,18 @@ int RtmpPasswordHash(PSTRING password, PUCHAR ssid, MINT ssidlength, PUCHAR outp
 */
 VOID	KDF(
 	IN	PUINT8	key,
-	IN	MINT		key_len,
+	IN	int		key_len,
 	IN	PUINT8	label,
-	IN	MINT		label_len,
+	IN	int		label_len,
 	IN	PUINT8	data,
-	IN	MINT		data_len,
+	IN	int		data_len,
 	OUT	PUINT8	output,
 	IN	USHORT	len)
 {
 	USHORT	i;
     UCHAR   *input;
-	MINT		currentindex = 0;
-	MINT		total_len;
+	int		currentindex = 0;
+	int		total_len;
 	UINT	len_in_bits = (len << 3);
 
 	os_alloc_mem(NULL, (PUCHAR *)&input, 1024);
@@ -2041,7 +2043,7 @@ VOID	GenRandom(
 	IN	UCHAR			*macAddr,
 	OUT	UCHAR			*random)
 {	
-	MINT		i, curr;
+	int		i, curr;
 	UCHAR	local[80], KeyCounter[32];
 	UCHAR	result[80];
 	ULONG	CurrentTime;
@@ -2465,9 +2467,9 @@ VOID RTMPMakeRSNIE(
 			UINT	apcliIfidx = 0;
 
 			/* Only support WPAPSK or WPA2PSK for AP-Client mode */
-			if ((AuthMode != Ndis802_11AuthModeWPAPSK) && 
-				(AuthMode != Ndis802_11AuthModeWPA2PSK))
-		    	return;
+				if ((AuthMode != Ndis802_11AuthModeWPAPSK) && 
+					(AuthMode != Ndis802_11AuthModeWPA2PSK))
+			    	return;
 			DBGPRINT(RT_DEBUG_TRACE,("==> RTMPMakeRSNIE(ApCli)\n"));
 	
 			apcliIfidx = apidx - MIN_NET_DEVICE_FOR_APCLI;
@@ -3279,7 +3281,7 @@ VOID	ConstructEapolKeyData(
 			/* a single octet 0xdd followed by zero or more 0x00 octets. */
 			if ((remainder = data_offset & 0x07) != 0)
 			{
-				MINT		i;
+				int		i;
 			
 				pad_len = (8 - remainder);
 				Key_Data[data_offset] = 0xDD;
@@ -3601,9 +3603,9 @@ PUINT8	WPA_ExtractSuiteFromRSNIE(
 		OUT	UINT8	*count)
 {
 	PEID_STRUCT pEid;
-	MINT			len;
+	int			len;
 	PUINT8		pBuf;
-	MINT			offset = 0;
+	int			offset = 0;
 
 	pEid = (PEID_STRUCT)rsnie;
 	len = rsnie_len - 2;	/* exclude IE and length*/
@@ -4130,7 +4132,7 @@ VOID RTMPSetWcidSecurityInfo(
 	/* Prepare initial IV value */
 	if (CipherAlg == CIPHER_WEP64 || CipherAlg == CIPHER_WEP128)
 	{
-		MINT	i;	
+		int	i;	
 		UCHAR	TxTsc[LEN_WEP_TSC];
 
 		/* Generate 3-bytes IV randomly for encryption using */						

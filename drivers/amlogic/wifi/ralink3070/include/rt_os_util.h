@@ -235,7 +235,7 @@ VOID RtmpOsPktBodyCopy(
 	IN	ULONG					ThisFrameLen,
 	IN	PUCHAR					pData);
 
-MINT RtmpOsIsPktCloned(
+int RtmpOsIsPktCloned(
 	IN	PNDIS_PACKET			pNetPkt);
 
 PNDIS_PACKET RtmpOsPktCopy(
@@ -334,11 +334,11 @@ void RtmpOSNetDevClose(
 void RtmpOSNetDevFree(
 	IN	PNET_DEV				pNetDev);
 
-MINT RtmpOSNetDevAlloc(
+int RtmpOSNetDevAlloc(
 	IN	PNET_DEV				*new_dev_p,
 	IN	UINT32					privDataSize);
 
-MINT RtmpOSNetDevOpsAlloc(
+int RtmpOSNetDevOpsAlloc(
 	IN	PVOID					*pNetDevOps);
 
 
@@ -349,7 +349,7 @@ PNET_DEV RtmpOSNetDevGetByName(
 void RtmpOSNetDeviceRefPut(
 	IN	PNET_DEV				pNetDev);
 
-MINT RtmpOSNetDevDestory(
+int RtmpOSNetDevDestory(
 	IN	VOID					*pReserved,
 	IN	PNET_DEV				pNetDev);
 
@@ -364,9 +364,9 @@ int RtmpOSNetDevAttach(
 PNET_DEV RtmpOSNetDevCreate(
 	IN	INT32					MC_RowID,
 	IN	UINT32					*pIoctlIF,
-	IN	MINT 					devType,
-	IN	MINT						devNum,
-	IN	MINT						privMemSize,
+	IN	int 					devType,
+	IN	int						devNum,
+	IN	int						privMemSize,
 	IN	PSTRING					pNamePrefix);
 
 BOOLEAN RtmpOSNetDevIsUp(
@@ -468,7 +468,7 @@ VOID RtmpOSTaskFree(
 NDIS_STATUS RtmpOSTaskKill(
 	IN	RTMP_OS_TASK			*pTaskOrg);
 
-MINT RtmpOSTaskNotifyToExit(
+int RtmpOSTaskNotifyToExit(
 	IN	RTMP_OS_TASK			*pTaskOrg);
 
 VOID RtmpOSTaskCustomize(
@@ -670,7 +670,7 @@ VOID RtmpOsSendWirelessEvent(
 int RtmpOSWrielessEventSend(
 	IN	PNET_DEV				pNetDev,
 	IN	UINT32					eventType,
-	IN	MINT						flags,
+	IN	int						flags,
 	IN	PUCHAR					pSrcMac,
 	IN	PUCHAR					pData,
 	IN	UINT32					dataLen);
@@ -678,7 +678,7 @@ int RtmpOSWrielessEventSend(
 int RtmpOSWrielessEventSendExt(
 	IN	PNET_DEV				pNetDev,
 	IN	UINT32					eventType,
-	IN	MINT						flags,
+	IN	int						flags,
 	IN	PUCHAR					pSrcMac,
 	IN	PUCHAR					pData,
 	IN	UINT32					dataLen,

@@ -209,7 +209,7 @@ CHAR RTMP_GetTxPwr(
 	IN HTTRANSMIT_SETTING HTTxMode)
 {
 	UINT32 Value;
-	MINT Idx;
+	int Idx;
 	UINT8 PhyMode;
 	CHAR CurTxPwr;
 	UINT8 TxPwrRef = 0;
@@ -400,7 +400,7 @@ PMEASURE_REQ_ENTRY MeasureReqInsert(
 	IN PRTMP_ADAPTER	pAd,
 	IN UINT8			DialogToken)
 {
-	MINT i;
+	int i;
 	ULONG HashIdx;
 	PMEASURE_REQ_TAB pTab = pAd->CommonCfg.pMeasureReqTab;
 	PMEASURE_REQ_ENTRY pEntry = NULL, pCurrEntry;
@@ -626,7 +626,7 @@ static PTPC_REQ_ENTRY TpcReqInsert(
 	IN PRTMP_ADAPTER	pAd,
 	IN UINT8			DialogToken)
 {
-	MINT i;
+	int i;
 	ULONG HashIdx;
 	PTPC_REQ_TAB pTab = pAd->CommonCfg.pTpcReqTab;
 	PTPC_REQ_ENTRY pEntry = NULL, pCurrEntry;
@@ -1300,7 +1300,7 @@ static BOOLEAN DfsRequirementCheck(
 	IN UINT8 Channel)
 {
 	BOOLEAN Result = FALSE;
-	MINT i;
+	int i;
 
 	do
 	{
@@ -2056,7 +2056,7 @@ VOID PeerSpectrumAction(
 	Return	: None.
 	==========================================================================
  */
-MINT Set_MeasureReq_Proc(
+int Set_MeasureReq_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {
@@ -2155,7 +2155,7 @@ END_OF_MEASURE_REQ:
 	return TRUE;
 }
 
-MINT Set_TpcReq_Proc(
+int Set_TpcReq_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg)
 {

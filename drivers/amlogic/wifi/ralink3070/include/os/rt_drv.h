@@ -61,7 +61,7 @@ typedef VOID	pregs;
 #else
 #define STA_PROFILE_PATH			"/etc/Wireless/RT2870STA/RT2870STA.dat"
 #endif
-#define STA_DRIVER_VERSION			"2.5.0.1"
+#define STA_DRIVER_VERSION			"2.5.0.3"
 #ifdef MULTIPLE_CARD_SUPPORT
 #define CARD_INFO_PATH			"/etc/Wireless/RT2870STA/RT2870STACard.dat"
 #endif /* MULTIPLE_CARD_SUPPORT */
@@ -78,7 +78,7 @@ typedef VOID	pregs;
 #define IN
 #define OUT
 #define INOUT
-#define NDIS_STATUS		MINT
+#define NDIS_STATUS		int
 
 
 /***********************************************************************************
@@ -214,7 +214,7 @@ typedef VOID * 			RTMP_OS_FD;
 #define CHECK_TASK_LEGALITY(_task)		RtmpOsCheckTaskLegality(_task)
 #define ATE_KILL_THREAD_PID				RtmpThreadPidKill
 
-typedef MINT (*RTMP_OS_TASK_CALLBACK)(ULONG);
+typedef int (*RTMP_OS_TASK_CALLBACK)(ULONG);
 
 
 /***********************************************************************************
@@ -316,8 +316,8 @@ struct os_cookie {
 
 	RTMP_OS_PID				apd_pid; /*802.1x daemon pid */
 	unsigned long			apd_pid_nr;
-	MINT						ioctl_if_type;
-	MINT 					ioctl_if;
+	int						ioctl_if_type;
+	int 					ioctl_if;
 };
 
 typedef struct os_cookie	* POS_COOKIE;
@@ -808,7 +808,7 @@ void RTMP_GetCurrentSystemTime(LARGE_INTEGER *time);
 #ifdef INF_AMAZON_SE
 #define BULKAGGRE_SIZE          30
 #else
-#define BULKAGGRE_SIZE          100
+#define BULKAGGRE_SIZE          60
 #endif /* INF_AMAZON_SE */
 
 /*#define RT28XX_PUT_DEVICE			rausb_put_dev */

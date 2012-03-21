@@ -105,8 +105,9 @@ NDIS_STATUS	RTMPReadParametersHook(
 	PSTRING					src = NULL;
 	RTMP_OS_FD				srcf;
 	RTMP_OS_FS_INFO			osFSInfo;
-	MINT 						retval = NDIS_STATUS_FAILURE;
+	int 						retval = NDIS_STATUS_FAILURE;
 	PSTRING					buffer;
+	
 #ifdef CONFIG_RALINK_3070_PROFILE_FILE
 	const struct firmware *fw_entry;
 #endif
@@ -149,7 +150,7 @@ NDIS_STATUS	RTMPReadParametersHook(
 	               }
 	               release_firmware(fw_entry);
 		}
-#else	
+#else	    
 		RtmpOSFSInfoChange(&osFSInfo, TRUE);
 		srcf = RtmpOSFileOpen(src, O_RDONLY, 0);
 		if (IS_FILE_OPEN_ERR(srcf)) 
@@ -174,8 +175,7 @@ NDIS_STATUS	RTMPReadParametersHook(
 				DBGPRINT(RT_DEBUG_ERROR, ("Close file \"%s\" failed(errCode=%d)!\n", src, retval));
 			}
 		}
-#endif
-	
+#endif		
 		RtmpOSFSInfoChange(&osFSInfo, FALSE);
 	}
 

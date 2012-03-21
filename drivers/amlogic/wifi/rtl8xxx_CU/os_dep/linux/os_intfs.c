@@ -1141,6 +1141,7 @@ static int netdev_open(struct net_device *pnetdev)
 	struct pwrctrl_priv *pwrctrlpriv = &padapter->pwrctrlpriv;
 
 	RT_TRACE(_module_os_intfs_c_,_drv_info_,("+871x_drv - dev_open\n"));
+	DBG_871X("%s (%s:%d)\n",__FUNCTION__, current->comm, current->pid);
 	DBG_8192C("+871x_drv - drv_open, bup=%d\n", padapter->bup);
 
 	if(pwrctrlpriv->ps_flag == _TRUE){
@@ -1389,7 +1390,8 @@ static int netdev_close(struct net_device *pnetdev)
 {
 	_adapter *padapter = (_adapter *)rtw_netdev_priv(pnetdev);
 
-	RT_TRACE(_module_os_intfs_c_,_drv_info_,("+871x_drv - drv_close\n"));	
+	RT_TRACE(_module_os_intfs_c_,_drv_info_,("+871x_drv - drv_close\n"));
+	DBG_871X("%s (%s:%d)\n",__FUNCTION__, current->comm, current->pid);
 
 	if(padapter->pwrctrlpriv.bInternalAutoSuspend == _TRUE)
 	{
@@ -1425,7 +1427,7 @@ static int netdev_close(struct net_device *pnetdev)
 		//s2-2.  indicate disconnect to os
 		rtw_indicate_disconnect(padapter);
 		//s2-3. 
-		rtw_free_assoc_resources(padapter);
+		rtw_free_assoc_resources(padapter, 1);
 		//s2-4.
 		rtw_free_network_queue(padapter,_TRUE);
 #endif
