@@ -15,6 +15,7 @@ TOP=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 ifneq ($(KBUILD_EXTMOD),)
 include $(KBUILD_EXTMOD)/Makefile.common
 else
+KBUILD_EXTMOD = $(TOP)
 include $(TOP)/Makefile.common
 endif
 
@@ -25,9 +26,12 @@ USING_MMU ?= 1
 USING_UMP := 1
 TARGET_PLATFORM ?= aml-meson
 CONFIG ?= aml-meson-m400-1
+BUILD ?= debug
 
-## @note Should allow overriding of building UMP for non-debug:
 EXTRA_CFLAGS += -DDEBUG -DMALI_STATE_TRACKING=0
+ifeq ($(BUILD), debug)
+EXTRA_CFLAGS += -DDEBUG
+endif
 
 # linux build system integration
 

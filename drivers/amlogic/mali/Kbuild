@@ -1,9 +1,9 @@
 #
 # Copyright (C) 2010-2011 ARM Limited. All rights reserved.
-#
+# 
 # This program is free software and is provided to you under the terms of the GNU General Public License version 2
 # as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
-#
+# 
 # A copy of the licence is included with the program, and can also be obtained from Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
@@ -14,12 +14,16 @@ OSKOS=linux
 FILES_PREFIX=
 
 # set up defaults if not defined by the user
-USING_UMP ?= 0
-USING_OS_MEMORY ?= 0
+ifeq ($(CONFIG_UMP), m)
+  USING_UMP ?= 1
+else
+  USING_UMP ?= 0
+endif
+USING_OS_MEMORY ?= 1
 USING_MALI_PMU ?= 0
 USING_PMM ?= 1
 USING_GPU_UTILIZATION ?= 0
-USING_MALI_RUN_TIME_PM ?= 1
+USING_MALI_RUN_TIME_PM ?= 0
 USING_MALI_PMM_TESTSUITE ?= 0
 OS_MEMORY_KERNEL_BUFFER_SIZE_IN_MB ?= 6
 USING_PROFILING ?= 0
@@ -29,12 +33,17 @@ DISABLE_PP2 ?= 0
 DISABLE_PP3 ?= 0
 TIMESTAMP ?= default
 BUILD ?= debug
-TARGET_PLATFORM ?= aml-m1
+TARGET_PLATFORM ?= meson_platform
 KERNEL_RUNTIME_PM_ENABLED ?= 0
-CONFIG ?= aml-m1-m400-1
+CONFIG ?= aml-meson-m400-1
+
+ifeq ($(USING_UMP),1)
+	UMP_SYMVERS_FILE = ../ump/Module.symvers
+	KBUILD_EXTRA_SYMBOLS = $(srctree)/$(src)/$(UMP_SYMVERS_FILE)
+endif
 
 # Get path to driver source from Linux build system
-DRIVER_DIR=$(src)
+DRIVER_DIR=$(srctree)/$(src)
 
 MALI_RELEASE_NAME=$(shell cat $(DRIVER_DIR)/.version 2> /dev/null)
 include $(DRIVER_DIR)/Makefile.common
@@ -100,7 +109,7 @@ DEFINES += -DMALI_UKK_HAS_IMPLICIT_MMAP_CLEANUP
 
 ifeq ($(USING_UMP),1)
 	DEFINES += -DMALI_USE_UNIFIED_MEMORY_PROVIDER=1
-	ccflags-y += -I$(DRIVER_DIR)/../../ump/include/ump
+	ccflags-y += -I$(DRIVER_DIR)/../ump/include/ump
 else
 	DEFINES += -DMALI_USE_UNIFIED_MEMORY_PROVIDER=0
 endif

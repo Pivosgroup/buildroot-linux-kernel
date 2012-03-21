@@ -52,6 +52,7 @@ static void block_allocator_shutdown(ump_memory_backend * backend);
 static int block_allocator_allocate(void* ctx, ump_dd_mem * mem);
 static void block_allocator_release(void * ctx, ump_dd_mem * handle);
 static inline u32 get_phys(block_allocator * allocator, block_info * block);
+static u32 block_allocator_stat(struct ump_memory_backend *backend);
 
 
 
@@ -104,6 +105,7 @@ ump_memory_backend * ump_block_allocator_create(u32 base_address, u32 size)
 				backend->allocate = block_allocator_allocate;
 				backend->release = block_allocator_release;
 				backend->shutdown = block_allocator_shutdown;
+				backend->stat = block_allocator_stat;
 				backend->pre_allocate_physical_check = NULL;
 				backend->adjust_to_mali_phys = NULL;
 
@@ -271,4 +273,14 @@ static void block_allocator_release(void * ctx, ump_dd_mem * handle)
 static inline u32 get_phys(block_allocator * allocator, block_info * block)
 {
 	return allocator->base + ((block - allocator->all_blocks) * UMP_BLOCK_SIZE);
+}
+
+static u32 block_allocator_stat(struct ump_memory_backend *backend)
+{
+	block_allocator *allocator;
+	BUG_ON(!backend);
+	allocator = (block_allocator*)backend->ctx;
+	BUG_ON(!allocator);
+
+	return (allocator->num_blocks - allocator->num_free)* UMP_BLOCK_SIZE;
 }

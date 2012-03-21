@@ -26,10 +26,7 @@
 #include "ump_kernel_common.h"
 #include "ump_kernel_memory_backend.h"
 
-/* The size of the used memory size for the OS memory backend */
-unsigned int ump_os_memory_used = 0;
-module_param(ump_os_memory_used, uint, S_IRUGO); /* r--r--r-- */
-MODULE_PARM_DESC(ump_os_memory_used, "The used memory size in the OS memory backend");
+
 
 typedef struct os_allocator
 {
@@ -43,6 +40,7 @@ typedef struct os_allocator
 static void os_free(void* ctx, ump_dd_mem * descriptor);
 static int os_allocate(void* ctx, ump_dd_mem * descriptor);
 static void os_memory_backend_destroy(ump_memory_backend * backend);
+static u32 os_stat(struct ump_memory_backend *backend);
 
 
 
@@ -63,8 +61,6 @@ ump_memory_backend * ump_os_memory_backend_create(const int max_allocation)
 	info->num_pages_max = max_allocation >> PAGE_SHIFT;
 	info->num_pages_allocated = 0;
 
-	ump_os_memory_used = 0;
-
 	sema_init(&info->mutex, 1);
 
 	backend = kmalloc(sizeof(ump_memory_backend), GFP_KERNEL);
@@ -78,6 +74,7 @@ ump_memory_backend * ump_os_memory_backend_create(const int max_allocation)
 	backend->allocate = os_allocate;
 	backend->release = os_free;
 	backend->shutdown = os_memory_backend_destroy;
+	backend->stat = os_stat;
 	backend->pre_allocate_physical_check = NULL;
 	backend->adjust_to_mali_phys = NULL;
 
@@ -143,8 +140,7 @@ static int os_allocate(void* ctx, ump_dd_mem * descriptor)
 
 		if (is_cached)
 		{
-			/* Only allocate lowmem pages when using cached memory. */
-			new_page = alloc_page(GFP_USER | __GFP_ZERO | __GFP_REPEAT | __GFP_NOWARN);
+			new_page = alloc_page(GFP_HIGHUSER | __GFP_ZERO | __GFP_REPEAT | __GFP_NOWARN);
 		} else
 		{
 			new_page = alloc_page(GFP_HIGHUSER | __GFP_ZERO | __GFP_REPEAT | __GFP_NOWARN | __GFP_COLD);
@@ -202,8 +198,6 @@ static int os_allocate(void* ctx, ump_dd_mem * descriptor)
 
 	info->num_pages_allocated += pages_allocated;
 
-	ump_os_memory_used = info->num_pages_allocated * PAGE_SIZE;
-
 	DBG_MSG(6, ("%d out of %d pages now allocated\n", info->num_pages_allocated, info->num_pages_max));
 
 	up(&info->mutex);
@@ -237,8 +231,6 @@ static void os_free(void* ctx, ump_dd_mem * descriptor)
 
 	info->num_pages_allocated -= descriptor->nr_blocks;
 
-	ump_os_memory_used = info->num_pages_allocated * PAGE_SIZE; 
-
 	up(&info->mutex);
 
 	for ( i = 0; i < descriptor->nr_blocks; i++)
@@ -252,4 +244,12 @@ static void os_free(void* ctx, ump_dd_mem * descriptor)
 	}
 
 	vfree(descriptor->block_array);
+}
+
+
+static u32 os_stat(struct ump_memory_backend *backend)
+{
+	os_allocator *info;
+	info = (os_allocator*)backend->ctx;
+	return info->num_pages_allocated * _MALI_OSK_MALI_PAGE_SIZE;
 }

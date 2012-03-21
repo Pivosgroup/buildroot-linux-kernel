@@ -15,29 +15,47 @@
 #include "mali_kernel_common.h"
 #include "mali_osk.h"
 #include "mali_platform.h"
+#include "mali_pmm.h"
 
-
-_mali_osk_errcode_t mali_platform_init(void)
+static int is_run_time = 0;
+_mali_osk_errcode_t mali_platform_init(_mali_osk_resource_t *resource)
 {
-    MALI_SUCCESS;
+	MALI_SUCCESS;
 }
 
-_mali_osk_errcode_t mali_platform_deinit(void)
+_mali_osk_errcode_t mali_platform_deinit(_mali_osk_resource_type_t *type)
 {
-    MALI_SUCCESS;
+	MALI_SUCCESS;
 }
 
-_mali_osk_errcode_t mali_platform_power_mode_change(mali_power_mode power_mode)
+_mali_osk_errcode_t mali_platform_powerdown(u32 cores)
 {
-    MALI_SUCCESS;
+	if(is_run_time == 1)
+	{
+		_mali_osk_pmm_dev_idle();
+		is_run_time =0;
+	}
+	MALI_SUCCESS;
+}
+
+_mali_osk_errcode_t mali_platform_powerup(u32 cores)
+{
+	if(is_run_time == 0)
+	{
+		_mali_osk_pmm_dev_activate();
+		is_run_time = 1;
+	}
+	MALI_SUCCESS;
 }
 
 void mali_gpu_utilization_handler(u32 utilization)
 {
 }
 
-void set_mali_parent_power_domain(void* dev)
+#if MALI_POWER_MGMT_TEST_SUITE
+u32 pmu_get_power_up_down_info(void)
 {
+	return 4095;
+
 }
-
-
+#endif

@@ -1,12 +1,13 @@
 /*
- * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
- *
+ * Copyright (C) 2011 Amlogic, Inc. All rights reserved.
+ * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
- *
+ * 
  * A copy of the licence is included with the program, and can also be obtained from Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 
 #ifndef __ARCH_CONFIG_H__
 #define __ARCH_CONFIG_H__
@@ -16,7 +17,7 @@
 #define INT_MALI_PP	50
 #define INT_MALI_PP_MMU 51
 
-/* Configuration for the AMLOGIC M1 platform */
+/* Configuration for the AMLOGIC MESON platform */
 
 static _mali_osk_resource_t arch_configuration [] =
 {
@@ -54,7 +55,7 @@ static _mali_osk_resource_t arch_configuration [] =
 		.type = OS_MEMORY,
 		.description = "Mali Memory",
 		.alloc_order = 5, /* Medium preference for this memory */
-		.size = 0x04000000,
+		.size = 0x08000000,
 		.flags = _MALI_CPU_WRITEABLE | _MALI_CPU_READABLE | _MALI_PP_READABLE | _MALI_PP_WRITEABLE |_MALI_GP_READABLE | _MALI_GP_WRITEABLE
 	},
 	{
