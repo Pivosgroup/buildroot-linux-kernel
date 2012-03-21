@@ -1,5 +1,5 @@
 #
-# Post Process Manager device configuration
+# Deinterlace driver configuration
 #
 
 menu "AMLOGIC Deinterlace driver"

@@ -569,8 +569,9 @@ static struct notifier_block hdmitx_notifier_nb_v = {
 
 #ifndef DISABLE_AUDIO
 
-#define AOUT_EVENT_PREPARE  0x1
-#define AOUT_EVENT_RAWDATA  0x2
+#define AOUT_EVENT_PREPARE      0x1
+#define AOUT_EVENT_RAWDATA_AC_3 0x2
+#define AOUT_EVENT_RAWDATA_DTS  0x3
 extern int aout_register_client(struct notifier_block * ) ;
 extern int aout_unregister_client(struct notifier_block * ) ;
 
@@ -584,7 +585,8 @@ static int hdmitx_notify_callback_a(struct notifier_block *block, unsigned long 
 {
     struct snd_pcm_substream *substream =(struct snd_pcm_substream*)para;
     Hdmi_tx_audio_para_t* audio_param = &(hdmitx_device.cur_audio_param);
-    if (cmd == AOUT_EVENT_PREPARE){
+    switch (cmd){
+    case AOUT_EVENT_PREPARE:
         audio_param->type = CT_PCM;
         audio_param->channel_num = CC_2CH;
         audio_param->sample_size = SS_16BITS; 
@@ -619,8 +621,7 @@ static int hdmitx_notify_callback_a(struct notifier_block *block, unsigned long 
 
         hdmitx_device.audio_param_update_flag = 1;
         return 0;
-    }
-    if(cmd == AOUT_EVENT_RAWDATA){
+    case AOUT_EVENT_RAWDATA_AC_3:
         audio_param->type = CT_AC_3;
         audio_param->channel_num = CC_2CH;
         audio_param->sample_size = SS_16BITS; 
@@ -628,8 +629,17 @@ static int hdmitx_notify_callback_a(struct notifier_block *block, unsigned long 
 
         hdmitx_device.audio_param_update_flag = 1;
         return 0;
+    case AOUT_EVENT_RAWDATA_DTS:
+        audio_param->type = CT_DTS;
+        audio_param->channel_num = CC_2CH;
+        audio_param->sample_size = SS_16BITS; 
+        hdmi_print(1, "HDMI: aout notify format DTS\n");
+
+        hdmitx_device.audio_param_update_flag = 1;
+        return 0;
+    default:
+        return -1;
     }
-    return -1;
 }
 
 static struct notifier_block hdmitx_notifier_nb_a = {

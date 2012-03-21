@@ -1168,32 +1168,33 @@ static const struct file_operations vm_fops = {
 
 int  init_vm_device(void)
 {
-	int  ret=0;
+    int  ret=0;
 	
-	strcpy(vm_device.name,"vm");
-	ret=register_chrdev(0,vm_device.name,&vm_fops);
-	if(ret <=0) 
-	{
-		amlog_level(LOG_LEVEL_HIGH,"register vm device error\r\n");
-		return  ret ;
-	}
-	vm_device.major=ret;
-	vm_device.dbg_enable=0;
-	amlog_level(LOG_LEVEL_LOW,"vm_dev major:%d\r\n",ret);
+    strcpy(vm_device.name,"vm");
+    ret=register_chrdev(0,vm_device.name,&vm_fops);
+    if(ret <=0) 
+    {
+        amlog_level(LOG_LEVEL_HIGH,"register vm device error\r\n");
+        return  ret ;
+    }
+    vm_device.major=ret;
+    vm_device.dbg_enable=0;
+    amlog_level(LOG_LEVEL_LOW,"vm_dev major:%d\r\n",ret);
     
     if((vm_device.cla = init_vm_cls())==NULL) return -1;
     vm_device.dev=device_create(vm_device.cla,NULL,MKDEV(vm_device.major,0),NULL,vm_device.name);
-	if (IS_ERR(vm_device.dev)) {
-		amlog_level(LOG_LEVEL_HIGH,"create vm device error\n");
-		goto unregister_dev;
-	}
+    if (IS_ERR(vm_device.dev)) {
+        amlog_level(LOG_LEVEL_HIGH,"create vm device error\n");
+        goto unregister_dev;
+    }
     
     if(vm_buffer_init()<0) goto unregister_dev;
-    	vf_provider_init(&vm_vf_prov, PROVIDER_NAME ,&vm_vf_provider, NULL);	
-	vf_reg_provider(&vm_vf_prov);
-	vf_receiver_init(&vm_vf_recv, RECEIVER_NAME, &vm_vf_receiver, NULL);    
-	vf_reg_receiver(&vm_vf_recv);
-	return 0;
+        vf_provider_init(&vm_vf_prov, PROVIDER_NAME ,&vm_vf_provider, NULL);	
+    //vf_reg_provider(&vm_vf_prov);
+    vf_receiver_init(&vm_vf_recv, RECEIVER_NAME, &vm_vf_receiver, NULL);    
+    vf_reg_receiver(&vm_vf_recv);
+    return 0;
+
 unregister_dev:
     class_unregister(vm_device.cla);
     return -1;

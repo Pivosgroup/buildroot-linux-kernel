@@ -60,10 +60,10 @@ dsp_register.h
 #define DSP_DECODE_OPTION       DSP_REG(21)
 #define DSP_AUDIO_FORMAT_INFO  DSP_REG(22)
 
-#define DSP_LOG_START_ADDR  	DSP_REG(24)
-#define DSP_LOG_END_ADDR   	    DSP_REG(25)
-#define DSP_LOG_RD_ADDR  	    DSP_REG(26)
-#define DSP_LOG_WD_ADDR  		DSP_REG(27)
+#define DSP_LOG_START_ADDR  	DSP_REG(28)
+#define DSP_LOG_END_ADDR   	    DSP_REG(29)
+#define DSP_LOG_RD_ADDR  	    DSP_REG(30)
+#define DSP_LOG_WD_ADDR  		DSP_REG(31)
 
 #define MAILBOX1_REG(n)	DSP_REG(40+n)
 #define MAILBOX2_REG(n)	DSP_REG(40+32+n)

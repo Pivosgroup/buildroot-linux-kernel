@@ -162,6 +162,7 @@ static int _init_dec(jpegdec_t *d)
     WRITE_MPEG_REG(JPEG_PIC_HEIGHT, 0);
     WRITE_MPEG_REG(ASSIST_MBOX1_MASK, 1);
     WRITE_MPEG_REG(ASSIST_MBOX1_CLR_REG, 1);
+    WRITE_MPEG_REG(ASSIST_AMR1_INT8, 8);
 
     r = request_irq(INT_MAILBOX_1A, jpegdec_isr,
                     IRQF_SHARED, "jpegdec-irq", (void *)jpegdec_id);

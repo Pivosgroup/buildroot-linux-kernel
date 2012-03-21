@@ -112,13 +112,14 @@ extern pd_detect_threshold_t field_pd_th;
 extern pd_detect_threshold_t win_pd_th[MAX_WIN_NUM];
 extern pd_win_prop_t pd_win_prop[MAX_WIN_NUM];
 
+extern int  pd_enable;
 
 
 extern void di_hw_init(void);
 
 extern void di_hw_uninit(void);
 
-
+extern int di_vscale_skip_count;
 /*
 di hardware internal
 */
@@ -256,12 +257,16 @@ extern unsigned int pd32_debug_th;
 extern unsigned int pd32_diff_num_0_th;
 extern unsigned int pd22_th;
 extern unsigned int pd22_num_th;
+extern int nr_hfilt_en;
 
 
 #undef DI_DEBUG
 
 #define DI_LOG_MTNINFO      0x02
 #define DI_LOG_PULLDOWN     0x10
+#define DI_LOG_BUFFER_STATE     0x20
+#define DI_LOG_TIMESTAMP        0x100
+#define DI_LOG_PRECISE_TIMESTAMP        0x200
 
 extern unsigned int di_log_flag;
 

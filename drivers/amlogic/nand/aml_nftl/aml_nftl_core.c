@@ -20,6 +20,71 @@
 
 #include "aml_nftl.h"
 
+int aml_nftl_badblock_handle(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t phy_blk_addr, addr_blk_t logic_blk_addr)
+{
+    struct aml_nftl_wl_t *aml_nftl_wl = aml_nftl_info->aml_nftl_wl;
+    struct phyblk_node_t *phy_blk_node, *phy_blk_node_new;
+    addr_blk_t phy_blk_addr_new, src_page, dest_page;
+    int status, i, retry_cnt_map = 0, retry_cnt_copy = 0;
+
+RETRY:
+    if ((aml_nftl_wl->free_root.count < (aml_nftl_info->fillfactor / 2)) && (!aml_nftl_wl->erased_root.count) && (aml_nftl_wl->wait_gc_block < 0))
+    {
+    	aml_nftl_wl->garbage_collect(aml_nftl_wl, 0);  
+  	}
+	
+    status = aml_nftl_wl->get_best_free(aml_nftl_wl, &phy_blk_addr_new);
+    if (status) {
+        status = aml_nftl_wl->garbage_collect(aml_nftl_wl, DO_COPY_PAGE);
+        if (status == 0) {
+            aml_nftl_dbg("%s line:%d nftl couldn`t found free block: %d %d\n", __func__, __LINE__, aml_nftl_wl->free_root.count, aml_nftl_wl->wait_gc_block);
+            return -ENOENT;
+        }
+        status = aml_nftl_wl->get_best_free(aml_nftl_wl, &phy_blk_addr_new);
+        if (status)
+        {
+            aml_nftl_dbg("%s line:%d nftl couldn`t get best free block: %d %d\n", __func__, __LINE__, aml_nftl_wl->free_root.count, aml_nftl_wl->wait_gc_block);
+            return -ENOENT;
+        }
+    }
+
+    aml_nftl_add_node(aml_nftl_info, logic_blk_addr, phy_blk_addr_new);
+    aml_nftl_wl->add_used(aml_nftl_wl, phy_blk_addr_new);
+    phy_blk_node_new = &aml_nftl_info->phypmt[phy_blk_addr_new];
+    status = aml_nftl_info->get_phy_sect_map(aml_nftl_info, phy_blk_addr_new);
+    if(status)
+    {
+		aml_nftl_dbg("%s line:%d nftl couldn`t get block sectmap: block: %d, retry_cnt_map:%d\n", __func__, __LINE__, phy_blk_addr_new, retry_cnt_map);
+		aml_nftl_info->blk_mark_bad(aml_nftl_info, phy_blk_addr_new);
+		if(retry_cnt_map++ < 3)
+			goto RETRY;
+		else
+			return -ENOENT;
+    }
+
+	phy_blk_node = &aml_nftl_info->phypmt[phy_blk_addr];
+    for(i=0; i<aml_nftl_wl->pages_per_blk; i++)
+    {
+        src_page = phy_blk_node->phy_page_map[i];
+        if (src_page < 0)
+            continue;
+
+        dest_page = phy_blk_node_new->last_write + 1;
+        if(aml_nftl_info->copy_page(aml_nftl_info, phy_blk_addr_new, dest_page, phy_blk_addr, src_page) == 2)
+        {
+			aml_nftl_dbg("%s line:%d nftl copy block write failed block: %d, retry_cnt_copy:%d\n", __func__, __LINE__, phy_blk_addr_new, retry_cnt_copy);
+			aml_nftl_info->blk_mark_bad(aml_nftl_info, phy_blk_addr_new);
+			if(retry_cnt_copy++ < 3)
+				goto RETRY;
+			else
+            	return -ENOENT;
+        }
+    }
+    aml_nftl_info->blk_mark_bad(aml_nftl_info, phy_blk_addr);
+
+	return phy_blk_addr_new;        
+}
+
 int aml_nftl_check_node(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr)
 {
 	struct aml_nftl_wl_t *aml_nftl_wl;
@@ -34,10 +99,10 @@ int aml_nftl_check_node(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_ad
 	vt_blk_node = (struct vtblk_node_t *)(*(aml_nftl_info->vtpmt + vt_blk_num));
 	if (vt_blk_node == NULL)
 		return -ENOMEM;
-
+/*
 	if (vt_blk_num < NFTL_FAT_TABLE_NUM)
 		node_len_max = (MAX_BLK_NUM_PER_NODE + 2);
-	else
+	else*/
 		node_len_max = (MAX_BLK_NUM_PER_NODE + 1);
 
 	node_len_actual = aml_nftl_get_node_length(aml_nftl_info, vt_blk_node);
@@ -155,6 +220,7 @@ static int aml_nftl_copy_page(struct aml_nftl_info_t * aml_nftl_info, addr_blk_t
 	status = aml_nftl_info->read_page(aml_nftl_info, src_blk_addr, src_page, nftl_data_buf, nftl_oob_buf, oob_len);
 	if (status) {
 		aml_nftl_dbg("copy page read failed: %d %d status: %d\n", src_blk_addr, src_page, status);
+		status = 1;
 		goto exit;
 	}
 
@@ -169,6 +235,7 @@ static int aml_nftl_copy_page(struct aml_nftl_info_t * aml_nftl_info, addr_blk_t
 	status = aml_nftl_info->write_page(aml_nftl_info, dest_blk_addr, dest_page, nftl_data_buf, nftl_oob_buf, oob_len);
 	if (status) {
 		aml_nftl_dbg("copy page write failed: %d status: %d\n", dest_blk_addr, status);
+		status = 2;
 		goto exit;
 	}
 
@@ -234,17 +301,25 @@ static int aml_nftl_creat_sectmap(struct aml_nftl_info_t *aml_nftl_info, addr_bl
 
 	page_per_blk = aml_nftl_info->pages_per_blk;
 	for (i=0; i<page_per_blk; i++) {
-		status = aml_nftl_info->get_page_info(aml_nftl_info, phy_blk_addr, i, nftl_oob_buf, sizeof(struct nftl_oobinfo_t));
-		if (status) {
-			aml_nftl_dbg("nftl creat sect map faile at: %d\n", phy_blk_addr);
-			return AML_NFTL_FAILURE;
-		}
 
 		if (i == 0) {
+    		status = aml_nftl_info->get_page_info(aml_nftl_info, phy_blk_addr, i, nftl_oob_buf, sizeof(struct nftl_oobinfo_t));
+    		if (status) {
+    			aml_nftl_dbg("nftl creat sect map faile at: %d\n", phy_blk_addr);
+    			return AML_NFTL_FAILURE;
+    		}		    
 			phy_blk_node->ec = nftl_oob_info->ec;
 			phy_blk_node->vtblk = nftl_oob_info->vtblk;
 			phy_blk_node->timestamp = nftl_oob_info->timestamp;
 		}
+		else{
+            status = aml_nftl_info->get_page_info(aml_nftl_info, phy_blk_addr, i, nftl_oob_buf, sizeof(addr_sect_t));
+    		if (status) {
+    			aml_nftl_dbg("nftl creat sect map faile at: %d\n", phy_blk_addr);
+    			return AML_NFTL_FAILURE;
+    		}		    
+		}
+		    
 		if (nftl_oob_info->sect >= 0) {
 			phy_blk_node->phy_page_map[nftl_oob_info->sect] = i;
 			phy_blk_node->last_write = i;
@@ -449,11 +524,17 @@ static int aml_nftl_read_sect(struct aml_nftl_info_t *aml_nftl_info, addr_page_t
 	}
 
 	if (status == AML_NFTL_FAILURE)
+	{
+		aml_nftl_badblock_handle(aml_nftl_info, phy_blk_addr, logic_blk_addr);
         return AML_NFTL_FAILURE;
+	}
 
 	status = aml_nftl_info->read_page(aml_nftl_info, phy_blk_addr, phy_page_addr, buf, NULL, 0);
 	if (status)
+	{
+		aml_nftl_badblock_handle(aml_nftl_info, phy_blk_addr, logic_blk_addr);
 		return status;
+	}
 
 	return 0;
 }
@@ -487,7 +568,7 @@ static int aml_nftl_write_sect(struct aml_nftl_info_t *aml_nftl_info, addr_page_
 {
 	struct vtblk_node_t  *vt_blk_node;
 	struct phyblk_node_t *phy_blk_node;
-	int status = 0, special_gc = 0, oob_len;
+	int status = 0, special_gc = 0, oob_len, retry_cnt = 0;
 	struct aml_nftl_wl_t *aml_nftl_wl = aml_nftl_info->aml_nftl_wl;
 	uint32_t page_per_blk;
 	addr_page_t logic_page_addr, phy_page_addr;
@@ -512,7 +593,12 @@ static int aml_nftl_write_sect(struct aml_nftl_info_t *aml_nftl_info, addr_page_
 
 	status = aml_nftl_get_valid_pos(aml_nftl_info, logic_blk_addr, &phy_blk_addr, logic_page_addr, &phy_page_addr, WRITE_OPERATION);
 	if (status == AML_NFTL_FAILURE)
-        return AML_NFTL_FAILURE;
+	{
+	    aml_nftl_info->blk_mark_bad(aml_nftl_info, phy_blk_addr);
+	    aml_nftl_dbg("%s, line %d, nftl write page faile blk: %d page: %d status: %d\n", __func__, __LINE__, phy_blk_addr, phy_page_addr, status);
+	    status = AML_NFTL_BLKNOTFOUND;
+            //return AML_NFTL_FAILURE;
+   	}
 
 	if ((status == AML_NFTL_PAGENOTFOUND) || (status == AML_NFTL_BLKNOTFOUND)) {
 
@@ -536,6 +622,7 @@ static int aml_nftl_write_sect(struct aml_nftl_info_t *aml_nftl_info, addr_page_
 		phy_page_addr = 0;
 	}
 
+WRITE_RETRY:
 	phy_blk_node = &aml_nftl_info->phypmt[phy_blk_addr];
 	nftl_oob_info = (struct nftl_oobinfo_t *)nftl_oob_buf;
 	nftl_oob_info->ec = phy_blk_node->ec;
@@ -548,9 +635,28 @@ static int aml_nftl_write_sect(struct aml_nftl_info_t *aml_nftl_info, addr_page_
 		memcpy((nftl_oob_buf + sizeof(struct nftl_oobinfo_t)), AML_NFTL_MAGIC, strlen(AML_NFTL_MAGIC));
 
 	status = aml_nftl_info->write_page(aml_nftl_info, phy_blk_addr, phy_page_addr, buf, nftl_oob_buf, oob_len);
-	if (status) {
+	if (status && (retry_cnt++ < 3)) 
+	{  //do not markbad when write failed, just get another block and write again till ok
+	    aml_nftl_dbg("%s, line %d, nftl write page faile blk: %d page: %d status: %d, retry_cnt:%d\n", __func__, __LINE__, phy_blk_addr, phy_page_addr, status, retry_cnt);
+#if 1
+		phy_blk_addr = aml_nftl_badblock_handle(aml_nftl_info, phy_blk_addr, logic_blk_addr);
+		if(phy_blk_addr >= 0) //sucess
+			goto WRITE_RETRY;
+		else
+		{
+			aml_nftl_dbg("%s, line %d, aml_nftl_badblock_handle failed blk: %d retry_cnt:%d\n", __func__, __LINE__, phy_blk_addr, retry_cnt);
+			return -ENOENT;
+		}
+#else 
 		aml_nftl_info->blk_mark_bad(aml_nftl_info, phy_blk_addr);
 		aml_nftl_dbg("nftl write page faile blk: %d page: %d status: %d\n", phy_blk_addr, phy_page_addr, status);
+		return status;
+#endif		
+	}
+	else if(status)
+	{
+		aml_nftl_info->blk_mark_bad(aml_nftl_info, phy_blk_addr);
+		aml_nftl_dbg("%s, line %d, nftl write page faile blk: %d page: %d status: %d, retry_cnt:%d\n", __func__, __LINE__, phy_blk_addr, phy_page_addr, status, retry_cnt);
 		return status;
 	}
 
@@ -665,9 +771,11 @@ static void aml_nftl_check_conflict_node(struct aml_nftl_info_t *aml_nftl_info)
 			continue;
 
 		node_length = aml_nftl_get_node_length(aml_nftl_info, vt_blk_node);
-		if (node_length < BASIC_BLK_NUM_PER_NODE)
+		if (node_length < MAX_BLK_NUM_PER_NODE/* BASIC_BLK_NUM_PER_NODE */)
 			continue;
-
+			
+        //aml_nftl_dbg("need check conflict node vt blk: %d and node_length:%d\n", vt_blk_num, node_length);
+        
 		status = aml_nftl_check_node(aml_nftl_info, vt_blk_num);
 		vt_blk_node = (struct vtblk_node_t *)(*(aml_nftl_info->vtpmt + vt_blk_num));
 		if (aml_nftl_get_node_length(aml_nftl_info, vt_blk_node) >= BASIC_BLK_NUM_PER_NODE)
@@ -684,9 +792,9 @@ static void aml_nftl_check_conflict_node(struct aml_nftl_info_t *aml_nftl_info)
 			}
 		}
 	}
-	if (vt_blk_num >= aml_nftl_info->accessibleblocks)
-		aml_nftl_info->isinitialised = 1;
-	aml_nftl_info->cur_split_blk = vt_blk_num;
+//	if (vt_blk_num >= aml_nftl_info->accessibleblocks)
+//		aml_nftl_info->isinitialised = 1;
+//	aml_nftl_info->cur_split_blk = vt_blk_num;
 
 	return;
 }

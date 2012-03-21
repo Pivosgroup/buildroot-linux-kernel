@@ -1,3 +1,10 @@
+ config VIDEO_AMLOGIC_CAPTURE_PROBE
+	bool "Force check wether camera devices exist"
+	depends on VIDEO_AMLOGIC_CAPTURE
+	default n
+	---help---
+	  Probe wether the camera devices exist by trying to read its 
+	  i2c port. It may cost some time, say Y here if you want it.
 config VIDEO_AMLOGIC_FLASHLIGHT
 	tristate "Amlogic Platform Flashlight Driver"
 	depends on VIDEO_AMLOGIC_CAPTURE

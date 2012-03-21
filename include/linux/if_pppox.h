@@ -50,13 +50,21 @@ struct pppoe_addr{
  
 /************************************************************************ 
  * Protocols supported by AF_PPPOX 
- */ 
+ */
+#ifndef CONFIG_MACH_MESON_8726M_REFC03_ICS //ics use 3.x kernel head file,so redefine this macro
 #define PX_PROTO_OE    0 /* Currently just PPPoE */
 #define PX_PROTO_OL2TP 1 /* Now L2TP also */
 #define PX_PROTO_OLAC  2
 #define PX_PROTO_OPNS  3
 #define PX_MAX_PROTO   4
-
+#else
+#define PX_PROTO_OE 0  
+#define PX_PROTO_OL2TP 1  
+#define PX_PROTO_PPTP 2
+#define PX_PROTO_OLAC 3
+#define PX_PROTO_OPNS 4
+#define PX_MAX_PROTO 5
+#endif
 struct sockaddr_pppox { 
        sa_family_t     sa_family;            /* address family, AF_PPPOX */ 
        unsigned int    sa_protocol;          /* protocol identifier */ 

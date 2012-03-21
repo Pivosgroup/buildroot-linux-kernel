@@ -210,6 +210,10 @@ int tuner_set_ch(struct aml_demod_sta *demod_sta, struct aml_demod_i2c *adap)
 {
     int ret = 0;
 
+    if(adap->suspend){
+        return 0;
+    }
+
     switch (adap->tuner) {
     case 0 : // NULL
 	printk("Warning: NULL Tuner\n");
@@ -246,9 +250,87 @@ int tuner_set_ch(struct aml_demod_sta *demod_sta, struct aml_demod_i2c *adap)
     return 0;
 }
 
+int tuner_suspend(struct aml_demod_i2c *adap)
+{
+    int ret = 0;
+
+    printk("tuner suspend!\n");
+    adap->suspend = 1;
+
+    switch (adap->tuner) {
+    case 0 : // NULL
+	printk("Warning: NULL Tuner\n");
+	break;
+	
+    case 1 : // DCT
+	break;
+
+    case 2 : // Maxliner
+	break;
+
+    case 3 : // NXP
+	break;
+
+    case 4 : // TD1316
+	break;
+
+    case 5:
+	ret = set_tuner_RDA5880_suspend(adap);
+	break;
+    
+    case 6:
+	break;
+    default :
+	return -1;
+    }
+
+    return 0;
+}
+
+int tuner_resume(struct aml_demod_i2c *adap)
+{
+    int ret = 0;
+
+    printk("tuner resume!\n");
+
+    adap->suspend = 0;
+
+    switch (adap->tuner) {
+    case 0 : // NULL
+	printk("Warning: NULL Tuner\n");
+	break;
+	
+    case 1 : // DCT
+	break;
+
+    case 2 : // Maxliner
+	break;
+
+    case 3 : // NXP
+	break;
+
+    case 4 : // TD1316
+	break;
+
+    case 5:
+	break;
+    
+    case 6:
+	break;
+    default :
+	return -1;
+    }
+
+    return 0;
+}
+
 int tuner_get_ch_power(struct aml_demod_i2c *adap)
 {
     int ret = 0;
+
+    if(adap->suspend){
+        return 0;
+    }
 
     switch (adap->tuner) {
     case 0 : // NULL

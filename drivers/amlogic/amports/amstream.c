@@ -1247,6 +1247,26 @@ static int amstream_ioctl(struct inode *inode, struct file *file,
         sub_type = (int)arg;
         break;
 
+    case AMSTREAM_IOC_APTS_LOOKUP:
+	     if (this->type & PORT_TYPE_AUDIO)
+	     {
+		      u32 pts=0,offset;
+		      offset=*((u32 *)arg);
+		      //printk("==KERNEL offset:%ld\n",offset);
+		      pts_lookup_offset(PTS_TYPE_AUDIO, offset, &pts, 300);
+		      *((u32 *)arg)=pts;
+			  //printk("==KERNEL offset:%ld==pts:%ld\n",offset,pts);
+		 }
+		 return 0;
+    case GET_FIRST_APTS_FLAG:
+        if (this->type & PORT_TYPE_AUDIO)
+        {
+            unsigned long *val=(unsigned long *)arg;
+            *val = first_pts_checkin_complete(PTS_TYPE_AUDIO);
+            //printk("==KERNEL first pts check in ok :%d \n",*val);
+       }
+       break;
+
     case AMSTREAM_IOC_APTS:
         *((u32 *)arg) = timestamp_apts_get();
         break;

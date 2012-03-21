@@ -815,6 +815,8 @@ static ssize_t pullup_store(struct device *_dev, struct device_attribute *attr, 
 		val = 0;
 	else
 		val = simple_strtoul(buf, NULL, 16);
+		
+	msleep(1);	
 	//printk("%s -%d\n",__func__,val);
 	if (val & 1) {
 		dwc_modify_reg32( &otg_dev->core_if->dev_if->dev_global_regs->dctl,2,0); //connect

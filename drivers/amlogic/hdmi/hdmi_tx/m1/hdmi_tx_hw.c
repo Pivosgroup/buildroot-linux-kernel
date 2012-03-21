@@ -2385,6 +2385,7 @@ static int hdmitx_m1b_set_audmode(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_a
             enable_audio_i2s();
             break;
         case CT_AC_3:
+        case CT_DTS:
             i2s_to_spdif_flag = 1;
             enable_audio_spdif();
             break;
@@ -2683,6 +2684,7 @@ static void hdmitx_print_info(hdmitx_dev_t* hdmitx_device, int printk_flag)
     if(!hdmi_audio_off_flag){
         hdmi_print(printk_flag, "audio out type %s\n", i2s_to_spdif_flag?"spdif":"i2s");
         printk("SPDIF AC3 is %s\n", (hdmitx_device->cur_audio_param.type == CT_AC_3)?"on":"off");
+        printk("SPDIF DTS is %s\n", (hdmitx_device->cur_audio_param.type == CT_DTS)?"on":"off");
     }
     hdmi_print(printk_flag, "delay flag %d\n", delay_flag);
     if(hdmitx_device->cec_func_flag){

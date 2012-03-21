@@ -1788,7 +1788,14 @@ static int ppmgr_task(void *data)
     }
 
     destroy_ge2d_work_queue(context);
-
+    while(!kthread_should_stop()){
+	/* 	   may not call stop, wait..
+                   it is killed by SIGTERM,eixt on down_interruptible
+		   if not call stop,this thread may on do_exit and 
+		   kthread_stop may not work good;
+	*/
+	msleep(10);
+    }
     return 0;
 }
 

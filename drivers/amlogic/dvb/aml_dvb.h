@@ -16,6 +16,11 @@
 #include <linux/spinlock.h>
 #include <linux/interrupt.h>
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+#endif
+
+
 #include "../../media/dvb/dvb-core/dvbdev.h"
 #include "../../media/dvb/dvb-core/demux.h"
 #include "../../media/dvb/dvb-core/dvb_demux.h"
@@ -131,6 +136,9 @@ struct aml_fe {
 	struct dvb_frontend *fe;
 	void               *cfg;
 	struct platform_device *pdev;
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	struct early_suspend es;
+#endif /*CONFIG_HAS_EARLYSUSPEND*/
 	struct class class;
 };
 

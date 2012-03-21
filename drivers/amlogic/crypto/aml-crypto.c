@@ -625,7 +625,7 @@ static const u32 rcon[] = {
 /**
  * Expand the cipher key into the encryption key schedule.
  */
-int AES_set_encrypt_key(const unsigned char *userKey, const int bits,
+int aes_set_encrypt_key(const unsigned char *userKey, const int bits,
 			AES_KEY *key) {
 
 	u32 *rk;
@@ -726,7 +726,7 @@ int AES_set_encrypt_key(const unsigned char *userKey, const int bits,
 /**
  * Expand the cipher key into the decryption key schedule.
  */
-int AES_set_decrypt_key(const unsigned char *userKey, const int bits,
+int aes_set_decrypt_key(const unsigned char *userKey, const int bits,
 			 AES_KEY *key) {
 
         u32 *rk;
@@ -734,7 +734,7 @@ int AES_set_decrypt_key(const unsigned char *userKey, const int bits,
 	u32 temp;
 
 	/* first, start with an encryption schedule */
-	status = AES_set_encrypt_key(userKey, bits, key);
+	status = aes_set_encrypt_key(userKey, bits, key);
 	if (status < 0)
 		return status;
 
@@ -1377,7 +1377,7 @@ aml_ecb_aes_decrypt(struct blkcipher_desc *desc,
         return 1;
     }
 
-    AES_set_decrypt_key((unsigned char *)op->key, 8*(op->key_len),&aes_key);    
+    aes_set_decrypt_key((unsigned char *)op->key, 8*(op->key_len),&aes_key);    
     write_aes_reg(&aes_key);
 
     blkcipher_walk_init(&walk, dst, src, nbytes);

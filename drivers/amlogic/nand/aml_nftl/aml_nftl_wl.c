@@ -265,13 +265,17 @@ static int32_t staticwl_linear_blk(struct aml_nftl_wl_t* aml_nftl_wl, addr_blk_t
 	struct aml_nftl_info_t *aml_nftl_info = aml_nftl_wl->aml_nftl_info;
 	struct phyblk_node_t *phy_blk_node_src, *phy_blk_node_dest;
 	struct vtblk_node_t  *vt_blk_node;
-	uint16_t i;
+	uint16_t i, retry_cnt = 0;
 	addr_blk_t dest_blk, src_blk;
 	addr_page_t dest_page;
 	addr_page_t src_page;
 
+WRITE_RETRY:
 	if(aml_nftl_wl->get_best_free(aml_nftl_wl, &dest_blk))
-		return -ENOENT;
+	{
+		aml_nftl_dbg("%s line:%d nftl couldn`t get best free block: %d %d\n", __func__, __LINE__, aml_nftl_wl->free_root.count, aml_nftl_wl->wait_gc_block);
+		return -ENOENT;	
+	}
 
 	aml_nftl_wl->add_used(aml_nftl_wl, dest_blk);
 	vt_blk_node = (struct vtblk_node_t *)(*(aml_nftl_info->vtpmt + blk));
@@ -293,7 +297,13 @@ static int32_t staticwl_linear_blk(struct aml_nftl_wl_t* aml_nftl_wl, addr_blk_t
 			continue;
 
 		dest_page = phy_blk_node_dest->last_write + 1;
-		aml_nftl_info->copy_page(aml_nftl_info, dest_blk, dest_page, src_blk, src_page);
+		if((aml_nftl_info->copy_page(aml_nftl_info, dest_blk, dest_page, src_blk, src_page) == 2) && (retry_cnt++ <3))
+		{
+		       //aml_nftl_wl->add_free(aml_nftl_wl, dest_blk);
+		       aml_nftl_info->blk_mark_bad(aml_nftl_info, dest_blk);
+		       aml_nftl_dbg("%s: nftl write page faile blk: %d page: %d, retry_cnt:%d\n", __func__, dest_blk, dest_page, retry_cnt);
+                       goto WRITE_RETRY;
+		}
 	}
 
 	aml_nftl_wl->add_free(aml_nftl_wl, src_blk);
@@ -306,8 +316,8 @@ static void add_gc(struct aml_nftl_wl_t* aml_nftl_wl, addr_blk_t gc_blk_addr)
 	struct gc_blk_list *gc_add_list, *gc_cur_list, *gc_prev_list = NULL;
 	struct list_head *l, *n;
 
-	if (gc_blk_addr < NFTL_FAT_TABLE_NUM)
-		return;
+	//if (gc_blk_addr < NFTL_FAT_TABLE_NUM)
+	//	return;
 
 	if (!list_empty(&aml_nftl_wl->gc_blk_list)) {
 		list_for_each_safe(l, n, &aml_nftl_wl->gc_blk_list) {
@@ -437,7 +447,7 @@ static int gc_get_dirty_block(struct aml_nftl_wl_t* aml_nftl_wl, uint8_t gc_flag
  */
 static int32_t gc_copy_one(struct aml_nftl_wl_t* aml_nftl_wl, addr_blk_t vt_blk, uint8_t gc_flag)
 {
-	int gc_free = 0, node_length, node_length_cnt, k, writed_pages = 0;
+	int gc_free = 0, node_length, node_length_cnt, k, writed_pages = 0, retry_cnt = 0;
 	struct aml_nftl_info_t *aml_nftl_info = aml_nftl_wl->aml_nftl_info;
 	struct phyblk_node_t *phy_blk_src_node, *phy_blk_node_dest;
 	struct vtblk_node_t  *vt_blk_node, *vt_blk_node_free;
@@ -447,7 +457,7 @@ static int32_t gc_copy_one(struct aml_nftl_wl_t* aml_nftl_wl, addr_blk_t vt_blk,
 	vt_blk_node = (struct vtblk_node_t *)(*(aml_nftl_info->vtpmt + vt_blk));
 	if (vt_blk_node == NULL)
 		return -ENOMEM;
-
+WRITE_RETRY:
 	dest_blk = vt_blk_node->phy_blk_addr;
 	phy_blk_node_dest = &aml_nftl_info->phypmt[dest_blk];
 	node_length = aml_nftl_get_node_length(aml_nftl_info, vt_blk_node);
@@ -476,7 +486,29 @@ static int32_t gc_copy_one(struct aml_nftl_wl_t* aml_nftl_wl, addr_blk_t vt_blk,
 			continue;
 
 		dest_page = phy_blk_node_dest->last_write + 1;
-		aml_nftl_info->copy_page(aml_nftl_info, dest_blk, dest_page, src_blk, src_page);
+		if((aml_nftl_info->copy_page(aml_nftl_info, dest_blk, dest_page, src_blk, src_page) == 2) && (retry_cnt++ < 3))  //write error
+		{
+			aml_nftl_dbg("%s, line %d, aml_nftl_badblock_handle failed blk: %d retry_cnt:%d\n", __func__, __LINE__, dest_blk, retry_cnt);
+#if 1
+			if(aml_nftl_badblock_handle(aml_nftl_info, dest_blk, vt_blk) >= 0) //sucess
+				goto WRITE_RETRY;
+			else
+			{
+				aml_nftl_dbg("%s, line %d, aml_nftl_badblock_handle failed blk: %d retry_cnt:%d\n", __func__, __LINE__, dest_blk, retry_cnt);
+				return -ENOENT;
+			}
+#else
+                        aml_nftl_dbg("%s line:%d, nftl write page faile blk: %d page: %d , retry_cnt:%d\n", __func__,  __LINE__, dest_blk, dest_page, retry_cnt);
+                        //aml_nftl_wl->add_free(aml_nftl_wl, dest_blk);
+                        aml_nftl_info->blk_mark_bad(aml_nftl_info, dest_blk);
+                        if(aml_nftl_wl->get_best_free(aml_nftl_wl, &dest_blk))
+                        {
+                            aml_nftl_dbg("%s line:%d, nftl write page faile blk: %d page: %d , retry_cnt:%d\n", __func__,  __LINE__, dest_blk, dest_page, retry_cnt);
+		            return -ENOENT;	
+		        }
+		         goto WRITE_RETRY;
+#endif                         
+		}
 		writed_pages++;
 		if ((gc_flag == DO_COPY_PAGE_AVERAGELY) && (writed_pages >= aml_nftl_wl->page_copy_per_gc) && (k < (aml_nftl_wl->pages_per_blk - aml_nftl_wl->page_copy_per_gc)))
 			goto exit;

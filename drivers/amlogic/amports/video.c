@@ -610,7 +610,9 @@ static void vsync_toggle_frame(vframe_t *vf)
     int deinterlace_mode = get_deinterlace_mode();
 #endif
     if(vf->early_process_fun){
-        vf->early_process_fun(vf->private_data);
+        if(vf->early_process_fun(vf->private_data) == 1){
+            video_property_changed = true;    
+        }
     }
     else{
 #ifndef CONFIG_AM_DEINTERLACE
@@ -780,7 +782,7 @@ static void viu_set_dcu(vpp_frame_par_t *frame_par, vframe_t *vf)
     static const u32 vpat[] = {0, 0x8, 0x9, 0xa, 0xb, 0xc};
 
     r = (3 << VDIF_URGENT_BIT) |
-        (17 << VDIF_HOLD_LINES_BIT) |
+        (15 << VDIF_HOLD_LINES_BIT) |
         VDIF_FORMAT_SPLIT  |
         VDIF_CHRO_RPT_LAST |
         VDIF_ENABLE |
@@ -1000,9 +1002,9 @@ static inline bool duration_expire(vframe_t *cur_vf, vframe_t *next_vf, u32 dur)
     static s32 rpt_tab_idx = 0;
     static const u32 rpt_tab[4] = {0x100, 0x100, 0x300, 0x300};
 
-    if ((cur_vf == NULL) || (cur_dispbuf == &vf_local)) {
+    /*if ((cur_vf == NULL) || (cur_dispbuf == &vf_local)) {
         return true;
-    }
+    }*/
 
     pts = next_vf->pts;
     if (pts == 0) {
@@ -1029,9 +1031,9 @@ static inline bool vpts_expire(vframe_t *cur_vf, vframe_t *next_vf)
     u32 vid_pts, scr_pts;
 #endif
     u32 systime;
-     if ((cur_vf == NULL) || (cur_dispbuf == &vf_local)) {
+    /* if ((cur_vf == NULL) || (cur_dispbuf == &vf_local)) {
         return true;
-    }
+    }*/
     if ((trickmode_i == 1) || ((trickmode_fffb == 1))) {
         if (0 == atomic_read(&trickmode_framedone)) {
             return true;
@@ -1292,6 +1294,8 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
                     if (blackout) {
                         if (cur_dispbuf != &vf_local) {
                             vsync_toggle_frame(cur_dispbuf);
+                                } else {
+                                    video_property_changed = false;
                         }
                     } else {
                         vsync_toggle_frame(cur_dispbuf);
@@ -1719,7 +1723,10 @@ unsigned int vf_keep_current(void)
         canvas_read(y_index,&cs0);
         canvas_read(u_index,&cs1);
         canvas_read(v_index,&cs2);
-        
+        if((cs1.width >= cs0.width)||(cs2.width >= cs0.width)){
+           /*special case , happening while  osd provider unregister*/
+           return 0;
+        }
         if (keep_y_addr != canvas_get_addr(y_index) && /*must not the same address*/
             canvas_dup(keep_y_addr_remap, canvas_get_addr(y_index), (cs0.width *cs0.height)) &&
             canvas_dup(keep_u_addr_remap, canvas_get_addr(u_index), (cs1.width *cs1.height)) &&

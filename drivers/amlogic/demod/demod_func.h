@@ -58,6 +58,10 @@ int demod_turn_off(struct aml_demod_sta *demod_sta,
 int tuner_set_ch (struct aml_demod_sta *demod_sta,
 		  struct aml_demod_i2c *demod_i2c);
 
+int tuner_suspend (struct aml_demod_i2c *demod_i2c);
+
+int tuner_resume (struct aml_demod_i2c *demod_i2c);
+
 int dvbc_set_ch(struct aml_demod_sta *demod_sta,
 		struct aml_demod_i2c *demod_i2c, 
 		struct aml_demod_dvbc *demod_dvbc);

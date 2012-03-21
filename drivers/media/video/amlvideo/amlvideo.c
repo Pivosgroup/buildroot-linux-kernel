@@ -208,6 +208,8 @@ static void vivi_fillbuff(struct vivi_fh *fh, struct vivi_buffer *buf)
     //do_gettimeofday(&ts);
     
     if(!vf) {printk("====vframe_t is null\n");goto exit;}
+    buf->vb.ts.tv_sec = vf->duration/1000;
+    buf->vb.ts.tv_usec = vf->duration%1000;
     
     canvas_read(vf->canvas0Addr&0xff,&cs0);
     //canvas_read((vf->canvas0Addr>>8)&0xff,&cs1);

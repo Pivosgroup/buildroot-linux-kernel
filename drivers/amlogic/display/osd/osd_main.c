@@ -58,6 +58,7 @@ MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0x0, LOG_LEVEL_DESC, LOG_MASK_DESC);
 static myfb_dev_t  *gp_fbdev_list[OSD_COUNT]={NULL,NULL};
 
 static DEFINE_MUTEX(dbg_mutex);
+static char request2XScaleValue[32];
 
 
 const color_bit_define_t*	
@@ -200,22 +201,9 @@ osd_set_par(struct fb_info *info)
 	virt_end_x=osd_ctrl->disp_start_x+info->var.xres;
 	virt_end_y=osd_ctrl->disp_start_y+info->var.yres;
 	
-	if(virt_end_x > vinfo->width)
-	{
-		osd_ctrl->disp_end_x=vinfo->width - 1 ;
-	}
-	else
-	{
-		osd_ctrl->disp_end_x=virt_end_x -1;
-	}
-	if(virt_end_y  >vinfo->height)
-	{
-		osd_ctrl->disp_end_y=vinfo->height - 1;
-	}
-	else
-	{     
-		osd_ctrl->disp_end_y=virt_end_y - 1; 
-	}
+	osd_ctrl->disp_end_x=vinfo->width - 1 ;
+	osd_ctrl->disp_end_y=vinfo->height - 1;
+
 	osddev_set((struct myfb_dev *)info->par);
 	return  0;
 }
@@ -770,6 +758,21 @@ static int parse_para(const char *para, int para_num, int *result)
 
 	return count;
 }
+static ssize_t show_request_2xscale(struct device *device, struct device_attribute *attr,
+			 char *buf)
+{
+	memcpy(buf,request2XScaleValue,32);
+    return 32;
+}
+
+static ssize_t store__request_2xscale(struct device *device, struct device_attribute *attr,
+			 const char *buf, size_t count)
+{
+	memset(request2XScaleValue,0,32);
+	memcpy(request2XScaleValue,buf,count);
+    return count;
+}
+
 
 static ssize_t show_free_scale_axis(struct device *device, struct device_attribute *attr,
 			 char *buf)
@@ -957,7 +960,7 @@ static struct device_attribute osd_attrs[] = {
 	__ATTR(enable_3d, S_IRUGO|S_IWUSR, show_enable_3d, store_enable_3d),
 	__ATTR(preblend_enable,S_IRUGO|S_IWUSR, show_preblend_enable, store_preblend_enable),
 	__ATTR(free_scale, S_IRUGO|S_IWUSR, NULL, store_free_scale),
-	__ATTR(scale_axis, S_IRUGO|S_IWUSR, show_scale_axis, store_scale_axis),
+	__ATTR(scale_axis, S_IRUGO|S_IWUSR|S_IWGRP, show_scale_axis, store_scale_axis),
 	__ATTR(scale_width, S_IRUGO|S_IWUSR, NULL, store_scale_width),
 	__ATTR(scale_height, S_IRUGO|S_IWUSR, NULL, store_scale_height),
     __ATTR(color_key, S_IRUGO|S_IWUSR, show_color_key, store_color_key),
@@ -966,6 +969,7 @@ static struct device_attribute osd_attrs[] = {
 	__ATTR(block_windows, S_IRUGO|S_IWUSR, show_block_windows, store_block_windows),
 	__ATTR(block_mode, S_IRUGO|S_IWUSR, show_block_mode, store_block_mode),
 	__ATTR(free_scale_axis, S_IRUGO|S_IWUSR, show_free_scale_axis, store_free_scale_axis),
+	__ATTR(request2XScale, S_IRUGO|S_IWUSR, show_request_2xscale, store__request_2xscale),
 };		
 
 #ifdef  CONFIG_PM

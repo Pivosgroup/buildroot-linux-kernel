@@ -2,6 +2,11 @@
 # Makefile for the amlogic platform camera interface device drivers.
 #
 EXTRA_AFLAGS=-mfloat-abi=softfp -mfpu=neon
+
+ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_PROBE
+    EXTRA_CFLAGS += -DCONFIG_VIDEO_AMLOGIC_CAPTURE_PROBE
+endif
+
 amlflash-objs := common/flashlight.o
 gt2005dri-objs := gt2005.o
 gc0308dri-objs := gc0308.o

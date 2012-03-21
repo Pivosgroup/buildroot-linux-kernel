@@ -137,7 +137,7 @@ static int set_phy_tune(amlogic_usb_struct_t *paus)
             break;
             
         case USB_PHY_TUNE_OTGDISABLE:
-            if(value == 0 && value == -1)
+            if(value == 0 || value == -1)
                 reg_val = 0;
             else if(value == 1)
                 reg_val = 1;

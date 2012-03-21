@@ -2322,6 +2322,30 @@ int aml_dmx_set_skipbyte(struct aml_dvb *dvb, int skipbyte)
 	return 0;
 }
 
+#define DEMUX_SCAMBLE_FUNC_DECL(i)  \
+static ssize_t dmx_reg_value_show_demux##i##_scramble(struct class *class,  struct class_attribute *attr,char *buf)\
+{\
+	int data = 0;\
+	int aflag = 0;\
+	int vflag = 0;\
+	ssize_t ret = 0;\
+	data = DMX_READ_REG(i, DEMUX_SCRAMBLING_STATE);\
+	if ((data & 0x01 )== 0x01){\
+		vflag = 1;}\
+	if ((data & 0x02 )== 0x02){\
+		aflag = 1;}\
+	ret = sprintf(buf, "%d %d\n", vflag, aflag);\
+	return ret;\
+}
+
+#if DMX_DEV_COUNT>0
+	DEMUX_SCAMBLE_FUNC_DECL(0)
+#endif
+
+#if DMX_DEV_COUNT>1
+	DEMUX_SCAMBLE_FUNC_DECL(1)
+#endif
+
 
 static ssize_t dmx_reg_addr_show_source(struct class *class, struct class_attribute *attr,char *buf);
 static ssize_t dmx_reg_addr_store_source(struct class *class,struct class_attribute *attr,
@@ -2343,6 +2367,15 @@ static struct class_attribute aml_dmx_class_attrs[] = {
 	__ATTR(dmx_id,  S_IRUGO | S_IWUSR, dmx_id_show_source, dmx_id_store_source),	
 	__ATTR(register_addr,  S_IRUGO | S_IWUSR, dmx_reg_addr_show_source, dmx_reg_addr_store_source),
 	__ATTR(register_value,  S_IRUGO | S_IWUSR, dmx_reg_value_show_source, dmx_reg_value_store_source),
+
+	#define DEMUX_SCAMBLE_ATTR_DECL(i)\
+		__ATTR(demux##i##_scramble,  S_IRUGO | S_IWUSR, dmx_reg_value_show_demux##i##_scramble, NULL)
+	#if DMX_DEV_COUNT>0
+		DEMUX_SCAMBLE_ATTR_DECL(0),
+	#endif
+	#if DMX_DEV_COUNT>1
+		DEMUX_SCAMBLE_ATTR_DECL(1),
+	#endif
 	__ATTR_NULL
 };
 

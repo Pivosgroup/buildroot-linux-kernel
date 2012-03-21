@@ -33,6 +33,8 @@ int set_tuner_RDA5880(struct aml_demod_sta *demod_sta,
 int init_tuner_RDA5880(struct aml_demod_sta *demod_sta, 
 		     struct aml_demod_i2c *adap);
 
+int set_tuner_RDA5880_suspend(struct aml_demod_i2c *adap);
+
 #endif/*_RDA5880_adp_H_*/
 
 

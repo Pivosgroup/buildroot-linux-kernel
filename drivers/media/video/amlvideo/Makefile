@@ -3,7 +3,7 @@
 #
 EXTRA_AFLAGS=-mfloat-abi=softfp -mfpu=neon
 amlvideodri-objs := amlvideo.o
-amlvm-objs := common/vm.o common/util.o common/vfutil.o
+amlvm-objs := common/vfutil.o
 
 obj-y +=common/vfutil.o
 obj-y +=amlvideodri.o 

@@ -102,6 +102,7 @@ static int pcr_recover_trigger = 0;
 static struct timer_list tsync_pcr_recover_timer;
 static int tsync_trickmode = 0;
 static int vpause_flag = 0;
+static int apause_flag = 0;
 static unsigned int tsync_av_thresh = AV_DISCONTINUE_THREDHOLD;
 static unsigned int tsync_syncthresh = 1;
 static int tsync_dec_reset_flag = 0;
@@ -475,15 +476,18 @@ void tsync_avevent_locked(avevent_t event, u32 param)
         amlog_level(LOG_LEVEL_INFO, "apts reset scr = 0x%x\n", param);
 
         timestamp_pcrscr_enable(1);
+        apause_flag = 0;
         break;
 
     case AUDIO_RESUME:
+        amlog_level(LOG_LEVEL_INFO, "audio resume!\n");
 		timestamp_apts_enable(1);
 		
         if (!tsync_enable) {
             break;
         }
         timestamp_pcrscr_enable(1);
+        apause_flag = 0;
         break;
 
     case AUDIO_STOP:
@@ -495,9 +499,12 @@ void tsync_avevent_locked(avevent_t event, u32 param)
         } else {
             tsync_stat = TSYNC_STAT_PCRSCR_SETUP_NONE;
         }
+        apause_flag = 0;
         break;
 
     case AUDIO_PAUSE:
+        amlog_level(LOG_LEVEL_INFO, "audio pause!\n");
+        apause_flag = 1;
 		timestamp_apts_enable(0);
 		
         if (!tsync_enable) {
@@ -517,8 +524,10 @@ void tsync_avevent_locked(avevent_t event, u32 param)
         	timestamp_pcrscr_enable(0);
 			amlog_level(LOG_LEVEL_INFO, "video pause!\n");
 		}else{
+		       if (!apause_flag) {
 			timestamp_pcrscr_enable(1);
 			amlog_level(LOG_LEVEL_INFO, "video resume\n");
+                      }
 		}
         break;	
 
@@ -532,6 +541,9 @@ void tsync_avevent_locked(avevent_t event, u32 param)
         amvdev_resume();
         break;
     case VIDEO_STOP:
+    	amvdev_pause();
+    	vpause_flag = 0;
+    	break;
     case AUDIO_STOP:
     case AUDIO_PAUSE:
         amvdev_pause();

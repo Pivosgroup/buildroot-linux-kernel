@@ -487,6 +487,8 @@ static void vmjpeg_prot_init(void)
     WRITE_MPEG_REG(ASSIST_MBOX1_CLR_REG, 1);
     /* enable mailbox interrupt */
     WRITE_MPEG_REG(ASSIST_MBOX1_MASK, 1);
+    /* set interrupt mapping for vld */
+    WRITE_MPEG_REG(ASSIST_AMR1_INT8, 8);
 }
 
 static void vmjpeg_local_init(void)

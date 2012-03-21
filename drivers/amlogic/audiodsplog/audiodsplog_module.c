@@ -81,7 +81,7 @@ static int __init audiodsplog_init_module(void)
         goto err1;
     }
 
-    priv_data.stream_buffer_mem_size = 2*1024*1024;
+    priv_data.stream_buffer_mem_size = 512*1024;
 
     ret = audiodsplog_create_stream_buffer(); 
     if(ret){
@@ -117,12 +117,14 @@ static int audiodsplog_open(struct inode *inode, struct file *file)
 
     device_opened++;
     try_module_get(THIS_MODULE);
-
-    buf = (char *)kmalloc(priv_data.stream_buffer_size, GFP_KERNEL);
+    if(buf == NULL)	
+    	buf = (char *)kmalloc(priv_data.stream_buffer_size, GFP_KERNEL);
     if(buf == NULL){
+	 device_opened--; 	
+    	 module_put(THIS_MODULE);
         return -ENOMEM;
     }
-
+    audiodsplog_create_stream_buffer(); //init the r/p register	
     log_stream_init();
 
     return SUCCESS;
@@ -132,11 +134,12 @@ static int audiodsplog_release(struct inode *inode, struct file *file)
 {
     device_opened--;		
     module_put(THIS_MODULE);
+#if 0    
     if(buf){
         kfree(buf);
         buf = NULL;
     }
-
+#endif
     log_stream_deinit();
 
     return SUCCESS;
@@ -243,6 +246,7 @@ static int audiodsplog_destroy_stream_buffer(void)
     DSP_WD(DSP_LOG_END_ADDR,ARM_2_ARC_ADDR_SWAP(0));
     DSP_WD(DSP_LOG_RD_ADDR,ARM_2_ARC_ADDR_SWAP(0));
     DSP_WD(DSP_LOG_WD_ADDR,ARM_2_ARC_ADDR_SWAP(0));
+    return 0;
 }
 
 module_init(audiodsplog_init_module);

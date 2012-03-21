@@ -293,7 +293,7 @@ static int alloc_ringdesc(struct net_device *dev)
 		printk("init rx tx ring failed!!\n");
 		return -1;
 	}
-	//make sure all the data are write to memory
+
 	return 0;
 }
 
@@ -696,7 +696,6 @@ void net_tasklet(unsigned long dev_instance)
 
 		}
 		np->start_tx = tx;
-		//data tx end... todo 
 	}
 	if (result & 2) {
 		//data  rx; 
@@ -705,8 +704,6 @@ void net_tasklet(unsigned long dev_instance)
 		c_rx=np->rx_ring+(c_rx-np->rx_ring_dma);
 		rx = np->last_rx->next;
 		while (rx != NULL) {
-			//if(rx->status !=IO_READ32(&rx->status))
-			//      printk("error of D-chche!\n");
 			CACHE_RSYNC(rx,sizeof(struct _rx_desc));
 			if (!(rx->status & (DescOwnByDma))) {
 				int ip_summed = CHECKSUM_UNNECESSARY;
@@ -718,7 +715,6 @@ void net_tasklet(unsigned long dev_instance)
 				}
 				if (unlikely(rx->status & (DescError))) {	//here is not often occur
 					print_rx_error_log(rx->status);
-					//rx->status=DescOwnByDma;
 					if ((rx->status & DescRxIPChecksumErr) || (rx->status & DescRxTCPChecksumErr)) {	//maybe checksum engine's problem;
 						//we set the NONE for ip/tcp need check it again
 						ip_summed = CHECKSUM_NONE;
@@ -774,13 +770,13 @@ void net_tasklet(unsigned long dev_instance)
 				np->stats.rx_packets++;
 				np->stats.rx_bytes += len;
 
-				//*/
 				if(debug>3)
 					printk("receive data len=%d\n",len);
-				//dump((unsigned char *)rx->buf,len);
-
-				//reset the rx_ring to receive 
-				///
+                /*
+				printk("+++++++++++++++++++++++++++++ = %d\n",len);
+				dump((unsigned char *)rx->buf,len);
+				printk("\n\n");
+                */
 
 	to_next:
 #ifdef DMA_USE_SKB_BUF
@@ -862,7 +858,7 @@ static int phy_reset(struct net_device *ndev)
 		printk("error to reset phy!\n");
 		goto error_reset;
 	}
-	// mode = 111; turn on auto-neg mode (previously was power-saving)
+
 	val = (1 << 14) | (7 << 5) | np->phys[0];
 	mdio_write(ndev, np->phys[0], 18, val);
 	// Auto negotiation restart 
@@ -871,15 +867,8 @@ static int phy_reset(struct net_device *ndev)
 	if (debug > 1)
 		printk("starting to auto negotiation!\n");
 
-	//(*ETH_DMA_0_Bus_Mode) = 0x00100800;
 	IO_WRITE32(0x00100800, np->base_addr + ETH_DMA_0_Bus_Mode);
 
-	/*
-	   val=*((unsigned short *)&ndev->dev_addr[4]);
-	   IO_WRITE32(val,np->base_addr+ETH_MAC_Addr0_High);
-	   val=*((unsigned long *)ndev->dev_addr);
-	   IO_WRITE32(val,np->base_addr+ETH_MAC_Addr0_Low);
-	 */
 	write_mac_addr(ndev, ndev->dev_addr);
 
 	val = 0xc80c |		//8<<8 | 8<<17; //tx and rx all 8bit mode;
@@ -895,7 +884,6 @@ static int phy_reset(struct net_device *ndev)
 #ifdef PHY_LOOPBACK_TEST
 	/*phy loop back*/
 	val=mdio_read(ndev, np->phys[0], MII_BMCR);
-	//val=1<<14 | 1<<8 | 1<<13;//100M,full,seting it as ;
 	val=1<<14 | 1<<8;/////10M,full,seting it as ;
 	mdio_write(ndev, np->phys[0], MII_BMCR, val);
 
@@ -955,7 +943,7 @@ static int netdev_open(struct net_device *dev)
 		printk(KERN_INFO "ethernet_reset err=%d\n", res);
 		goto out_err;
 	}
-	//netif_device_detach(dev);
+
 	res = request_irq(dev->irq, &intr_handler, IRQF_SHARED, dev->name, dev);
 	if (res) {
 		printk(KERN_ERR "%s: request_irq error %d.,err=%d\n",
@@ -966,13 +954,14 @@ static int netdev_open(struct net_device *dev)
 	if (debug > 0)
 		printk(KERN_DEBUG "%s: opened (irq %d).\n",
 		       				dev->name, dev->irq);
-	//enable_irq(dev->irq);
+
 	/* Set the timer to check for link beat. */
 	init_timer(&np->timer);
 	np->timer.expires = jiffies + 1;
 	np->timer.data = (unsigned long)dev;
 	np->timer.function = &netdev_timer;	/* timer handler */
 	add_timer(&np->timer);
+
 	val=IO_READ32((np->base_addr + ETH_DMA_6_Operation_Mode));
 	val |= (1<<1);/*start receive*/
 	IO_WRITE32(val, (np->base_addr + ETH_DMA_6_Operation_Mode));
@@ -1226,31 +1215,33 @@ static void set_multicast_list(struct net_device *dev)
 {
 	struct am_net_private *np = netdev_priv(dev);
 	u32  tmp;
+
 	if ((dev->flags & IFF_PROMISC)) {
 		tmp=IO_READ32(np->base_addr + ETH_MAC_1_Frame_Filter);
 		tmp|=1;
-		IO_WRITE32(tmp, np->base_addr + ETH_MAC_1_Frame_Filter);//promisc module
-		printk("ether enter promisc module\n");
+		IO_WRITE32(tmp, np->base_addr + ETH_MAC_1_Frame_Filter);
+		printk("ether enter promiscuous mode\n");
 	}
 	else
 	{
 		tmp=IO_READ32(np->base_addr + ETH_MAC_1_Frame_Filter);
 		tmp&=~1;
-		IO_WRITE32(tmp, np->base_addr + ETH_MAC_1_Frame_Filter);//live promisc
-		//printk("ether leave promisc module\n");
+		IO_WRITE32(tmp, np->base_addr + ETH_MAC_1_Frame_Filter);
+		printk("ether leave promiscuous mode\n");
 	}
+    
 	if ((dev->flags & IFF_ALLMULTI) ) {
 		tmp=IO_READ32(np->base_addr + ETH_MAC_1_Frame_Filter);
 		tmp|=(1<<4);
-		IO_WRITE32(tmp, np->base_addr + ETH_MAC_1_Frame_Filter);//all muticast
-		printk("ether enter all multicast module\n");
+		IO_WRITE32(tmp, np->base_addr + ETH_MAC_1_Frame_Filter);
+		printk("ether enter all multicast mode\n");
 	}
 	else
 	{
 		tmp=IO_READ32(np->base_addr + ETH_MAC_1_Frame_Filter);
-		tmp&=(1<<4);
-		IO_WRITE32(tmp, np->base_addr + ETH_MAC_1_Frame_Filter);//live all muticast
-		//printk("ether leave all muticast module\n");
+		tmp &= ~(1<<4);
+		IO_WRITE32(tmp, np->base_addr + ETH_MAC_1_Frame_Filter);
+		printk("ether leave all muticast mode\n");
 	}
 	
 	if (dev->mc_count > 0)
@@ -1262,16 +1253,15 @@ static void set_multicast_list(struct net_device *dev)
 		char * addr;
 		hash[0]=0;
 		hash[1]=0;
+
 		printk("changed the Multicast,mcount=%d\n",dev->mc_count);
 		for (addr_list = dev->mc_list; cnt && addr_list != NULL; addr_list = addr_list->next, cnt--) {
 			addr=addr_list->dmi_addr;
 			hash_id=phy_mc_hash(addr);
-			///*
 			printk("add mac address:%02x:%02x:%02x:%02x:%02x:%02x,bit=%d\n",
 				addr[0],addr[1],addr[2],addr[3],addr[4],addr[5],
 				hash_id);
-			//*/
-			//set_bit(hash_id,hash);
+
 			if(hash_id>31)
 				hash[1]|=1<<(hash_id-32);
 			else
@@ -1281,7 +1271,7 @@ static void set_multicast_list(struct net_device *dev)
 		IO_WRITE32(hash[1], np->base_addr + ETH_MAC_2_Hash_Table_High);
 		IO_WRITE32(hash[0], np->base_addr + ETH_MAC_3_Hash_Table_Low);
 		tmp=IO_READ32(np->base_addr + ETH_MAC_1_Frame_Filter);
-		tmp= (1<<2) | 	//hash filter 
+		tmp |= (1<<2) | 	//hash filter 
 			0;
 		printk("changed the filter setting to :%x\n",tmp);
 		IO_WRITE32(tmp, np->base_addr + ETH_MAC_1_Frame_Filter);//hash muticast
@@ -1430,7 +1420,7 @@ static int probe_init(struct net_device *ndev)
 	
 	struct am_net_private *priv = netdev_priv(ndev);
 	priv->dev=ndev;
-	//ndev->base_addr = (unsigned long)ioremap(ETHBASE,0x2000);
+
 	ndev->base_addr = (unsigned long)(ETHBASE);
 	ndev->irq = ETH_INTERRUPT;
 	spin_lock_init(&priv->lock);
@@ -1441,7 +1431,6 @@ static int probe_init(struct net_device *ndev)
 	if (debug > 0)
 		printk("addr is %x\n", (unsigned int)ndev->base_addr);
 
-	//bank_io_init(ndev);
 	for(k=0;k<100 && !found;k++)
 		{	
 
@@ -1504,9 +1493,7 @@ static int probe_init(struct net_device *ndev)
 	}
 	tasklet_init(&priv->rx_tasklet, net_tasklet, (unsigned long)ndev);
 	return 0;
-//error1:
-//      unregister_netdev(ndev);
-      error0:
+error0:
 
 	return res;
 }

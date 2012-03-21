@@ -18,6 +18,7 @@ struct aml_demod_i2c {
     u8  tmp;     // spare
     u8 i2c_id;
     void *i2c_priv;
+    int suspend;
 };
 
 struct aml_demod_sys {

@@ -990,8 +990,10 @@ static void dvbt_reg_initial(struct aml_demod_sta *demod_sta)
     apb_write_reg(2, 0x11, 0x00100002);   // FSM [15:0] TIMER_FEC_LOST
     apb_write_reg(2, 0x12, 0x02100201);   // FSM 
     apb_write_reg(2, 0x14, 0xe81c4ff6);   // AGC_TARGET 0xf0121385
-    apb_write_reg(2, 0x15, 0x02050ca6);   // AGC_CTRL  
-   
+    //apb_write_reg(2, 0x15, 0x02050ca6);   // AGC_CTRL  
+    apb_write_reg(2, 0x15, 0x01850df2); 
+
+
     tmp = (adc_freq / 234 + 5)&0xff;
     apb_write_reg(2, 0x15, apb_read_reg(2, 0x15) | (tmp << 12));
     printk("\n[RSJ]tmp is %x ",tmp);
@@ -1048,7 +1050,8 @@ static void dvbt_reg_initial(struct aml_demod_sta *demod_sta)
     apb_write_reg(2, 0x49, 0x00000005);  // DAGC_CTRL1
     apb_write_reg(2, 0x4c, 0x00000bbf);  // CCI_RP
     apb_write_reg(2, 0x4d, 0x00000376);  // CCI_RPSQ
-    apb_write_reg(2, 0x4e, 0x00202109);  // CCI_CTRL
+    //apb_write_reg(2, 0x4e, 0x00202109);  // CCI_CTRL
+    apb_write_reg(2, 0x4e, 0x000f1d09);
     apb_write_reg(2, 0x52, 0x00000000);  // CCI_NOTCH1_A2
     apb_write_reg(2, 0x53, 0x00000000);  // CCI_NOTCH1_B1
     apb_write_reg(2, 0x54, 0x00c00000);  // CCI_NOTCH2_A1

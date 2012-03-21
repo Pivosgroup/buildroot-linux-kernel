@@ -395,15 +395,15 @@ struct snd_pcm_status {
 	struct timespec trigger_tstamp;	/* time when stream was started/stopped/paused */
 	struct timespec tstamp;		/* reference timestamp */
 	snd_pcm_uframes_t appl_ptr;	/* appl ptr */
-#ifdef CONFIG_ANDROID
-	snd_pcm_uframes_t ex_size;   /* extra size kept not be put into HW buf */
-#endif
 	snd_pcm_uframes_t hw_ptr;	/* hw ptr */
 	snd_pcm_sframes_t delay;	/* current delay in frames */
 	snd_pcm_uframes_t avail;	/* number of frames available */
 	snd_pcm_uframes_t avail_max;	/* max frames available on hw since last status */
 	snd_pcm_uframes_t overrange;	/* count of ADC (capture) overrange detections from last status */
 	snd_pcm_state_t suspended_state; /* suspended stream state */
+#ifdef CONFIG_ANDROID
+	snd_pcm_uframes_t ex_size;   /* extra size kept not be put into HW buf */
+#endif
 	unsigned char reserved[60];	/* must be filled with zero */
 };
 
@@ -417,10 +417,10 @@ struct snd_pcm_mmap_status {
 
 struct snd_pcm_mmap_control {
 	snd_pcm_uframes_t appl_ptr;	/* RW: appl ptr (0...boundary-1) */
+    snd_pcm_uframes_t avail_min;	/* RW: min available frames for wakeup */
 #ifdef CONFIG_ANDROID
     snd_pcm_uframes_t ex_size;  /* extra size */
 #endif
-	snd_pcm_uframes_t avail_min;	/* RW: min available frames for wakeup */
 };
 
 #define SNDRV_PCM_SYNC_PTR_HWSYNC	(1<<0)	/* execute hwsync */

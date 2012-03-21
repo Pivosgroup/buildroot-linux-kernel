@@ -17,7 +17,6 @@
 #include <linux/jiffies.h>
 #include <linux/slab.h>
 #include <linux/platform_device.h>
-
 #include <mach/am_regs.h>
 
 #include <linux/i2c.h>
@@ -1045,6 +1044,54 @@ static struct class_attribute amlfe_class_attrs[] = {
 	__ATTR_NULL
 };
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static int amlfe_suspend(struct early_suspend *h)
+{
+	struct aml_fe *fe = (struct aml_fe*)h->param;
+	struct amlfe_config *cfg = (struct amlfe_config*)fe->cfg;
+
+	printk("amdemod suspend\n");
+	if(cfg->tuner_power_pin){
+		gpio_request(cfg->tuner_power_pin, "tuner:POWER");
+		gpio_direction_output(cfg->tuner_power_pin, 0);
+	}
+
+	if(fe && fe->fe && fe->fe->demodulator_priv){
+		struct amlfe_state *state = fe->fe->demodulator_priv;
+
+		if(state->i2c){
+			tuner_suspend(state->i2c);
+		}
+	}
+
+	return 0;
+}
+
+static int amlfe_resume(struct early_suspend *h)
+{
+	struct aml_fe *fe = (struct aml_fe*)h->param;
+	struct amlfe_config *cfg = (struct amlfe_config*)fe->cfg;
+
+	printk("amdemod resume\n");
+
+	if(cfg->tuner_power_pin){
+		gpio_request(cfg->tuner_power_pin, "tuner:POWER");
+		gpio_direction_output(cfg->tuner_power_pin, 1);
+	}
+
+	if(fe && fe->fe && fe->fe->demodulator_priv){
+		struct amlfe_state *state = fe->fe->demodulator_priv;
+
+		if(state->i2c){
+			tuner_resume(state->i2c);
+		}
+	}
+
+	return 0;
+}
+
+#endif /*CONFIG_HAS_EARLYSUSPEND*/
+
 static int amlfe_register_class(struct aml_fe *fe)
 {
 #define CLASS_NAME_LEN 48
@@ -1077,15 +1124,25 @@ static int amlfe_unregister_class(struct aml_fe *fe)
 static int amdemod_fe_probe(struct platform_device *pdev)
 {
 	struct aml_dvb *dvb = aml_get_dvb_device();
+	struct aml_fe *fe = &amdemod_fe[0];
 
 	pr_dbg("amdemod_fe_probe \n");
 	
-	if(amdemod_fe_init(dvb, pdev, &amdemod_fe[0], 0)<0)
+	if(amdemod_fe_init(dvb, pdev, fe, 0)<0)
 		return -ENXIO;
 
-	platform_set_drvdata(pdev, &amdemod_fe[0]);
+	platform_set_drvdata(pdev, fe);
 
-	amlfe_register_class(&amdemod_fe[0]);
+	amlfe_register_class(fe);
+
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	fe->es.level   = EARLY_SUSPEND_LEVEL_BLANK_SCREEN+1;
+	fe->es.suspend = amlfe_suspend;
+	fe->es.resume  = amlfe_resume;
+	fe->es.param   = fe;
+
+	register_early_suspend(&fe->es);
+#endif /*CONFIG_HAS_EARLYSUSPEND*/
 
 	return 0;
 }
@@ -1094,6 +1151,10 @@ static int amdemod_fe_remove(struct platform_device *pdev)
 {
 	struct aml_fe *fe = platform_get_drvdata(pdev);
 	struct aml_dvb *dvb = aml_get_dvb_device();
+
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	unregister_early_suspend(&fe->es);
+#endif /*CONFIG_HAS_EARLYSUSPEND*/
 
 	platform_set_drvdata(pdev, NULL);
 
@@ -1104,40 +1165,9 @@ static int amdemod_fe_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static int amdemod_fe_suspend(struct platform_device *pdev, pm_message_t state)
-{
-	struct aml_fe *fe = platform_get_drvdata(pdev);
-	struct amlfe_config *cfg = (struct amlfe_config*)fe->cfg;
-
-	printk("amdemod suspend\n");
-	if(cfg->tuner_power_pin){
-		gpio_request(cfg->tuner_power_pin, "tuner:POWER");
-		gpio_direction_output(cfg->tuner_power_pin, 0);
-	}
-
-	return 0;
-}
-
-static int amdemod_fe_resume(struct platform_device *pdev)
-{
-	struct aml_fe *fe = platform_get_drvdata(pdev);
-	struct amlfe_config *cfg = (struct amlfe_config*)fe->cfg;
-
-	printk("amdemod resume\n");
-
-	if(cfg->tuner_power_pin){
-		gpio_request(cfg->tuner_power_pin, "tuner:POWER");
-		gpio_direction_output(cfg->tuner_power_pin, 1);
-	}
-
-	return 0;
-}
-
 static struct platform_driver aml_fe_driver = {
 	.probe		= amdemod_fe_probe,
 	.remove		= amdemod_fe_remove,
-	.suspend        = amdemod_fe_suspend,
-	.resume         = amdemod_fe_resume,
 	.driver		= {
 		.name	= "amlfe",
 		.owner	= THIS_MODULE,
