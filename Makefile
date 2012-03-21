@@ -337,9 +337,6 @@ CFLAGS_KERNEL	=
 AFLAGS_KERNEL	=
 CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage
 
-#mod by steven for version string in android.
-UTS_VERSION=$(shell grep UTS_VERSION include/generated/compile.h 2>/dev/null | cut -d'"'  -s -f 2)
-export UTS_VERSION
 
 # Use LINUXINCLUDE when you must reference the include/ directory.
 # Needed to be compatible with the O= option

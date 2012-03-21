@@ -45,6 +45,7 @@ obj-$(CONFIG_MACH_MESON_8726M_REFC05)	+= board-8726m-refc05.o
 obj-$(CONFIG_MACH_MESON_8726M_REFC06)	+= board-8726m-refc06.o
 obj-$(CONFIG_MACH_MESON_8726M_REFC07)	+= board-8726m-refc07.o
 obj-$(CONFIG_MACH_MESON_8726M_REFC08)	+= board-8726m-refc08.o
+obj-$(CONFIG_MACH_MESON_8726M_REFC09)	+= board-8726m-refc09.o
 
 obj-$(CONFIG_MACH_MESON_6236M)	+= board-6236m.o
 obj-$(CONFIG_MACH_MESON_8226M)	+= board-8226m.o
@@ -54,7 +55,7 @@ obj-$(CONFIG_MACH_MESON_6236M_SH)	+= board-6236m-sh.o
 obj-$(CONFIG_MACH_MESON_8626M_SH)	+= board-8626m-sh.o
 
 obj-$(CONFIG_MACH_MESON_STV_MID_REF)	+= stv-mid-ref.o
-obj-$(CONFIG_MACH_MESON_STV_MBX_M3)	+= stv-mbx-m3.o
+obj-$(CONFIG_MACH_MESON_STV_MBX_M3)		+= stv-mbx-m3.o
 obj-$(CONFIG_MACH_MESON_STV_MBX_REF)	+= stv-mbx-ref.o
 
 # Power Management

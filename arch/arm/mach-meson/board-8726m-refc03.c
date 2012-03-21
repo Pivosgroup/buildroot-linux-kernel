@@ -602,17 +602,29 @@ static struct mtd_partition normal_partition_info_512M[] =
 	{
         .name = "system",
         .offset = 32*1024*1024,
-        .size = 156*1024*1024,
+#if (defined CONFIG_MACH_MESON_8726M_REFC03_ICS)
+        .size = 200*1024*1024,
+#else
+        .size = 200*1024*1024,
+#endif
     },
     {
         .name = "cache",
-        .offset = 188*1024*1024,
+#if (defined CONFIG_MACH_MESON_8726M_REFC03_ICS)
+        .offset = 232*1024*1024,
+#else
+        .offset = 232*1024*1024,
+#endif
         .size = 16*1024*1024,
     },
 #ifdef CONFIG_AML_NFTL
    {
         .name = "userdata",
-        .offset=204*1024*1024,
+#if (defined CONFIG_MACH_MESON_8726M_REFC03_ICS)
+        .offset=248*1024*1024,
+#else
+        .offset=248*1024*1024,
+#endif
         .size=200*1024*1024,
     },
     {
@@ -662,17 +674,29 @@ static struct mtd_partition normal_partition_info_1G_OR_MORE[] =
 	{
         .name = "system",
         .offset = 32*1024*1024,
-        .size = 200*1024*1024,
+#if (defined CONFIG_MACH_MESON_8726M_REFC03_ICS)
+        .size = 256*1024*1024,
+#else
+        .size = 256*1024*1024,
+#endif
     },
     {
         .name = "cache",
-        .offset = 232*1024*1024,
+#if (defined CONFIG_MACH_MESON_8726M_REFC03_ICS)
+        .offset = 288*1024*1024,
+#else
+        .offset = 288*1024*1024,
+#endif
         .size = 64*1024*1024,
     },
 #ifdef CONFIG_AML_NFTL
     {
         .name = "userdata",
-        .offset=296*1024*1024,
+#if (defined CONFIG_MACH_MESON_8726M_REFC03_ICS)
+        .offset=352*1024*1024,
+#else
+        .offset=352*1024*1024,
+#endif
         .size=300*1024*1024,
     },
        {
@@ -1123,8 +1147,8 @@ static struct resource amlfe_resource[]  = {
 		.name  = "frontend0_mode"
 	},
 	[3] = {
-		.start = 3,                   //frontend  tuner 0-NULL, 1-DCT7070, 2-Maxliner, 3-FJ2207, 4-TD1316
-		.end   = 3,
+		.start = 2,                   //frontend  tuner 0-NULL, 1-DCT7070, 2-Maxliner, 3-FJ2207, 4-TD1316
+		.end   = 2,
 		.flags = IORESOURCE_MEM,
 		.name  = "frontend0_tuner"
 	},

@@ -48,7 +48,9 @@ static int early_suspend_flag = 0;
 #define EARLY_SUSPEND_USE_XTAL
 #endif
 
-#if (defined CONFIG_MACH_MESON_8726M_REFC03)||(defined CONFIG_MACH_MESON_8726M_REFC06)||(defined CONFIG_MACH_MESON_STV_MBX_M3)
+#if (defined CONFIG_MACH_MESON_8726M_REFC03)|| \
+    (defined CONFIG_MACH_MESON_8726M_REFC06)|| \
+    (defined CONFIG_MACH_MESON_STV_MBX_M3)
 #define ETHERNET_ALWAYS
 #endif
 
@@ -236,7 +238,9 @@ void power_gate_switch(int flag)
     GATE_SWITCH(flag, SDIO);
     GATE_SWITCH(flag, ASYNC_FIFO);
     GATE_SWITCH(flag, STREAM);
-#if (defined CONFIG_MACH_MESON_8726M_REFC03)
+#if (defined CONFIG_MACH_MESON_8726M_REFC03)|| \
+    (defined CONFIG_MACH_MESON_8726M_REFC09)|| \
+    (defined CONFIG_MACH_MESON_STV_MBX_M3)
     GATE_SWITCH(flag, RTC);
 #endif
     //GATE_SWITCH(flag, UART0);
@@ -245,7 +249,10 @@ void power_gate_switch(int flag)
     GATE_SWITCH(flag, SMART_CARD);
     GATE_SWITCH(flag, SAR_ADC);
     GATE_SWITCH(flag, I2C);
-#if (!defined CONFIG_MACH_MESON_8726M_REFC03)&&(!defined CONFIG_MACH_MESON_8726M_REFC06)&&(!defined CONFIG_MACH_MESON_STV_MBX_M3)
+#if (!defined CONFIG_MACH_MESON_8726M_REFC03)&& \
+    (!defined CONFIG_MACH_MESON_8726M_REFC06)&& \
+    (!defined CONFIG_MACH_MESON_8726M_REFC09)&& \
+    (!defined CONFIG_MACH_MESON_STV_MBX_M3)
     GATE_SWITCH(flag, IR_REMOTE);
 #endif
     //GATE_SWITCH(flag, _1200XXX);
@@ -577,7 +584,10 @@ typedef struct {
 	unsigned enable; // 1:cbus 2:apb 3:ahb 0:disable
 } analog_t;
 
-#if (!defined CONFIG_MACH_MESON_8726M_REFC03)&&(!defined CONFIG_MACH_MESON_8726M_REFC06)&&(!defined CONFIG_MACH_MESON_STV_MBX_M3)
+#if (!defined CONFIG_MACH_MESON_8726M_REFC03)&& \
+    (!defined CONFIG_MACH_MESON_8726M_REFC06)&& \
+    (!defined CONFIG_MACH_MESON_8726M_REFC09)&& \
+    (!defined CONFIG_MACH_MESON_STV_MBX_M3)
 #define ANALOG_COUNT	8
 #else
 #define ANALOG_COUNT	5
@@ -588,7 +598,10 @@ static analog_t analog_regs[ANALOG_COUNT] = {
 	{"VGHL_PWM_REG0",		VGHL_PWM_REG0, 		1<<13,			1<<12,				0,	1},
 	{"WIFI_ADC_SAMPLING",	WIFI_ADC_SAMPLING, 	0,				1<<18,				0,	1},
 	{"ADC_EN_ADC",			ADC_EN_ADC,			0,				1<<31,				0,	2},
-#if (!defined CONFIG_MACH_MESON_8726M_REFC03)&&(!defined CONFIG_MACH_MESON_8726M_REFC06)&&(!defined CONFIG_MACH_MESON_STV_MBX_M3)
+#if (!defined CONFIG_MACH_MESON_8726M_REFC03)&& \
+    (!defined CONFIG_MACH_MESON_8726M_REFC06)&& \
+    (!defined CONFIG_MACH_MESON_8726M_REFC09)&& \
+    (!defined CONFIG_MACH_MESON_STV_MBX_M3)
 	{"WIFI_ADC_DAC",		WIFI_ADC_DAC,		(3<<10)|0xff,	0,					0,	3},
 	{"ADC_EN_CMLGEN_RES",	ADC_EN_CMLGEN_RES,	0,				(1<<26)|(1<<25),	0, 	3},
 	{"WIFI_SARADC",			WIFI_SARADC,		0,				1<<2,				0, 	3},
@@ -699,7 +712,9 @@ static void meson_system_early_suspend(struct early_suspend *h)
         early_clk_switch(OFF);
         early_pll_switch(OFF);
         early_suspend_flag=1;
-    #if (defined(CONFIG_SUSPEND))&&((defined CONFIG_MACH_MESON_8726M_REFC06)||(defined CONFIG_MACH_MESON_STV_MBX_M3))
+    #if (defined(CONFIG_SUSPEND))&& \
+        (defined (CONFIG_MACH_MESON_8726M_REFC06)|| \
+        (defined (CONFIG_MACH_MESON_STV_MBX_M3)))
         set_standby_led(1);
     #endif
     }
@@ -716,7 +731,9 @@ static void meson_system_late_resume(struct early_suspend *h)
 			pdata->set_exgpio_early_suspend(ON);
 		}
         printk(KERN_INFO "sys_resume\n");
-    #if (defined(CONFIG_SUSPEND))&&((defined CONFIG_MACH_MESON_8726M_REFC06)||(defined CONFIG_MACH_MESON_STV_MBX_M3))
+    #if (defined(CONFIG_SUSPEND))&& \
+        (defined (CONFIG_MACH_MESON_8726M_REFC06)|| \
+        (defined (CONFIG_MACH_MESON_STV_MBX_M3)))
         set_standby_led(0);
     #endif
     }
@@ -832,7 +849,10 @@ static void meson_pm_suspend(void)
 #else
     if (READ_CBUS_REG(HHI_MPEG_CLK_CNTL)&(1<<8))
         CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1<<8)); // clk81 = xtal
-#if (!defined CONFIG_MACH_MESON_8726M_REFC03)&&(!defined CONFIG_MACH_MESON_8726M_REFC06)&&(!defined CONFIG_MACH_MESON_STV_MBX_M3)
+#if (!defined CONFIG_MACH_MESON_8726M_REFC03)&& \
+    (!defined CONFIG_MACH_MESON_8726M_REFC06)&& \
+    (!defined CONFIG_MACH_MESON_8726M_REFC09)&& \
+    (!defined CONFIG_MACH_MESON_STV_MBX_M3)
     WRITE_CBUS_REG_BITS(HHI_MPEG_CLK_CNTL, 0x7f, 0, 6);	// devider = 128
 #else
     WRITE_CBUS_REG_BITS(HHI_MPEG_CLK_CNTL, 0x1e, 0, 6); // devider = 30
@@ -854,7 +874,10 @@ static void meson_pm_suspend(void)
 							1); 					    // 1uS enable delay 
     SET_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1<<15));		// turn off sys pll
      
-#if (defined CONFIG_MACH_MESON_8726M_REFC01)||(defined CONFIG_MACH_MESON_8726M_REFC03)||(defined CONFIG_MACH_MESON_STV_MBX_M3) 
+#if (defined CONFIG_MACH_MESON_8726M_REFC01)|| \
+    (defined CONFIG_MACH_MESON_8726M_REFC03)|| \
+    (defined CONFIG_MACH_MESON_8726M_REFC09)|| \
+    (defined CONFIG_MACH_MESON_STV_MBX_M3) 
     WRITE_CBUS_REG(A9_0_IRQ_IN0_INTR_MASK, pdata->power_key);     // enable remote interrupt only
 #elif  (defined CONFIG_MACH_MESON_8726M_REFC06) 
     WRITE_CBUS_REG(A9_0_IRQ_IN0_INTR_MASK, pdata->power_key);     // enable remote interrupt only
@@ -862,7 +885,10 @@ static void meson_pm_suspend(void)
 #else
     WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, pdata->power_key);     // enable rtc interrupt only
 #endif
-#if (defined CONFIG_MACH_MESON_8726M_REFC03)||(defined CONFIG_MACH_MESON_8726M_REFC06)||(defined CONFIG_MACH_MESON_STV_MBX_M3)
+#if (defined CONFIG_MACH_MESON_8726M_REFC03)|| \
+    (defined CONFIG_MACH_MESON_8726M_REFC06)|| \
+    (defined CONFIG_MACH_MESON_8726M_REFC09)|| \
+    (defined CONFIG_MACH_MESON_STV_MBX_M3)
     int tmp_data = 0;
     tmp_data = READ_CBUS_REG(PREG_CTLREG0_ADDR);
     WRITE_CBUS_REG(PREG_CTLREG0_ADDR, tmp_data | 0x1);
@@ -885,7 +911,10 @@ static void meson_pm_suspend(void)
 	CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1<<9));     // xtal_rtc = xtal
 #endif
     WRITE_CBUS_REG(HHI_MPEG_CLK_CNTL, mpeg_clk_backup);	// restore clk81 ctrl
-#if (defined CONFIG_MACH_MESON_8726M_REFC03)||(defined CONFIG_MACH_MESON_8726M_REFC06)||(defined CONFIG_MACH_MESON_STV_MBX_M3)
+#if (defined CONFIG_MACH_MESON_8726M_REFC03)|| \
+    (defined CONFIG_MACH_MESON_8726M_REFC06)|| \
+    (defined CONFIG_MACH_MESON_8726M_REFC09)|| \
+    (defined CONFIG_MACH_MESON_STV_MBX_M3)
     tmp_data = READ_CBUS_REG(PREG_CTLREG0_ADDR);
     WRITE_CBUS_REG(PREG_CTLREG0_ADDR, tmp_data & 0xFFFFFFFE);
     tmp_data = READ_CBUS_REG(IR_DEC_REG0);
@@ -969,7 +998,11 @@ static int __init meson_pm_probe(struct platform_device *pdev)
 {
     printk(KERN_INFO "enter meson_pm_probe!\n");
 
-#if (!defined CONFIG_MACH_MESON_8726M_REFC03)&&(!defined CONFIG_MACH_MESON_8726M_REFC06)&&(!defined CONFIG_MACH_MESON_8726M_REFC08)&&(!defined CONFIG_MACH_MESON_STV_MBX_M3)
+#if (!defined CONFIG_MACH_MESON_8726M_REFC03)&& \
+    (!defined CONFIG_MACH_MESON_8726M_REFC06)&& \
+    (!defined CONFIG_MACH_MESON_8726M_REFC08)&& \
+    (!defined CONFIG_MACH_MESON_8726M_REFC09)&& \
+    (!defined CONFIG_MACH_MESON_STV_MBX_M3)
     power_init_off();
 #endif
     power_gate_init();

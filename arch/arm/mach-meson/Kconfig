@@ -49,6 +49,12 @@ config MACH_MESON_8726M_REFC03
 	help
 	  Include support for the AMLOGIC M1 8726M DVBC Emulation Baseboard platform.
 
+config MACH_MESON_8726M_REFC03_ICS
+	select GENERIC_ALLOCATOR
+	bool "Support M1 8726 ICS(DVBC_8726M1_V1.0) platform(machid=2957)"
+	help
+	  Include support for the AMLOGIC M1 8726M DVBC Emulation Baseboard platform.
+
 config MACH_MESON_8726M_REFC06
 	select GENERIC_ALLOCATOR
 	bool "Support M1 8726(Giec) platform(machid=2957)"
@@ -132,7 +138,11 @@ config MACH_MESON_8726M_REFC08
         bool "Support M1 8726(refc08) platform(machid=2957)"
         help
           Include support for the AMLOGIC M1 8726M refc08 platform.
- 
+config MACH_MESON_8726M_REFC09
+        select GENERIC_ALLOCATOR
+        bool "Support M1 8726(refc09) platform(machid=2957)"
+        help
+          Include support for the AMLOGIC M1 8726M refc09 platform. 
 config MACH_MESON_8726M_REFB10
 	select GENERIC_ALLOCATOR
 	bool "Support M1 8726(G7) platform(machid=2956)"

@@ -38,17 +38,16 @@ else
 fi
 
 if [ -z "$KBUILD_BUILD_TIMESTAMP" ]; then
-	TIMESTAMP=`date +%Y%m%d.%H%M%S`  #mod by steven for version string in android.
+	TIMESTAMP=`date`
 else
 	TIMESTAMP=$KBUILD_BUILD_TIMESTAMP
 fi
 
-UTS_VERSION=`sh scripts/mkversion`    #add by steven for version string in booting
-# UTS_VERSION="#$VERSION"
+UTS_VERSION="#$VERSION"
 CONFIG_FLAGS=""
 if [ -n "$SMP" ] ; then CONFIG_FLAGS="SMP"; fi
 if [ -n "$PREEMPT" ] ; then CONFIG_FLAGS="$CONFIG_FLAGS PREEMPT"; fi
-UTS_VERSION="$UTS_VERSION($TIMESTAMP)"
+UTS_VERSION="$UTS_VERSION $CONFIG_FLAGS $TIMESTAMP"
 
 # Truncate to maximum length
 
@@ -92,10 +91,9 @@ UTS_TRUNCATE="cut -b -$UTS_LEN"
 # changed comment in the
 # first line.
 
-# mod by steven for version string in booting
 if [ -r $TARGET ] && \
-      grep -v 'LINUX_COMPILE_TIME' $TARGET > .tmpver.1 && \
-      grep -v 'LINUX_COMPILE_TIME' .tmpcompile > .tmpver.2 && \
+      grep -v 'UTS_VERSION\|LINUX_COMPILE_TIME' $TARGET > .tmpver.1 && \
+      grep -v 'UTS_VERSION\|LINUX_COMPILE_TIME' .tmpcompile > .tmpver.2 && \
       cmp -s .tmpver.1 .tmpver.2; then
    rm -f .tmpcompile
 else
