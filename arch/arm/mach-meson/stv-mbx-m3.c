@@ -567,94 +567,6 @@ static struct platform_device aml_sound_card={
 		.num_resources	=	ARRAY_SIZE(aml_m1_audio_resource),
 };
 
-static unsigned int eth_clk_src_index = 1;
-
-#if  0 //defined(CONFIG_PM)
-
-static void aml_eth_clock_enable(int enable)
-{
-
-    if (enable){
-        demod_apll_setting(0,1200*CLK_1M);//reset demod to enure demod have enabled
-//        udelay(100);
-        if ((eth_clk_src_index>=0) && (eth_clk_src_index <4)) {
-            unsigned int ethernet_clk_measure_index[4] = {
-                SYS_PLL_DIV3, DEMOD_PLL_CLK400,
-                DDR_PLL_CLK, OTHER_PLL_CLK
-            };
-            int freq = clk_util_clk_msr_rl(ethernet_clk_measure_index[eth_clk_src_index]);
-            if(freq % 50) {  //in MHz
-                  printk("******************%s: clk [%d] freq = %dMHz!! can not use this clock source!!we will set clk 1!\n", __func__, eth_clk_src_index, freq);
-                  eth_clk_set(1, 400*CLK_1M, 50*CLK_1M);
-                  
-            } else {
-              eth_clk_set(eth_clk_src_index, freq*CLK_1M, 50*CLK_1M);
-                  printk("******************%s: freq = %dMHz!! can not use this clock source!!\n", __func__, freq);
-            }
-        } else {
-            printk("******************%s: eth_clk_src_index = %d is invalide(0-3)!!\n", __func__, eth_clk_src_index);
-            
-            eth_clk_set(1, 400*CLK_1M, 50*CLK_1M);
-        }
-//        eth_clk_set(ETH_CLKSRC_APLL_CLK,400*CLK_1M,50*CLK_1M);
-    }else if((eth_clk_src_index >= 0) && (eth_clk_src_index < 4)){
-        eth_clk_set(eth_clk_src_index, 0 ,0);
-    }
-}
-
-/*
- * the code in this function is copied from eth_pinmux_init() in this file.
- */
-#define DELAY_TIME 500
-static void aml_eth_reset(void)
-{
-    int i;
-
-    eth_set_pinmux(ETH_BANK2_GPIOD15_D23,ETH_CLK_OUT_GPIOD24_REG5_1,0);
-    CLEAR_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, 1);
-    SET_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, (1 << 1));
-    SET_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, 1);
-    for (i = 0; i < DELAY_TIME; i++)
-        udelay(100);
-    /*reset*/
-    ///GPIOC19/NA   nRst;
-    set_gpio_mode(PREG_GGPIO,12,GPIO_OUTPUT_MODE);
-    set_gpio_val(PREG_GGPIO,12,0);
-    udelay(100);    //waiting reset end;
-    set_gpio_val(PREG_GGPIO,12,1);
-    udelay(10);     //waiting reset end;
-}
-
-static struct aml_eth_platform_data aml_eth_pdata = {
-    .clock_enable = aml_eth_clock_enable,
-    .reset = aml_eth_reset,
-};
-
-static struct platform_device aml_eth_pm = {
-    .name          = "ethernet_pm_driver",
-    .id            = -1,
-    .dev = {
-        .platform_data = &aml_eth_pdata,
-    }
-
-};
-#else
-static void __init eth_pinmux_init(void);
-static void eth_clock_enable(int enable);
-static struct resource aml_eth_pm_ops[] = {
-    [0] = {
-        .start = eth_clock_enable,
-        .end   = eth_pinmux_init,
-        .flags = IORESOURCE_READONLY,
-    },
-};
-static struct platform_device aml_eth_pm = {
-    .name          = "ethernet_pm_driver",
-    .num_resources = ARRAY_SIZE(aml_eth_pm_ops),
-    .resource      = aml_eth_pm_ops,
-    };
-#endif
-
 #ifdef CONFIG_AM_NAND
 static struct mtd_partition normal_partition_info_256M[] = 
 {
@@ -853,6 +765,98 @@ static struct mtd_partition normal_partition_info[] =
 		.size=MTDPART_SIZ_FULL,
 	},
 };
+unsigned int eth_clk_src_index = 1;
+
+
+#if defined(CONFIG_PM)
+
+static void aml_eth_clock_enable(int enable)
+{
+
+    if (enable){
+        demod_apll_setting(0,1200*CLK_1M);//reset demod to enure demod have enabled
+//        udelay(100);
+        if ((eth_clk_src_index>=0) && (eth_clk_src_index <4)) {
+            unsigned int ethernet_clk_measure_index[4] = {
+                SYS_PLL_DIV3, DEMOD_PLL_CLK400,
+                DDR_PLL_CLK, OTHER_PLL_CLK
+            };
+            int freq = clk_util_clk_msr_rl(ethernet_clk_measure_index[eth_clk_src_index]);
+            if(freq % 50) {  //in MHz
+                  printk("******************%s: clk [%d] freq = %dMHz!! can not use this clock source!!we will set clk 1!\n", __func__, eth_clk_src_index, freq);
+                  eth_clk_set(1, 400*CLK_1M, 50*CLK_1M);
+                  
+            } else {
+              eth_clk_set(eth_clk_src_index, freq*CLK_1M, 50*CLK_1M);
+                  printk("******************%s: freq = %dMHz!! can not use this clock source!!\n", __func__, freq);
+            }
+        } else {
+            printk("******************%s: eth_clk_src_index = %d is invalide(0-3)!!\n", __func__, eth_clk_src_index);
+            
+            eth_clk_set(1, 400*CLK_1M, 50*CLK_1M);
+        }
+//        eth_clk_set(ETH_CLKSRC_APLL_CLK,400*CLK_1M,50*CLK_1M);
+    }else if((eth_clk_src_index >= 0) && (eth_clk_src_index < 4)){
+        eth_clk_set(eth_clk_src_index, 0 ,0);
+    }
+}
+
+/*
+ * the code in this function is copied from eth_pinmux_init() in this file.
+ */
+#define DELAY_TIME 500
+static void aml_eth_reset(void)
+{
+    int i;
+
+    eth_set_pinmux(ETH_BANK2_GPIOD15_D23,ETH_CLK_OUT_GPIOD24_REG5_1,0);
+    CLEAR_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, 1);
+    SET_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, (1 << 1));
+    SET_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, 1);
+    for (i = 0; i < DELAY_TIME; i++)
+        udelay(100);
+    /*reset*/
+    ///GPIOC19/NA   nRst;
+    set_gpio_mode(PREG_GGPIO,12,GPIO_OUTPUT_MODE);
+    set_gpio_val(PREG_GGPIO,12,0);
+    udelay(100);    //waiting reset end;
+    set_gpio_val(PREG_GGPIO,12,1);
+    udelay(10);     //waiting reset end;
+}
+
+static struct aml_eth_platform_data aml_eth_pdata = {
+    .clock_enable = aml_eth_clock_enable,
+    .reset = aml_eth_reset,
+};
+
+static struct platform_device aml_eth_pm = {
+    .name          = "ethernet_pm_driver",
+    .id            = -1,
+    .dev = {
+        .platform_data = &aml_eth_pdata,
+    }
+
+};
+#endif
+
+#if 0
+#if defined(CONFIG_PM)
+static void __init eth_pinmux_init(void);
+static void eth_clock_enable(int enable);
+static struct resource aml_eth_pm_ops[] = {
+    [0] = {
+        .start = eth_clock_enable,
+        .end   = eth_pinmux_init,
+        .flags = IORESOURCE_READONLY,
+    },
+};
+static struct platform_device aml_eth_pm = {
+    .name          = "ethernet_pm_driver",
+    .num_resources = ARRAY_SIZE(aml_eth_pm_ops),
+    .resource      = aml_eth_pm_ops,
+    };
+#endif
+#endif
 
 static void nand_set_parts(uint64_t size, struct platform_nand_chip *chip)
 {

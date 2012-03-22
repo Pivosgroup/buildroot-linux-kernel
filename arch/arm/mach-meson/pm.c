@@ -239,8 +239,7 @@ void power_gate_switch(int flag)
     GATE_SWITCH(flag, ASYNC_FIFO);
     GATE_SWITCH(flag, STREAM);
 #if (defined CONFIG_MACH_MESON_8726M_REFC03)|| \
-    (defined CONFIG_MACH_MESON_8726M_REFC09)|| \
-    (defined CONFIG_MACH_MESON_STV_MBX_M3)
+    (defined CONFIG_MACH_MESON_8726M_REFC09)
     GATE_SWITCH(flag, RTC);
 #endif
     //GATE_SWITCH(flag, UART0);
