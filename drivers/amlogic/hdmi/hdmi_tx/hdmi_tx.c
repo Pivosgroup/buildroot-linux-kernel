@@ -616,8 +616,8 @@ static int hdmitx_notify_callback_a(struct notifier_block *block, unsigned long 
             default:
                 break;
         }
-        hdmi_print(1, "HDMI: aout notify rate %d\n", substream->runtime->rate);
-        hdmi_print(1, "HDMI: aout notify format PCM\n");
+        //hdmi_print(1, "HDMI: aout notify rate %d\n", substream->runtime->rate);
+        //hdmi_print(1, "HDMI: aout notify format PCM\n");
 
         hdmitx_device.audio_param_update_flag = 1;
         return 0;
@@ -625,7 +625,7 @@ static int hdmitx_notify_callback_a(struct notifier_block *block, unsigned long 
         audio_param->type = CT_AC_3;
         audio_param->channel_num = CC_2CH;
         audio_param->sample_size = SS_16BITS; 
-        hdmi_print(1, "HDMI: aout notify format AC-3\n");
+        //hdmi_print(1, "HDMI: aout notify format AC-3\n");
 
         hdmitx_device.audio_param_update_flag = 1;
         return 0;
@@ -633,7 +633,7 @@ static int hdmitx_notify_callback_a(struct notifier_block *block, unsigned long 
         audio_param->type = CT_DTS;
         audio_param->channel_num = CC_2CH;
         audio_param->sample_size = SS_16BITS; 
-        hdmi_print(1, "HDMI: aout notify format DTS\n");
+        //hdmi_print(1, "HDMI: aout notify format DTS\n");
 
         hdmitx_device.audio_param_update_flag = 1;
         return 0;
@@ -706,7 +706,7 @@ int hdmi_audio_post_func(int type, int channel, int sample_size, int rate)
                 break;
         }
         hdmitx_device.audio_param_update_flag = 1;
-        hdmi_print(1, "HDMI: aout notify rate %d\n", rate);
+        //hdmi_print(1, "HDMI: aout notify rate %d\n", rate);
         return 0;
 }
 

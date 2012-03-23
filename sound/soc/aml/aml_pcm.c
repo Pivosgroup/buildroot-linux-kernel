@@ -136,11 +136,11 @@ static int aml_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
         /* one size for i2s output, another for 958, and 128 for alignment */
 		buf->area = dma_alloc_coherent(pcm->card->dev, size*2+4096,
 					  &buf->addr, GFP_KERNEL);
-		printk("aml-pcm %d:"
-		"preallocate_dma_buffer: area=%p, addr=%p, size=%d\n", stream,
-		(void *) buf->area,
-		(void *) buf->addr,
-		size);
+		//printk("aml-pcm %d:"
+		//"preallocate_dma_buffer: area=%p, addr=%p, size=%d\n", stream,
+		//(void *) buf->area,
+		//(void *) buf->addr,
+		//size);
 
         aml_pcm_playback_start_addr = buf->area;
 		aml_pcm_playback_end_addr = buf->area + size;
@@ -153,11 +153,11 @@ static int aml_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 		buf->private_data = NULL;
 		buf->area = dma_alloc_coherent(pcm->card->dev, size*2,
 					  &buf->addr, GFP_KERNEL);
-		printk("aml-pcm %d:"
-		"preallocate_dma_buffer: area=%p, addr=%p, size=%d\n", stream,
-		(void *) buf->area,
-		(void *) buf->addr,
-		size);
+		//printk("aml-pcm %d:"
+		//"preallocate_dma_buffer: area=%p, addr=%p, size=%d\n", stream,
+		//(void *) buf->area,
+		//(void *) buf->addr,
+		//size);
 
         aml_pcm_capture_start_addr = buf->area;
 		aml_pcm_capture_end_addr = buf->area+size;
@@ -261,11 +261,11 @@ static void aml_hw_iec958_init(void)
 	if(IEC958_mode_raw == 1 && IEC958_mode_codec){
 	  if(IEC958_mode_codec == 1){ //dts, use raw sync-word mode
 	    	IEC958_MODE = AIU_958_MODE_RAW;
-		printk("iec958 mode RAW\n");
+		//printk("iec958 mode RAW\n");
 	  }	
 	  else{ //ac3,use the same pcm mode as i2s configuration
 		IEC958_MODE = AIU_958_MODE_PCM_RAW;
-		printk("iec958 mode %s\n",(I2S_MODE == AIU_I2S_MODE_PCM32)?"PCM32_RAW":((I2S_MODE == AIU_I2S_MODE_PCM24)?"PCM24_RAW":"PCM16_RAW"));				
+		//printk("iec958 mode %s\n",(I2S_MODE == AIU_I2S_MODE_PCM32)?"PCM32_RAW":((I2S_MODE == AIU_I2S_MODE_PCM24)?"PCM24_RAW":"PCM16_RAW"));				
 	  }	
 	}
 	/* case 2,3 */
@@ -276,7 +276,7 @@ static void aml_hw_iec958_init(void)
 	  	IEC958_MODE = AIU_958_MODE_PCM24;
 	  else		
 	  	IEC958_MODE = AIU_958_MODE_PCM16;
-  	  printk("iec958 mode %s\n",(I2S_MODE == AIU_I2S_MODE_PCM32)?"PCM32":((I2S_MODE == AIU_I2S_MODE_PCM24)?"PCM24":"PCM16"));
+  	  //printk("iec958 mode %s\n",(I2S_MODE == AIU_I2S_MODE_PCM32)?"PCM32":((I2S_MODE == AIU_I2S_MODE_PCM24)?"PCM24":"PCM16"));
     }
 
 	if(IEC958_MODE == AIU_958_MODE_PCM16 || IEC958_MODE == AIU_958_MODE_PCM24 ||
@@ -950,7 +950,7 @@ static int read_regs(char base, int reg)
 		default:
 			break;
 	};
-	printk("\tReg %x = %x\n", reg, val);
+	//printk("\tReg %x = %x\n", reg, val);
 	return val;
 }
 
@@ -972,7 +972,7 @@ static void write_regs(char base, int reg, int val)
 		default:
 			break;
 	};
-	printk("Write reg:%x = %x\n", reg, val);
+	//printk("Write reg:%x = %x\n", reg, val);
 }
 static ssize_t regs_write_file(struct file *file,
 		const char __user *user_buf, size_t count, loff_t *ppos)
