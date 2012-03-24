@@ -1813,14 +1813,14 @@ static void disable_unused_model(void)
 //	CLK_GATE_OFF(ETHERNET);
 //	CLK_GATE_OFF(SATA);
 	CLK_GATE_OFF(WIFI);
-//	video_dac_disable();
+	video_dac_disable();
 	//audio_internal_dac_disable();
      //disable wifi
-    SET_CBUS_REG_MASK(HHI_GCLK_MPEG2, (1<<5)); 
+    SET_CBUS_REG_MASK(HHI_GCLK_MPEG2, (1<<5));
     SET_CBUS_REG_MASK(HHI_WIFI_CLK_CNTL, (1<<0));
     __raw_writel(0xCFF,0xC9320ED8);
     __raw_writel((__raw_readl(0xC9320EF0))&0xF9FFFFFF,0xC9320EF0);
-    CLEAR_CBUS_REG_MASK(HHI_GCLK_MPEG2, (1<<5)); 
+    CLEAR_CBUS_REG_MASK(HHI_GCLK_MPEG2, (1<<5));
     CLEAR_CBUS_REG_MASK(HHI_WIFI_CLK_CNTL, (1<<0));
 }
 
@@ -1841,7 +1841,7 @@ static __init void m1_init_machine(void)
 	set_sata_phy_clk(SATA_PHY_CLOCK_SEL_DEMOD_PLL);
 	lm_device_register(&sata_ld);
 #endif
-    disable_unused_model();
+	disable_unused_model();
 }
 
 /*VIDEO MEMORY MAPING*/
