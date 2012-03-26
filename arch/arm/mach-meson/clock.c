@@ -302,11 +302,12 @@ static struct clk a9_clk = {
     .min        = 200000000,
 #if defined(CONFIG_MACH_MESON_8726M_REFC03)|| \
     defined(CONFIG_MACH_MESON_8726M_REFC06)|| \
-    defined(CONFIG_MACH_MESON_8726M_REFC09)|| \
-    defined(CONFIG_MACH_MESON_STV_MBX_M3)
+    defined(CONFIG_MACH_MESON_8726M_REFC09)
     .max        =  750000000,
 #elif defined(CONFIG_MACH_MESON_8726M_REFC08)
     .max        =  800000000,
+#elif defined(CONFIG_MACH_MESON_STV_MBX_M3)
+    .max        =  900000000,
 #else
     .max        =  850000000,
 #endif
