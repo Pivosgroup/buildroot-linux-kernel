@@ -23,4 +23,11 @@ config BQ27x00_BATTERY
 	help
 	  Say Y here if you want to add battery driver supoort for bq27x00.
 	  
+config STV_MBX_POWEROFF
+	bool "Amlogic STV-MBX-M3 poweroff"
+	depends on MACH_MESON_STV_MBX_M3 && I2C_SW_AML
+        default n
+        help
+          Say Y here if you want to add power off driver supoort for stv-mbx platform.
+
 endmenu
