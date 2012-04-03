@@ -1067,7 +1067,7 @@ static struct platform_device aml_efuse_device = {
     .id	= -1,
 };
 #endif
-#ifdef CONFIG_ANDROID_PMEM
+#if defined(CONFIG_ANDROID_PMEM) || defined(CONFIG_CMEM)
 static struct android_pmem_platform_data pmem_data =
 {
 	.name = "pmem",
@@ -1586,7 +1586,7 @@ static struct platform_device __initdata *platform_devs[] = {
 		&aml_i2c_device,
     #endif
 
-    #if defined(CONFIG_ANDROID_PMEM)
+    #if defined(CONFIG_ANDROID_PMEM) || defined(CONFIG_CMEM)
 		&android_pmem_device,
     #endif
     #if defined(CONFIG_AML_RTC)
