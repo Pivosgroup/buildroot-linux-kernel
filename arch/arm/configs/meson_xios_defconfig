@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Sat Mar 31 14:33:55 2012
+# Fri Apr  6 11:16:23 2012
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -581,7 +581,8 @@ CONFIG_MAC80211_RC_DEFAULT="minstrel"
 # Generic Driver Options
 #
 CONFIG_UEVENT_HELPER_PATH=""
-# CONFIG_DEVTMPFS is not set
+CONFIG_DEVTMPFS=y
+CONFIG_DEVTMPFS_MOUNT=y
 # CONFIG_STANDALONE is not set
 CONFIG_PREVENT_FIRMWARE_BUILD=y
 CONFIG_FW_LOADER=y
