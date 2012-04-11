@@ -25,8 +25,11 @@
 #include <linux/i2c.h>
 #include <linux/module.h>
 
-#define STV_MBX_PWR_ADDRESS 0x00
-#define ATV_MBX_PWR_OFF_BIT 0x0002
+#define STV_MBX_PWR_ADDRESS   0x00
+#define ATV_MBX_PWR_DISABLE   0x0001
+#define ATV_MBX_PWR_DOWN_NOW  0x0002
+#define ATV_MBX_PWR_HW_BUTTON 0x0004
+#define ATV_MBX_PWR_IR_BUTTON 0x0008
 
 static struct i2c_client *stv_mbx_poweroff_client;
 
@@ -35,23 +38,39 @@ static void stv_mbx_poweroff(void)
 	/* on shutdown, kernel will call us via pm_power_off */
 	u16 data;
 	data = i2c_smbus_read_word_data(stv_mbx_poweroff_client, STV_MBX_PWR_ADDRESS);
-	data |= ATV_MBX_PWR_OFF_BIT;
+	/* make sure power control is enabled */
+	data &= ~ATV_MBX_PWR_DISABLE;
+	/* set the power down now bit */
+	data |= ATV_MBX_PWR_DOWN_NOW;
+	printk("stv_mbx_xx power is going down\n");
 	/* power is going down after this write */
-  printk("stv_mbx_xx power is going down\n");
 	i2c_smbus_write_word_data(stv_mbx_poweroff_client, STV_MBX_PWR_ADDRESS, data);
 	return;
 }
 
 static int __devinit stv_mbx_poweroff_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
+	u16 data;
 	int res = 0;
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_WORD_DATA)) {
 		pr_err("%s: i2c_check_functionality failed\n", __FUNCTION__);
 		res = -ENODEV;
 		goto out;
 	}
-	/* remember our client */  
+	/* remember our client */
 	stv_mbx_poweroff_client = client;
+
+	/* setup power handling */
+	data  = i2c_smbus_read_word_data(stv_mbx_poweroff_client, STV_MBX_PWR_ADDRESS);
+	printk("stv_mbx_poweroff_probe, status reg = 0x%x\n", data);
+	/* enable power control */
+	data &= ~ATV_MBX_PWR_DISABLE;
+	/* set hw power button to power off when held for > 3 seconds. */
+	data |=  ATV_MBX_PWR_HW_BUTTON;
+	/* set ir power button to power off when held for > 3 seconds. */
+	data |=  ATV_MBX_PWR_IR_BUTTON;
+	i2c_smbus_write_word_data(stv_mbx_poweroff_client, STV_MBX_PWR_ADDRESS, data);
+
 	/* hook the poweroff power mananger routine*/
 	pm_power_off = stv_mbx_poweroff;
 out:
