@@ -93,7 +93,7 @@ static  pin_config_t  pin_config[]={
 } ;
 
 static __u16 key_map[512];
-static __u16 mouse_map[6]; /*Left Right Up Down + middlewheel up &down*/
+static __u16 mouse_map[10]; /*Left Right Up Down + middlewheel up &down + up/left, up/right, down/left, down/right*/
 
 int remote_printk(const char *fmt, ...)
 {
@@ -112,7 +112,9 @@ static int kp_mouse_event(struct input_dev *dev, unsigned int scancode, unsigned
     __u16 mouse_code = REL_X;
     __s32 mouse_value = 0;
     static unsigned int repeat_count = 0;
-    __s32 move_accelerate[] = {0, 1, 1, 2, 2, 3, 4, 5, 6, 7, 8, 9};
+    static u32 timer_repeat = 0;
+
+    __s32 move_accelerate[] = {0, 1, 2, 2, 4, 4, 8, 8, 16, 32};
     unsigned int i;
 		
     for(i = 0; i < ARRAY_SIZE(mouse_map); i++)
@@ -123,55 +125,76 @@ static int kp_mouse_event(struct input_dev *dev, unsigned int scancode, unsigned
     if(i>= ARRAY_SIZE(mouse_map)) return -1;
     switch(type){
         case 1 ://press
-            repeat_count = 0;
+            if (jiffies > timer_repeat){
+                repeat_count = 0;
+            } else if(repeat_count < ARRAY_SIZE(move_accelerate) - 2){
+                repeat_count++;
+            }
+            timer_repeat = jiffies + msecs_to_jiffies(250);
             break;
         case 2 ://repeat
-            if(repeat_count >= ARRAY_SIZE(move_accelerate) - 1)
-                repeat_count = ARRAY_SIZE(move_accelerate) - 1;
-            else
-                repeat_count ++;
-        }
+            if(repeat_count < ARRAY_SIZE(move_accelerate) - 2)
+                repeat_count++;
+            break;
+    }
     switch(i){
-        case 0 :
+        case 6 : /* up/left */
+        case 7 : /* up/down */
+            mouse_code = REL_Y;
+            mouse_value = (1 + move_accelerate[repeat_count]);
+            if (i == 6)
+              mouse_value = -mouse_value;
+            if(type){
+              input_event(dev, EV_REL, mouse_code, mouse_value);
+              input_sync(dev);
+            }
+        case 0 : /* up */
             mouse_code = REL_X;
             mouse_value = -(1 + move_accelerate[repeat_count]);
             break;
-        case 1 :
+        case 8 : /* down/left */
+        case 9 : /* down/down */
+            mouse_code = REL_Y;
+            mouse_value = (1 + move_accelerate[repeat_count]);
+            if (i == 8)
+              mouse_value = -mouse_value;
+            if(type){
+              input_event(dev, EV_REL, mouse_code, mouse_value);
+              input_sync(dev);
+            }
+        case 1 : /* down */
             mouse_code = REL_X;
             mouse_value = 1 + move_accelerate[repeat_count];
             break;
-        case 2 :
+        case 2 : /* left */
             mouse_code = REL_Y;
             mouse_value = -(1 + move_accelerate[repeat_count]);
             break;
-        case 3 :
+        case 3 : /* right */
             mouse_code = REL_Y;
             mouse_value = 1 + move_accelerate[repeat_count];
             break;
-	case 4://up
-	     mouse_code= REL_WHEEL;
-	     mouse_value=0x1;	 
-	     break;
-	case 5:
-	     mouse_code= REL_WHEEL;
-	     mouse_value=0xffffffff;	
-	     break;
-		
-        }
+        case 4: /* wheel up */
+             mouse_code= REL_WHEEL;
+             mouse_value=0x1;
+             break;
+        case 5: /* wheel down */
+             mouse_code= REL_WHEEL;
+             mouse_value=0xffffffff;
+             break;
+    }
     if(type){
         input_event(dev, EV_REL, mouse_code, mouse_value);
         input_sync(dev);
-	 switch(mouse_code)
-	 {
-	 	case REL_X:
-		case REL_Y:
-		 input_dbg("mouse be %s moved %d.\n", mouse_code==REL_X?"horizontal":"vertical", mouse_value);	
-		break;
-		case REL_WHEEL:
-		input_dbg("mouse wheel move %s .\n",mouse_value==0x1?"up":"down");
-		break;
-	 }
-       
+        switch(mouse_code){
+            case REL_X:
+            case REL_Y:
+                input_dbg("mouse %d be %s moved %d.\n", type, mouse_code==REL_X?"horizontal":"vertical", mouse_value);
+            break;
+            case REL_WHEEL:
+                input_dbg("mouse wheel move %s .\n",mouse_value==0x1?"up":"down");
+            break;
+        }
     }
     return 0;
 }
