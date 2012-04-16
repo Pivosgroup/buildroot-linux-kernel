@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Wed Apr 11 01:30:49 2012
+# Sun Apr 15 09:54:41 2012
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -2093,7 +2093,9 @@ CONFIG_YAFFS_DISABLE_BACKGROUND=y
 CONFIG_YAFFS_XATTR=y
 # CONFIG_LOGFS is not set
 # CONFIG_CRAMFS is not set
-# CONFIG_SQUASHFS is not set
+CONFIG_SQUASHFS=y
+CONFIG_SQUASHFS_EMBEDDED=y
+CONFIG_SQUASHFS_FRAGMENT_CACHE_SIZE=3
 # CONFIG_VXFS_FS is not set
 # CONFIG_MINIX_FS is not set
 # CONFIG_OMFS_FS is not set
