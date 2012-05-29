@@ -1,5 +1,5 @@
-#ifndef  OSD_LOG_H
-#define OSD_LOG_H
+#ifndef  GE2D_LOG_H
+#define GE2D_LOG_H
 
 #define DEBUG
 #ifdef  DEBUG

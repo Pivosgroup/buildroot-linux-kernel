@@ -37,7 +37,6 @@ static  int debug = CONFIG_AM_ETHERNET_DEBUG_LEVEL;
 static  int debug = 1;
 #endif
 
-
 //#define LOOP_BACK_TEST
 //#define MAC_LOOPBACK_TEST
 //#define PHY_LOOPBACK_TEST
@@ -46,6 +45,7 @@ void start_test(struct net_device *dev);
 
 static int running = 0;
 static struct net_device *my_ndev = NULL;
+static unsigned int g_mac_setup = 0;
 static char DEFMAC[] = "\x00\x01\x23\xcd\xee\xaf";
 
 
@@ -1186,7 +1186,21 @@ static unsigned char inline chartonum(char c)
 
 static void config_mac_addr(struct net_device *dev,void *mac)
 {
-	//Need fix..mac addr is read from eeprom..
+	if(g_mac_setup == 0) {
+		printk("*****WARNING: Haven't setup MAC address! Using random MAC address.\n");
+		unsigned long mac_fir = 0;
+		unsigned char mac_add[6] = {};
+
+		mac_fir = READ_MPEG_REG(RAND64_ADDR1);
+
+		mac_add[1] = mac_fir&0xFF; mac_add[2] = (mac_fir>>16)&0xFF;
+		mac_add[3] = (mac_fir>>8)&0xFF; mac_add[4] = (mac_fir>>24) &0xFF;
+		mac_add[5] = (mac_add[1]<<4)|(mac_add[4]>>4);
+		memcpy(mac, mac_add, 6);
+		printk("mac-addr: %x:%x:%x:%x:%x:%x\n", mac_add[0],mac_add[1],mac_add[2],
+							mac_add[3],mac_add[4],mac_add[5]);
+	}
+
 	memcpy(dev->dev_addr, mac, 6);
 	write_mac_addr(dev, dev->dev_addr);
 }
@@ -1200,6 +1214,10 @@ static int __init mac_addr_set(char *line)
 		line += 3;
 	}
 	memcpy(DEFMAC, mac, 6);
+	printk("******** uboot setup mac-addr: %x:%x:%x:%x:%x:%x\n",
+			DEFMAC[0], DEFMAC[1], DEFMAC[2], DEFMAC[3], DEFMAC[4], DEFMAC[5]);
+	g_mac_setup++;
+
 	return 1;
 }
 

@@ -72,6 +72,9 @@ static void hdmi_audio_init(unsigned char spdif_flag);
 static void hdmitx_dump_tvenc_reg(int cur_VIC, int printk_flag);
 
 
+//#define HDMI_PATCH_1
+//#define HDMI_PATCH_2
+
 //#define HPD_DELAY_CHECK
 #ifdef CONFIG_AML_HDMI_TX_CEC
 #define CEC_SUPPORT
@@ -1009,6 +1012,19 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
     unsigned int tmp_add_data;
     
     digital_clk_on(7);
+#ifdef HDMI_PATCH_1
+    WRITE_CBUS_REG_BITS(RESET2_REGISTER, 1, 15, 1);
+    udelay(20);
+    WRITE_CBUS_REG_BITS(RESET2_REGISTER, 0, 15, 1);
+    
+    printk("%s[%d]\n", __func__, __LINE__);
+    WRITE_APB_REG(HDMI_CNTL_PORT, READ_APB_REG(HDMI_CNTL_PORT)|(1<<16));
+    hdmi_wr_reg(OTHER_BASE_ADDR+HDMI_OTHER_CTRL0, 0x30);
+    udelay(20);
+    hdmi_wr_reg(OTHER_BASE_ADDR+HDMI_OTHER_CTRL0, 0x00);
+    WRITE_APB_REG(HDMI_CNTL_PORT, READ_APB_REG(HDMI_CNTL_PORT)&(~(1<<16)));
+    printk("%s[%d]\n", __func__, __LINE__);
+#endif
     hdmi_wr_reg(0x011, hdmi_rd_reg(0x011)&(~0x0f));
     cec_set_pending(TV_CEC_PENDING_ON);
 #ifndef AML_A3
@@ -1263,7 +1279,24 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
     hdmi_wr_reg(0x01a, 0xfb);   //bit[2:0]=011 ,CK channel output TMDS CLOCK ,bit[2:0]=101 ,ck channel output PHYCLCK 
 
     hdmi_hw_set_powermode(power_mode, param->VIC);
-
+#ifdef HDMI_PATCH_1
+    if((param->VIC==HDMI_1080p60)||(param->VIC==HDMI_1080p50)){
+        Wr(HHI_HDMI_PLL_CNTL2, 0xc1e8);
+    }
+    else{
+        Wr(HHI_HDMI_PLL_CNTL2, 0x40e8);
+    }
+    printk("******%s[%d]******\n", __func__, __LINE__);
+    Rd(A9_0_IRQ_IN1_INTR_STAT_CLR);
+    Wr(A9_0_IRQ_IN1_INTR_MASK, Rd(A9_0_IRQ_IN1_INTR_MASK)&(~(1 << 25)));
+    WRITE_APB_REG(HDMI_CNTL_PORT, READ_APB_REG(HDMI_CNTL_PORT)|(1<<16));
+    hdmi_wr_reg(OTHER_BASE_ADDR+HDMI_OTHER_CTRL0, 0x10);
+    udelay(20);
+    hdmi_wr_reg(OTHER_BASE_ADDR+HDMI_OTHER_CTRL0, 0x00);
+    WRITE_APB_REG(HDMI_CNTL_PORT, READ_APB_REG(HDMI_CNTL_PORT)&(~(1<<16)));
+    Wr(A9_0_IRQ_IN1_INTR_MASK, Rd(A9_0_IRQ_IN1_INTR_MASK)|((1 << 25)));
+    printk("******%s[%d]******\n", __func__, __LINE__);
+#endif
     hdmi_wr_reg(0x0F7, 0x0F);   // Termination resistor calib value
   //hdmi_wr_reg(0x014, 0x07);   // This register is for pre-emphasis control ,we need test different TMDS Clcok speed then write down the suggested     value for each one ;
   //hdmi_wr_reg(0x014, 0x01);   // This is a sample for Pre-emphasis setting ,recommended for 225MHz's TMDS Setting & ** meters HDMI Cable  
@@ -2038,8 +2071,34 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
 #endif
 }
 
+#ifdef HDMI_PATCH_3
+static void hdmi_ch_reset(void)
+{
+mdelay(1);
+hdmi_wr_reg(0xe1, 0xf0 );
+mdelay(1);
+hdmi_wr_reg(0xe1, 0x0 );
+mdelay(1);
+hdmi_wr_reg(0xe0, 0xff );
+mdelay(1);
+hdmi_wr_reg(0xe0, 0x40 );
+mdelay(1);
+hdmi_wr_reg(0xe0, 0x0 );
+mdelay(1);
+hdmi_wr_reg(0xe1, 0x8 );
+mdelay(1);
+hdmi_wr_reg(0xe1, 0x0 );
+mdelay(1);
+
+}
+
+#endif
+
 static int hdmitx_m1b_set_dispmode(Hdmi_tx_video_para_t *param)
 {
+#ifdef HDMI_PATCH_2
+    static int run_times = 0;
+#endif
     if(param == NULL){ //disable HDMI
         return 0;
     }
@@ -2054,7 +2113,9 @@ static int hdmitx_m1b_set_dispmode(Hdmi_tx_video_para_t *param)
         &&(param->VIC!=HDMI_1080i60)&&(param->VIC!=HDMI_1080i50)){
         return -1;
     }
-
+#ifdef HDMI_PATCH_2
+re:
+#endif
 #ifdef CONFIG_AML_HDMI_TX_HDCP
     hdmi_wr_reg(TX_HDCP_MODE, hdmi_rd_reg(TX_HDCP_MODE)&(~0x80)); //disable authentication
 #endif    
@@ -2123,8 +2184,19 @@ set_tvenc:
 #endif
     hdmitx_dump_tvenc_reg(param->VIC, 0);
 
+#ifdef HDMI_PATCH_2
+    if(run_times<=0){
+        mdelay(500);
+        run_times++;
+        goto re;
+    }
+#endif
     hdmi_wr_reg(0x011, 0x0f);   //Channels Power Up Setting ,"1" for Power-up ,"0" for Power-down,Bit[3:0]=CK,Data2,data1,data1,data0 Channels ;
-    
+
+#ifdef HDMI_PATCH_3
+    mdelay(500);
+    hdmi_ch_reset();
+#endif
     return 0;
 }    
 

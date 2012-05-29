@@ -128,12 +128,16 @@ static int demod_set_agc(struct aml_demod_sys *demod_sys)
 
     agc_sel = demod_sys->agc_sel;
 
-    if (agc_sel == 1) 
+    if (agc_sel == 1){
 	(*P_PERIPHS_PIN_MUX_6) |= (3<<30);
-    else if (agc_sel == 2)
+    }else if (agc_sel == 2){
 	(*P_PERIPHS_PIN_MUX_2) |= (3<<28); 
-    else
+    }else if (agc_sel == 0){
+        (*P_PERIPHS_PIN_MUX_6) &= ~(3<<30); //close GPIOB 2/3 for IF/RF
+        (*P_PERIPHS_PIN_MUX_2) &= ~(3<<28); //close GPIOA 7/8 for IF/RF
+    }else{
 	ret = -1;
+    }
 
     return ret;
 }

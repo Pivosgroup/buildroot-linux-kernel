@@ -269,6 +269,20 @@ static struct platform_device amlogic_spi_nor_device = {
 #endif
 
 #ifdef CONFIG_USB_DWC_OTG_HCD
+#ifdef CONFIG_USB_DPLINE_PULLUP_DISABLE
+static set_vbus_valid_ext_fun(unsigned int id,char val)
+{
+	unsigned int  reg = (PREI_USB_PHY_A_REG1 + id);
+	if(val == 1)
+	{
+		SET_CBUS_REG_MASK(reg,1<<0);
+	}
+	else
+	{
+		CLEAR_CBUS_REG_MASK(reg,1<<0);
+	}
+}
+#endif
 static void set_usb_a_vbus_power(char is_power_on)
 {
 #define USB_A_POW_GPIO_BIT	20
@@ -295,6 +309,9 @@ static struct lm_device usb_ld_a = {
 	.port_speed = USB_PORT_SPEED_DEFAULT,
 	.dma_config = USB_DMA_BURST_SINGLE,
 	.set_vbus_power = set_usb_a_vbus_power,
+#ifdef CONFIG_USB_DPLINE_PULLUP_DISABLE	
+	.set_vbus_valid_ext = set_vbus_valid_ext_fun,
+#endif
 };
 static struct lm_device usb_ld_b = {
 	.type = LM_DEVICE_TYPE_USB,
@@ -307,6 +324,9 @@ static struct lm_device usb_ld_b = {
 	.port_speed = USB_PORT_SPEED_DEFAULT,
 	.dma_config = USB_DMA_BURST_SINGLE,
 	.set_vbus_power = 0,
+#ifdef CONFIG_USB_DPLINE_PULLUP_DISABLE	
+	.set_vbus_valid_ext = set_vbus_valid_ext_fun,
+#endif	
 };
 #endif
 #ifdef CONFIG_SATA_DWC_AHCI
@@ -471,6 +491,28 @@ static struct aml_card_info  amlogic_card_info[] = {
 		.card_wp_input_mask = PREG_IO_23_MASK,
 		.card_extern_init = 0,
 	},
+
+#ifdef CONFIG_MS_MSPRO
+	[1] = {
+		.name = "ms_card",
+		.work_mode = CARD_HW_MODE,
+		.io_pad_type = SDIO_GPIOA_9_14,
+		.card_ins_en_reg = EGPIO_GPIOC_ENABLE,
+		.card_ins_en_mask = PREG_IO_25_MASK,
+		.card_ins_input_reg = EGPIO_GPIOC_INPUT,
+		.card_ins_input_mask = PREG_IO_25_MASK,
+		.card_power_en_reg = EGPIO_GPIOC_ENABLE,
+		.card_power_en_mask = PREG_IO_26_MASK,
+		.card_power_output_reg = EGPIO_GPIOC_OUTPUT,
+		.card_power_output_mask = PREG_IO_26_MASK,
+		.card_power_en_lev = 0,
+		.card_wp_en_reg = EGPIO_GPIOC_ENABLE,
+		.card_wp_en_mask = PREG_IO_23_MASK,
+		.card_wp_input_reg = EGPIO_GPIOC_INPUT,
+		.card_wp_input_mask = PREG_IO_23_MASK,
+		.card_extern_init = 0,
+	},
+#endif
 };
 
 static struct aml_card_platform amlogic_card_platform = {
@@ -603,7 +645,7 @@ static struct mtd_partition normal_partition_info_512M[] =
         .name = "system",
         .offset = 32*1024*1024,
 #if (defined CONFIG_MACH_MESON_8726M_REFC03_ICS)
-        .size = 200*1024*1024,
+        .size = 300*1024*1024,
 #else
         .size = 200*1024*1024,
 #endif
@@ -611,7 +653,7 @@ static struct mtd_partition normal_partition_info_512M[] =
     {
         .name = "cache",
 #if (defined CONFIG_MACH_MESON_8726M_REFC03_ICS)
-        .offset = 232*1024*1024,
+        .offset = 332*1024*1024,
 #else
         .offset = 232*1024*1024,
 #endif
@@ -621,11 +663,12 @@ static struct mtd_partition normal_partition_info_512M[] =
    {
         .name = "userdata",
 #if (defined CONFIG_MACH_MESON_8726M_REFC03_ICS)
-        .offset=248*1024*1024,
+        .offset=348*1024*1024,
+        .size=112*1024*1024,
 #else
         .offset=248*1024*1024,
-#endif
         .size=200*1024*1024,
+#endif
     },
     {
 		.name = "NFTL_Part",
@@ -675,7 +718,7 @@ static struct mtd_partition normal_partition_info_1G_OR_MORE[] =
         .name = "system",
         .offset = 32*1024*1024,
 #if (defined CONFIG_MACH_MESON_8726M_REFC03_ICS)
-        .size = 256*1024*1024,
+        .size = 512*1024*1024,
 #else
         .size = 256*1024*1024,
 #endif
@@ -683,7 +726,7 @@ static struct mtd_partition normal_partition_info_1G_OR_MORE[] =
     {
         .name = "cache",
 #if (defined CONFIG_MACH_MESON_8726M_REFC03_ICS)
-        .offset = 288*1024*1024,
+        .offset = 544*1024*1024,
 #else
         .offset = 288*1024*1024,
 #endif
@@ -693,7 +736,7 @@ static struct mtd_partition normal_partition_info_1G_OR_MORE[] =
     {
         .name = "userdata",
 #if (defined CONFIG_MACH_MESON_8726M_REFC03_ICS)
-        .offset=352*1024*1024,
+        .offset=608*1024*1024,
 #else
         .offset=352*1024*1024,
 #endif
@@ -1147,8 +1190,8 @@ static struct resource amlfe_resource[]  = {
 		.name  = "frontend0_mode"
 	},
 	[3] = {
-		.start = 2,                   //frontend  tuner 0-NULL, 1-DCT7070, 2-Maxliner, 3-FJ2207, 4-TD1316
-		.end   = 2,
+		.start = 3,                   //frontend  tuner 0-NULL, 1-DCT7070, 2-Maxliner, 3-FJ2207, 4-TD1316
+		.end   = 3,
 		.flags = IORESOURCE_MEM,
 		.name  = "frontend0_tuner"
 	},

@@ -54,6 +54,10 @@ static irq_handler_t       demux_handler;
 static void               *demux_data;
 static DEFINE_SPINLOCK(demux_ops_lock);
 
+static int aud_pid = 0xffff;
+static int vid_pid = 0xffff;
+static int sub_pid = 0xffff;
+
 void tsdemux_set_ops(struct tsdemux_ops *ops)
 {
     unsigned long flags;
@@ -160,6 +164,10 @@ static int tsdemux_set_vid(int vpid)
     unsigned long flags;
     int r = 0;
 
+    if(vpid == vid_pid){
+        return r;
+    }
+
     spin_lock_irqsave(&demux_ops_lock, flags);
     if (demux_ops && demux_ops->set_vid) {
         r = demux_ops->set_vid(vpid);
@@ -175,6 +183,7 @@ static int tsdemux_set_vid(int vpid)
         WRITE_MPEG_REG(MAX_FM_COMP_ADDR, 1);
         r = 0;
     }
+    vid_pid = vpid;
     spin_unlock_irqrestore(&demux_ops_lock, flags);
 
     return r;
@@ -184,6 +193,10 @@ static int tsdemux_set_aid(int apid)
 {
     unsigned long flags;
     int r = 0;
+
+    if(apid==aud_pid){
+        return r;
+    }
 
     spin_lock_irqsave(&demux_ops_lock, flags);
     if (demux_ops && demux_ops->set_aid) {
@@ -200,6 +213,7 @@ static int tsdemux_set_aid(int apid)
         WRITE_MPEG_REG(MAX_FM_COMP_ADDR, 1);
         r = 0;
     }
+    aud_pid = apid;
     spin_unlock_irqrestore(&demux_ops_lock, flags);
 
     return r;
@@ -209,6 +223,10 @@ static int tsdemux_set_sid(int spid)
 {
     unsigned long flags;
     int r = 0;
+
+    if(spid==sub_pid){
+        return r;
+    }
 
     spin_lock_irqsave(&demux_ops_lock, flags);
     if (demux_ops && demux_ops->set_sid) {
@@ -223,6 +241,7 @@ static int tsdemux_set_sid(int spid)
         WRITE_MPEG_REG(MAX_FM_COMP_ADDR, 1);
         r = 0;
     }
+    sub_pid = spid;
     spin_unlock_irqrestore(&demux_ops_lock, flags);
 
     return r;
@@ -756,3 +775,18 @@ void tsdemux_set_skipbyte(int skipbyte)
 #endif
     return;
 }
+
+void tsdemux_set_demux(int dev)
+{
+#ifdef ENABLE_DEMUX_DRIVER
+    unsigned long flags;
+    int r = 0;
+
+    spin_lock_irqsave(&demux_ops_lock, flags);
+    if (demux_ops && demux_ops->set_demux) {
+        r = demux_ops->set_demux(dev);
+    }
+    spin_unlock_irqrestore(&demux_ops_lock, flags);
+#endif
+}
+

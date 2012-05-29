@@ -117,9 +117,9 @@ static int tsync_dec_reset_video_start = 0;
 #define HIGH_TOGGLE_TIME          99
 
 #define PTS_CACHED_LO_NORMAL_TIME (90000)
-#define PTS_CACHED_NORMAL_LO_TIME (45000)
-#define PTS_CACHED_HI_NORMAL_TIME (135000)
-#define PTS_CACHED_NORMAL_HI_TIME (180000)
+#define PTS_CACHED_NORMAL_LO_TIME (90000)
+#define PTS_CACHED_HI_NORMAL_TIME (90000*2)
+#define PTS_CACHED_NORMAL_HI_TIME (90000*2)
 
 #ifdef MODIFY_TIMESTAMP_INC_WITH_PLL
 extern void set_timestamp_inc_factor(u32 factor);
@@ -152,7 +152,7 @@ static void tsync_pcr_recover_with_audio(void)
         ((ab_level < (ab_size >> PCR_DETECT_MARGIN_SHIFT_AUDIO_LO)) ||
          (vb_level < (vb_size >> PCR_DETECT_MARGIN_SHIFT_VIDEO_LO)))
 #else
-	(pts_cached_time(PTS_TYPE_VIDEO)<PTS_CACHED_NORMAL_LO_TIME) && (pts_cached_time(PTS_TYPE_AUDIO)<PTS_CACHED_NORMAL_LO_TIME)
+	((pts_cached_time(PTS_TYPE_VIDEO)<PTS_CACHED_NORMAL_LO_TIME) || (pts_cached_time(PTS_TYPE_AUDIO)<PTS_CACHED_NORMAL_LO_TIME))
 #endif
 		    ) {
 
@@ -189,7 +189,7 @@ static void tsync_pcr_recover_with_audio(void)
 		((((ab_level + (ab_size >> PCR_DETECT_MARGIN_SHIFT_AUDIO_HI)) > ab_size) ||
                 ((vb_level + (vb_size >> PCR_DETECT_MARGIN_SHIFT_VIDEO_HI)) > vb_size)))
 #else
-		((pts_cached_time(PTS_TYPE_VIDEO)>=PTS_CACHED_NORMAL_HI_TIME) && (pts_cached_time(PTS_TYPE_AUDIO)>=PTS_CACHED_NORMAL_HI_TIME))
+		((pts_cached_time(PTS_TYPE_VIDEO)>=PTS_CACHED_NORMAL_HI_TIME) || (pts_cached_time(PTS_TYPE_AUDIO)>=PTS_CACHED_NORMAL_HI_TIME))
 #endif
 		) {
 
@@ -226,7 +226,7 @@ static void tsync_pcr_recover_with_audio(void)
                 &&
                 ((!(pcr_recover_trigger & (1 << PCR_TRIGGER_VIDEO))) || ((vb_level + (vb_size >> PCR_MAINTAIN_MARGIN_SHIFT_VIDEO)) > vb_size)))
 #else
-		((pts_cached_time(PTS_TYPE_VIDEO)>=PTS_CACHED_LO_NORMAL_TIME) || (pts_cached_time(PTS_TYPE_AUDIO)>=PTS_CACHED_LO_NORMAL_TIME))
+		((pts_cached_time(PTS_TYPE_VIDEO)>=PTS_CACHED_LO_NORMAL_TIME) && (pts_cached_time(PTS_TYPE_AUDIO)>=PTS_CACHED_LO_NORMAL_TIME))
 #endif
 		)
                ||
@@ -236,7 +236,7 @@ static void tsync_pcr_recover_with_audio(void)
                 &&
                 ((!(pcr_recover_trigger & (1 << PCR_TRIGGER_VIDEO))) || (vb_level < (vb_size >> PCR_MAINTAIN_MARGIN_SHIFT_VIDEO)))
 #else
-		((pts_cached_time(PTS_TYPE_VIDEO)<PTS_CACHED_HI_NORMAL_TIME) || (pts_cached_time(PTS_TYPE_AUDIO)<PTS_CACHED_HI_NORMAL_TIME))
+		((pts_cached_time(PTS_TYPE_VIDEO)<PTS_CACHED_HI_NORMAL_TIME) && (pts_cached_time(PTS_TYPE_AUDIO)<PTS_CACHED_HI_NORMAL_TIME))
 #endif
 		)) {
 

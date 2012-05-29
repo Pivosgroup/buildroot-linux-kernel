@@ -410,6 +410,13 @@ static ssize_t show_disp_cap(struct device * dev, struct device_attribute *attr,
     return pos;    
 }
 
+static ssize_t show_hpd_state(struct device * dev, struct device_attribute *attr, char * buf)
+{   
+    int i,pos=0;
+    pos += snprintf(buf+pos, PAGE_SIZE,"%d", hdmitx_device.hpd_state);
+    return pos;    
+}
+
 static unsigned char* hdmi_log_buf=NULL;
 static unsigned int hdmi_log_wr_pos=0;
 static unsigned int hdmi_log_rd_pos=0;
@@ -537,6 +544,7 @@ static DEVICE_ATTR(edid, S_IWUSR | S_IRUGO, show_edid, store_edid);
 static DEVICE_ATTR(config, S_IWUSR | S_IRUGO, show_config, store_config);
 static DEVICE_ATTR(debug, S_IWUSR | S_IRUGO, NULL, store_dbg);
 static DEVICE_ATTR(disp_cap, S_IWUSR | S_IRUGO, show_disp_cap, NULL);
+static DEVICE_ATTR(hpd_state, S_IWUSR | S_IRUGO, show_hpd_state, NULL);
 static DEVICE_ATTR(log, S_IWUSR | S_IRUGO, show_log, store_log);
 static DEVICE_ATTR(cec, S_IWUSR | S_IRUGO, show_cec, store_cec);
 
@@ -547,7 +555,7 @@ static DEVICE_ATTR(cec, S_IWUSR | S_IRUGO, show_cec, store_cec);
 static int hdmitx_notify_callback_v(struct notifier_block *block, unsigned long cmd , void *para)
 {
     if (cmd != VOUT_EVENT_MODE_CHANGE)
-        return -1;
+        return 0;
     if(hdmitx_device.vic_count == 0){
         if(is_dispmode_valid_for_hdmi()){
             hdmitx_device.mux_hpd_if_pin_high_flag = 1;
@@ -616,8 +624,8 @@ static int hdmitx_notify_callback_a(struct notifier_block *block, unsigned long 
             default:
                 break;
         }
-        //hdmi_print(1, "HDMI: aout notify rate %d\n", substream->runtime->rate);
-        //hdmi_print(1, "HDMI: aout notify format PCM\n");
+        hdmi_print(1, "HDMI: aout notify rate %d\n", substream->runtime->rate);
+        hdmi_print(1, "HDMI: aout notify format PCM\n");
 
         hdmitx_device.audio_param_update_flag = 1;
         return 0;
@@ -625,7 +633,7 @@ static int hdmitx_notify_callback_a(struct notifier_block *block, unsigned long 
         audio_param->type = CT_AC_3;
         audio_param->channel_num = CC_2CH;
         audio_param->sample_size = SS_16BITS; 
-        //hdmi_print(1, "HDMI: aout notify format AC-3\n");
+        hdmi_print(1, "HDMI: aout notify format AC-3\n");
 
         hdmitx_device.audio_param_update_flag = 1;
         return 0;
@@ -633,12 +641,12 @@ static int hdmitx_notify_callback_a(struct notifier_block *block, unsigned long 
         audio_param->type = CT_DTS;
         audio_param->channel_num = CC_2CH;
         audio_param->sample_size = SS_16BITS; 
-        //hdmi_print(1, "HDMI: aout notify format DTS\n");
+        hdmi_print(1, "HDMI: aout notify format DTS\n");
 
         hdmitx_device.audio_param_update_flag = 1;
         return 0;
     default:
-        return -1;
+        return 0;
     }
 }
 
@@ -706,7 +714,7 @@ int hdmi_audio_post_func(int type, int channel, int sample_size, int rate)
                 break;
         }
         hdmitx_device.audio_param_update_flag = 1;
-        //hdmi_print(1, "HDMI: aout notify rate %d\n", rate);
+        hdmi_print(1, "HDMI: aout notify rate %d\n", rate);
         return 0;
 }
 
@@ -781,7 +789,8 @@ hdmi_task_handle(void *data)
 				
 				switch_set_state(&sdev, 1);
                 hdmitx_device->hpd_event = 0;
-            }    
+            }  
+            hdmitx_device->hpd_state = 1;  
         }
         else if(hdmitx_device->hpd_event == 2)
         {
@@ -800,6 +809,7 @@ hdmi_task_handle(void *data)
             hdmi_authenticated = -1;
 			switch_set_state(&sdev, 0);
             hdmitx_device->hpd_event = 0;
+            hdmitx_device->hpd_state = 0;
         }    
         else{
         }  
@@ -1035,6 +1045,7 @@ static int amhdmitx_probe(struct platform_device *pdev)
     device_create_file(hdmitx_dev, &dev_attr_config);
     device_create_file(hdmitx_dev, &dev_attr_debug);
     device_create_file(hdmitx_dev, &dev_attr_disp_cap);
+    device_create_file(hdmitx_dev, &dev_attr_hpd_state);
     device_create_file(hdmitx_dev, &dev_attr_log);
     device_create_file(hdmitx_dev, &dev_attr_cec);
     
@@ -1081,6 +1092,7 @@ static int amhdmitx_remove(struct platform_device *pdev)
     device_remove_file(hdmitx_dev, &dev_attr_config);
     device_remove_file(hdmitx_dev, &dev_attr_debug);
     device_remove_file(hdmitx_dev, &dev_attr_disp_cap);
+    device_remove_file(hdmitx_dev, &dev_attr_hpd_state);
     device_remove_file(hdmitx_dev, &dev_attr_log);
     device_remove_file(hdmitx_dev, &dev_attr_cec);
 

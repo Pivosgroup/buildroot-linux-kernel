@@ -85,6 +85,7 @@ static int aml_tsdemux_set_vid(int vpid);
 static int aml_tsdemux_set_aid(int apid);
 static int aml_tsdemux_set_sid(int spid);
 static int aml_tsdemux_set_skipbyte(int skipbyte);
+static int aml_tsdemux_set_demux(int id);
 
 static struct tsdemux_ops aml_tsdemux_ops = {
 .reset          = aml_tsdemux_reset,
@@ -94,7 +95,8 @@ static struct tsdemux_ops aml_tsdemux_ops = {
 .set_vid        = aml_tsdemux_set_vid,
 .set_aid        = aml_tsdemux_set_aid,
 .set_sid        = aml_tsdemux_set_sid,
-.set_skipbyte = aml_tsdemux_set_skipbyte
+.set_skipbyte   = aml_tsdemux_set_skipbyte,
+.set_demux      = aml_tsdemux_set_demux
 };
 
 static void aml_dvb_dmx_release(struct aml_dvb *advb, struct aml_dmx *dmx)
@@ -1024,6 +1026,14 @@ static int aml_tsdemux_set_skipbyte(int skipbyte)
 	aml_dmx_set_skipbyte(dvb, skipbyte);
 	spin_unlock_irqrestore(&dvb->slock, flags);
 	
+	return 0;
+}
+
+static int aml_tsdemux_set_demux(int id)
+{
+	struct aml_dvb *dvb = &aml_dvb_device;
+
+	aml_dmx_set_demux(dvb, id);
 	return 0;
 }
 

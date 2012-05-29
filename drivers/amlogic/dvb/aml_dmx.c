@@ -104,8 +104,22 @@
 #define LARGE_SEC_BUFF_COUNT 32
 #define WATCHDOG_TIMER    250
 
+#define DEMUX_INT_MASK\
+			((0<<(AUDIO_SPLICING_POINT))    |\
+			(0<<(VIDEO_SPLICING_POINT))     |\
+			(0<<(OTHER_PES_READY))          |\
+			(1<<(SUB_PES_READY))            |\
+			(1<<(SECTION_BUFFER_READY))     |\
+			(0<<(OM_CMD_READ_PENDING))      |\
+			(1<<(TS_ERROR_PIN))             |\
+			(1<<(NEW_PDTS_READY))           |\
+			(0<<(DUPLICATED_PACKET))        |\
+			(0<<(DIS_CONTINUITY_PACKET)))
+
+
 /*Reset the demux device*/
 void dmx_reset_hw(struct aml_dvb *dvb);
+void dmx_reset_hw_ex(struct aml_dvb *dvb, int reset_irq);
 static int dmx_remove_feed(struct aml_dmx *dmx, struct dvb_demux_feed *feed);
 static void reset_async_fifos(struct aml_dvb *dvb);
 static int dmx_add_feed(struct aml_dmx *dmx, struct dvb_demux_feed *feed);
@@ -329,15 +343,18 @@ static void process_section(struct aml_dmx *dmx)
 	//	WRITE_ISA_REG(AHB_BRIDGE_CTRL1, READ_ISA_REG (AHB_BRIDGE_CTRL1) | (1 << 31));
 	//	WRITE_ISA_REG(AHB_BRIDGE_CTRL1, READ_ISA_REG (AHB_BRIDGE_CTRL1) & (~ (1 << 31)));
 #endif
-		for(i=0; i<32; i++) {
+
+	dma_sync_single_for_cpu(NULL, dmx->sec_pages_map, dmx->sec_total_len, DMA_FROM_DEVICE);
+
+	for(i=0; i<32; i++) {
 			if(!(ready & (1 << i)))
 				continue;
 		
 			DMX_WRITE_REG(dmx->id, SEC_BUFF_NUMBER, i);
 			sec_num = (DMX_READ_REG(dmx->id, SEC_BUFF_NUMBER) >> 8);
+			
+			sec_data_notify(dmx, sec_num, i);
 
-			dma_sync_single_for_cpu(NULL, dmx->sec_pages_map, dmx->sec_total_len, DMA_FROM_DEVICE);
-            		sec_data_notify(dmx, sec_num, i);
 			//flush_cache_all();
 			
 			DMX_WRITE_REG(dmx->id, SEC_BUFF_READY, (1 << i));
@@ -447,6 +464,7 @@ static void dmx_irq_bh_handler(unsigned long arg)
 
 static irqreturn_t dmx_irq_handler(int irq_number, void *para)
 {
+	extern void dvb_frontend_retune(struct dvb_frontend *fe);
 	struct aml_dmx *dmx = (struct aml_dmx*)para;
 	u32 status;
 
@@ -497,6 +515,37 @@ static irqreturn_t dmx_irq_handler(int irq_number, void *para)
 	DMX_WRITE_REG(dmx->id, STB_INT_STATUS, status);
 	
 	tasklet_schedule(&dmx->dmx_tasklet);
+
+	{
+		if(!dmx->int_check_time){
+			dmx->int_check_time  = jiffies;
+			dmx->int_check_count = 0;
+		}
+
+		if(jiffies_to_msecs(jiffies - dmx->int_check_time)>=100 || dmx->int_check_count>1000){
+			if(dmx->int_check_count > 1000){
+				struct aml_dvb *dvb = (struct aml_dvb*)dmx->demux.priv;
+				pr_error("Too many interrupts (%d interrupts in %d ms)!\n",
+						dmx->int_check_count, jiffies_to_msecs(jiffies - dmx->int_check_time));
+				if(dmx->fe && !dmx->in_tune){
+					DMX_WRITE_REG(dmx->id, STB_INT_MASK, 0);
+					dvb_frontend_retune(dmx->fe);
+				}
+				dmx_reset_hw_ex(dvb, 0);
+			}
+			dmx->int_check_time = 0;
+		}
+
+		dmx->int_check_count++;
+
+		if(dmx->in_tune){
+			dmx->error_check++;
+			if(dmx->error_check>200){
+				DMX_WRITE_REG(dmx->id, STB_INT_MASK, 0);
+			}
+		}
+	}
+
 	return IRQ_HANDLED;
 }
 
@@ -1117,24 +1166,13 @@ static int dmx_enable(struct aml_dmx *dmx)
 		hi_bsf = 1;
 	else
 		hi_bsf = 0;
-	if(dvb->dsc_source>=AM_DMX_MAX)
-		fec_core_sel = 0;//(dmx->source==(dvb?dvb->dsc_source:0))?1:0;
-	else
+	if (dvb->dsc_source == dmx->id)
 		fec_core_sel = 1;
-	
+	else
+		fec_core_sel = 0;
 	if(dmx->chan_count) {
 		/*Initialize the registers*/
-		DMX_WRITE_REG(dmx->id, STB_INT_MASK,
-			(0<<(AUDIO_SPLICING_POINT))     |
-			(0<<(VIDEO_SPLICING_POINT))     |
-			(0<<(OTHER_PES_READY))          |
-			(1<<(SUB_PES_READY))            |
-			(1<<(SECTION_BUFFER_READY))     |
-			(0<<(OM_CMD_READ_PENDING))      |
-			(1<<(TS_ERROR_PIN))             |
-			(1<<(NEW_PDTS_READY))           | 
-			(0<<(DUPLICATED_PACKET))        | 
-			(0<<(DIS_CONTINUITY_PACKET)));
+		DMX_WRITE_REG(dmx->id, STB_INT_MASK, DEMUX_INT_MASK);
 		DMX_WRITE_REG(dmx->id, DEMUX_MEM_REQ_EN, 
 #ifdef USE_AHB_MODE
 			(1<<SECTION_AHB_DMA_EN)         |
@@ -1249,7 +1287,7 @@ static int dmx_set_chan_regs(struct aml_dmx *dmx, int cid)
 	pr_dbg("set channel (id:%d PID:0x%x) registers\n", cid, dmx->channel[cid].pid);
 	
 	while(DMX_READ_REG(dmx->id, FM_WR_ADDR) & 0x8000) {
-		udelay(100);
+		udelay(1);
 	}
 	
 	if(cid&1) {
@@ -1346,6 +1384,11 @@ static int dmx_get_filter_target(struct aml_dmx *dmx, int fid, u32 *target, u8 *
 				v;
 			advance[i] = adv;
 		} else {
+			if(i < 3){
+				value = 0;
+				mask  = 0;
+				mode  = 0xff;
+			}
 			mb = 1;
 			nb = 0;
 			v = 0;
@@ -1404,7 +1447,7 @@ static int dmx_set_filter_regs(struct aml_dmx *dmx, int fid)
 	
 	for(i=0; i<FILTER_LEN; i++) {
 		while(DMX_READ_REG(dmx->id, FM_WR_ADDR) & 0x8000) {
-			udelay(100);
+			udelay(1);
 		}
 		
 		data = (t1[i]<<16)|t2[i];
@@ -1567,20 +1610,30 @@ static void reset_async_fifos(struct aml_dvb *dvb)
 /*Reset the demux device*/
 void dmx_reset_hw(struct aml_dvb *dvb)
 {
+	dmx_reset_hw_ex(dvb, 1);
+}
+
+/*Reset the demux device*/
+void dmx_reset_hw_ex(struct aml_dvb *dvb, int reset_irq)
+{
 	int id, times;
 	
 	for (id=0; id<DMX_DEV_COUNT; id++) {
 		if(!dvb->dmx[id].init)
 			continue;
-		if(dvb->dmx[id].dmx_irq!=-1) {
-			disable_irq(dvb->dmx[id].dmx_irq);
-		}
-		if(dvb->dmx[id].dvr_irq!=-1) {
-			disable_irq(dvb->dmx[id].dvr_irq);
+		if(reset_irq){
+			if(dvb->dmx[id].dmx_irq!=-1) {
+				disable_irq(dvb->dmx[id].dmx_irq);
+			}
+			if(dvb->dmx[id].dvr_irq!=-1) {
+				disable_irq(dvb->dmx[id].dvr_irq);
+			}
 		}
 	}
 #ifdef ENABLE_SEC_BUFF_WATCHDOG
-	del_timer_sync(&dvb->watchdog_timer);
+	if(reset_irq){
+		del_timer_sync(&dvb->watchdog_timer);
+	}
 #endif
 	
 	WRITE_MPEG_REG(RESET1_REGISTER, RESET_DEMUXSTB);
@@ -1601,11 +1654,13 @@ void dmx_reset_hw(struct aml_dvb *dvb)
 		if(!dvb->dmx[id].init)
 			continue;
 		
-		if(dvb->dmx[id].dmx_irq!=-1) {
-			enable_irq(dvb->dmx[id].dmx_irq);
-		}
-		if(dvb->dmx[id].dvr_irq!=-1) {
-			enable_irq(dvb->dmx[id].dvr_irq);
+		if(reset_irq){
+			if(dvb->dmx[id].dmx_irq!=-1) {
+				enable_irq(dvb->dmx[id].dmx_irq);
+			}
+			if(dvb->dmx[id].dvr_irq!=-1) {
+				enable_irq(dvb->dmx[id].dvr_irq);
+			}
 		}
 		DMX_WRITE_REG(id, DEMUX_CONTROL, 0x0000);
 		version = DMX_READ_REG(id, STB_VERSION);
@@ -1711,7 +1766,9 @@ void dmx_reset_hw(struct aml_dvb *dvb)
 		}
 	}
 #ifdef ENABLE_SEC_BUFF_WATCHDOG
-	mod_timer(&dvb->watchdog_timer, jiffies+msecs_to_jiffies(WATCHDOG_TIMER));
+	if(reset_irq){
+		mod_timer(&dvb->watchdog_timer, jiffies+msecs_to_jiffies(WATCHDOG_TIMER));
+	}
 #endif
 }
 
@@ -2322,6 +2379,17 @@ int aml_dmx_set_skipbyte(struct aml_dvb *dvb, int skipbyte)
 	return 0;
 }
 
+int aml_dmx_set_demux(struct aml_dvb *dvb, int id)
+{
+	aml_stb_hw_set_source(dvb, DMX_SOURCE_DVR0);
+	if(id < DMX_DEV_COUNT){
+		struct aml_dmx *dmx = &dvb->dmx[id];
+		aml_dmx_hw_set_source(dmx, DMX_SOURCE_DVR0);
+	}
+
+	return 0;
+}
+
 #define DEMUX_SCAMBLE_FUNC_DECL(i)  \
 static ssize_t dmx_reg_value_show_demux##i##_scramble(struct class *class,  struct class_attribute *attr,char *buf)\
 {\
@@ -2463,5 +2531,133 @@ int aml_unregist_dmx_class(void)
 	return 0;
 }
 
+static struct aml_dmx* get_dmx_from_src(aml_ts_source_t src)
+{
+	struct aml_dvb *dvb = aml_get_dvb_device();
+	struct aml_dmx *dmx = NULL;
+	int i;
 
+	if(dvb){
+		switch(src){
+			case AM_TS_SRC_TS0:
+			case AM_TS_SRC_TS1:
+			case AM_TS_SRC_TS2:
+			case AM_TS_SRC_S2P0:
+			case AM_TS_SRC_S2P1:
+				for(i=0; i<DMX_DEV_COUNT; i++){
+					if(dvb->dmx[i].source == src){
+						dmx = &dvb->dmx[i];
+						break;
+					}
+				}
+				break;
+			case AM_TS_SRC_DMX0:
+				if(0>DMX_DEV_COUNT){
+					dmx = &dvb->dmx[0];
+				}
+				break;
+			case AM_TS_SRC_DMX1:
+				if(1>DMX_DEV_COUNT){
+					dmx = &dvb->dmx[1];
+				}
+				break;
+			case AM_TS_SRC_DMX2:
+				if(2>DMX_DEV_COUNT){
+					dmx = &dvb->dmx[2];
+				}
+				break;
+			default:
+				break;
+		}
+	}
+
+	return dmx;
+}
+
+void aml_dmx_register_frontend(aml_ts_source_t src, struct dvb_frontend *fe)
+{
+	struct aml_dvb *dvb = aml_get_dvb_device();
+	struct aml_dmx *dmx = get_dmx_from_src(src);
+	unsigned long flags;
+
+	spin_lock_irqsave(&dvb->slock, flags);
+
+	if(dmx){
+		dmx->fe = fe;
+	}
+	
+	spin_unlock_irqrestore(&dvb->slock, flags);
+}
+
+void aml_dmx_before_retune(aml_ts_source_t src, struct dvb_frontend *fe)
+{
+	struct aml_dvb *dvb = aml_get_dvb_device();
+	struct aml_dmx *dmx = get_dmx_from_src(src);
+	unsigned long flags;
+
+	spin_lock_irqsave(&dvb->slock, flags);
+
+	if(dmx){
+		dmx->fe = fe;
+		dmx->in_tune = 1;
+		DMX_WRITE_REG(dmx->id, STB_INT_MASK, 0);
+	}
+	
+	spin_unlock_irqrestore(&dvb->slock, flags);
+}
+
+void aml_dmx_after_retune(aml_ts_source_t src, struct dvb_frontend *fe)
+{
+	struct aml_dvb *dvb = aml_get_dvb_device();
+	struct aml_dmx *dmx = get_dmx_from_src(src);
+	unsigned long flags;
+
+	spin_lock_irqsave(&dvb->slock, flags);
+
+	if(dmx){
+		dmx->fe = fe;
+		dmx->in_tune = 0;
+		DMX_WRITE_REG(dmx->id, STB_INT_MASK, DEMUX_INT_MASK);
+	}
+	
+	spin_unlock_irqrestore(&dvb->slock, flags);
+}
+
+void aml_dmx_start_error_check(aml_ts_source_t src, struct dvb_frontend *fe)
+{
+	struct aml_dvb *dvb = aml_get_dvb_device();
+	struct aml_dmx *dmx = get_dmx_from_src(src);
+	unsigned long flags;
+
+	spin_lock_irqsave(&dvb->slock, flags);
+
+	if(dmx){
+		dmx->fe = fe;
+		dmx->error_check = 0;
+		dmx->int_check_time = 0;
+		DMX_WRITE_REG(dmx->id, STB_INT_MASK, DEMUX_INT_MASK);
+	}
+	
+	spin_unlock_irqrestore(&dvb->slock, flags);
+}
+
+int  aml_dmx_stop_error_check(aml_ts_source_t src, struct dvb_frontend *fe)
+{
+	struct aml_dvb *dvb = aml_get_dvb_device();
+	struct aml_dmx *dmx = get_dmx_from_src(src);
+	unsigned long flags;
+	int ret = 0;
+
+	spin_lock_irqsave(&dvb->slock, flags);
+
+	if(dmx){
+		dmx->fe = fe;
+		ret = dmx->error_check;
+		DMX_WRITE_REG(dmx->id, STB_INT_MASK, DEMUX_INT_MASK);
+	}
+	
+	spin_unlock_irqrestore(&dvb->slock, flags);
+
+	return ret;
+}
 

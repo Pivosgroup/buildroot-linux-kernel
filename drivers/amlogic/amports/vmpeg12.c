@@ -89,6 +89,8 @@ MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 #define STAT_TIMER_ARM      0x10
 #define STAT_VDEC_RUN       0x20
 
+#define DEC_CONTROL_FLAG_FORCE_2500_576P_INTERLACE  0x0002
+
 static vframe_t *vmpeg_vf_peek(void*);
 static vframe_t *vmpeg_vf_get(void*);
 static void vmpeg_vf_put(vframe_t *, void*);
@@ -122,6 +124,7 @@ static struct vframe_s *vfp_pool_display[VF_POOL_SIZE+1];
 static struct vframe_s *vfp_pool_recycle[VF_POOL_SIZE+1];
 static vfq_t newframe_q, display_q, recycle_q;
 
+static u32 dec_control = 0;
 static u32 frame_width, frame_height, frame_dur, frame_prog;
 static struct timer_list recycle_timer;
 static u32 stat;
@@ -225,6 +228,13 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
 
         /*if (frame_prog == 0)*/ {
             frame_prog = info & PICINFO_PROG;
+        }
+
+        if ((dec_control & DEC_CONTROL_FLAG_FORCE_2500_576P_INTERLACE) &&
+            (frame_width == 720) &&
+            (frame_height == 576) &&
+            (frame_dur == 3840)) {
+            frame_prog = 0;
         }
 
         if (frame_prog & PICINFO_PROG) {
@@ -666,6 +676,8 @@ static void __exit amvdec_mpeg12_driver_remove_module(void)
 
 module_param(stat, uint, 0664);
 MODULE_PARM_DESC(stat, "\n amvdec_mpeg12 stat \n");
+module_param(dec_control, uint, 0664);
+MODULE_PARM_DESC(dec_control, "\n amvmpeg12 decoder control \n");
 
 module_init(amvdec_mpeg12_driver_init_module);
 module_exit(amvdec_mpeg12_driver_remove_module);

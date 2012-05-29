@@ -139,6 +139,7 @@ int vf_reg_provider(struct vframe_provider_s *prov)
     ulong flags;
     ulong fiq_flag;
     vframe_provider_t *p = NULL, *ptmp;
+    vframe_receiver_t* receiver = NULL;
 
     if (!prov || !prov->name)
         return -1;
@@ -154,6 +155,12 @@ int vf_reg_provider(struct vframe_provider_s *prov)
             list_add_tail(&prov->list, &phead);
         raw_local_irq_restore(fiq_flag);
     spin_unlock_irqrestore(&plist_lock, flags);
+
+    receiver = vf_get_receiver(prov->name);
+    if(receiver && receiver->ops && receiver->ops->event_cb){
+        receiver->ops->event_cb(VFRAME_EVENT_PROVIDER_REG, prov->name, receiver->op_arg);
+    }
+    
     return 0;
 }
 EXPORT_SYMBOL(vf_reg_provider);

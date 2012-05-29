@@ -1045,6 +1045,11 @@ static int __init dwc_otg_driver_probe(struct lm_device *_lmdev)
 	 */
 	dwc_otg_enable_global_interrupts(dwc_otg_device->core_if);
 
+#ifdef CONFIG_USB_DPLINE_PULLUP_DISABLE
+	if(_lmdev->set_vbus_valid_ext)
+		_lmdev->set_vbus_valid_ext(_lmdev->id,0);
+#endif
+
 	return 0;
 
       fail:

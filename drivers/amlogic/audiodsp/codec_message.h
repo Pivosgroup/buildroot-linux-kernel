@@ -41,17 +41,21 @@ struct digit_raw_output_info
 
 struct frame_fmt
 {
-
     int valid;
     int sub_fmt;
     int channel_num;
     int sample_rate;
     int data_width;
-    int reversed[3];/*for cache aligned 32 bytes*/
+    int buffered_len;/*dsp codec,buffered origan data len*/ 
     int format;
     unsigned int total_byte_parsed;
-    unsigned int total_sample_decoded;
+    union{	
+    	 unsigned int total_sample_decoded;
+        void  *pcm_encoded_info;	//used for encoded pcm info	 	 
+    }data;		 
     unsigned int bps;
+    void* private_data;
+    struct digit_raw_output_info * digit_raw_output_info;
 };
 
 

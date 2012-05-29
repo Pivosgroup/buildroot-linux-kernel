@@ -136,6 +136,20 @@ struct dvb_frontend_private {
 
 static void dvb_frontend_wakeup(struct dvb_frontend *fe);
 
+void dvb_frontend_retune(struct dvb_frontend *fe)
+{
+	struct dvb_frontend_private *fepriv = fe->frontend_priv;
+
+	fepriv->state = FESTATE_RETUNE;
+	
+	fepriv->algo_status |= DVBFE_ALGO_SEARCH_AGAIN;
+
+	dvb_frontend_wakeup(fe);
+	fepriv->status = 0;
+}
+
+EXPORT_SYMBOL(dvb_frontend_retune);
+
 static void dvb_frontend_add_event(struct dvb_frontend *fe, fe_status_t status)
 {
 	struct dvb_frontend_private *fepriv = fe->frontend_priv;
@@ -1496,6 +1510,7 @@ static int dvb_frontend_ioctl(struct inode *inode, struct file *file,
 	struct dvb_frontend *fe = dvbdev->priv;
 	struct dvb_frontend_private *fepriv = fe->frontend_priv;
 	int err = -EOPNOTSUPP;
+	int need_lock = 1;
 
 	dprintk("%s (%d)\n", __func__, _IOC_NR(cmd));
 
@@ -1507,8 +1522,17 @@ static int dvb_frontend_ioctl(struct inode *inode, struct file *file,
 	     cmd == FE_DISEQC_RECV_SLAVE_REPLY))
 		return -EPERM;
 
-	if (down_interruptible (&fepriv->sem))
-		return -ERESTARTSYS;
+	if (cmd==FE_READ_STATUS ||
+			cmd==FE_READ_BER ||
+			cmd==FE_READ_SIGNAL_STRENGTH ||
+			cmd==FE_READ_SNR ||
+			cmd==FE_READ_UNCORRECTED_BLOCKS ||
+			cmd==FE_GET_FRONTEND)
+		need_lock = 0;
+
+	if (need_lock)
+		if (down_interruptible (&fepriv->sem))
+			return -ERESTARTSYS;
 
 	if ((cmd == FE_SET_PROPERTY) || (cmd == FE_GET_PROPERTY))
 		err = dvb_frontend_ioctl_properties(inode, file, cmd, parg);
@@ -1517,7 +1541,8 @@ static int dvb_frontend_ioctl(struct inode *inode, struct file *file,
 		err = dvb_frontend_ioctl_legacy(inode, file, cmd, parg);
 	}
 
-	up(&fepriv->sem);
+	if(need_lock)
+		up(&fepriv->sem);
 	return err;
 }
 

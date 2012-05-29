@@ -63,6 +63,8 @@ typedef struct ppframe_s {
     vframe_t  *dec_frame;
 } ppframe_t;
 
+#define swap_mirror(mirror) mirror =  (mirror==PPMGR_MIRROR_MODE_X_DIR)?PPMGR_MIRROR_MODE_Y_DIR:PPMGR_MIRROR_MODE_X_DIR;
+
 static int ass_index; 
 #ifdef CONFIG_MIX_FREE_SCALE
 static int backup_index = -1;
@@ -177,12 +179,12 @@ static int ppmgr_event_cb(int type, void *data, void *private_data)
             }
         }
     } else if((type & VFRAME_EVENT_RECEIVER_PARAM_SET)) {
-		unsigned *eventparam =(unsigned *)data;
-		out_width=eventparam[0];
-		out_height=eventparam[1];
-		//out_format=eventparam[2];
-		//vf_ppmgr_reset();
-	}
+        unsigned *eventparam =(unsigned *)data;
+        out_width=eventparam[0];
+        out_height=eventparam[1];
+        //out_format=eventparam[2];
+        //vf_ppmgr_reset();
+    }
 
     return 0;        
 }
@@ -300,14 +302,14 @@ const vframe_receiver_op_t* vf_ppmgr_reg_provider()
     vf_local_init();
 
     //vf_reg_provider(&ppmgr_vf_prov);
-	if(ppmgr_device.video_out==0) {
-		vf_reg_provider(&ppmgr_vf_prov);
-	} 
-#	ifdef CONFIG_V4L_AMLOGIC_VIDEO 
-	else  {
-		v4l_reg_provider(&ppmgr_vf_prov);
-	}
-#			endif
+    if(ppmgr_device.video_out==0) {
+        vf_reg_provider(&ppmgr_vf_prov);
+    } 
+#ifdef CONFIG_V4L_AMLOGIC_VIDEO 
+    else {
+        v4l_reg_provider(&ppmgr_vf_prov);
+    }
+#endif
 
     if (start_vpp_task() == 0) {
         r = &ppmgr_vf_receiver;
@@ -847,8 +849,9 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
     vframe_t *new_vf;
     ppframe_t *pp_vf;
     canvas_t cs0,cs1,cs2,cd;
-	 unsigned int dest_width,dest_height,dest_format;
+    unsigned int dest_width,dest_height,dest_format;
     u32 mode = 0;
+    int mirror  = ppmgr_device.mirror_mode;
 #ifdef CONFIG_MIX_FREE_SCALE
     int rect_x = 0, rect_y = 0, rect_w = 0, rect_h = 0;
     u32 ratio = 100;
@@ -865,23 +868,25 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
 
     pp_vf = to_ppframe(new_vf);
     pp_vf->angle = 0;
+    
     //pp_vf->dec_frame = (ppmgr_device.bypass || (ppmgr_device.videoangle == 0)) ? vf : NULL;
-	if(ppmgr_device.video_out==0) {
-		pp_vf->dec_frame = (ppmgr_device.bypass || (ppmgr_device.angle == 0)) ? vf : NULL;
-		dest_width = new_vf->width;
-		dest_height = new_vf->height;
-		dest_format = GE2D_FORMAT_S24_YUV444;
-	}
-	else {
-		pp_vf->dec_frame = NULL;
-		dest_width = out_width;
-		dest_height = out_height;
-		dest_format = GE2D_FORMAT_S24_BGR;
-	}
+    if(ppmgr_device.video_out==0) {
+        pp_vf->dec_frame = (ppmgr_device.bypass || (ppmgr_device.videoangle == 0)) ? vf : NULL;
+    }else {
+        pp_vf->dec_frame = NULL;
+    }
+    if((mirror == PPMGR_MIRROR_MODE_X_DIR)||(mirror == PPMGR_MIRROR_MODE_Y_DIR)){
+        if((ppmgr_device.videoangle == 1)||(ppmgr_device.videoangle == 3))
+            swap_mirror(mirror);
+    }
+
+    if((mirror == PPMGR_MIRROR_MODE_X_DIR)||(mirror == PPMGR_MIRROR_MODE_Y_DIR)||(mirror == PPMGR_MIRROR_MODE_ALL))
+        pp_vf->dec_frame = NULL;
+
 #ifdef CONFIG_MIX_FREE_SCALE
-	if(mode)
-		pp_vf->dec_frame = NULL;
-#endif	
+    if(mode)
+        pp_vf->dec_frame = NULL;
+#endif
 
     if (pp_vf->dec_frame) {
         /* bypass mode */
@@ -903,9 +908,27 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
 
 #ifndef CONFIG_MIX_FREE_SCALE
     vf_rotate_adjust(vf, new_vf, ppmgr_device.videoangle);
+    if(ppmgr_device.video_out==0) {
+        dest_width = new_vf->width;
+        dest_height = new_vf->height;
+        dest_format = GE2D_FORMAT_S24_YUV444;
+    }else {
+        dest_width = out_width;
+        dest_height = out_height;
+        dest_format = GE2D_FORMAT_S24_BGR;
+    }
 #else
     if(!mode){
         vf_rotate_adjust(vf, new_vf, ppmgr_device.videoangle);
+        if(ppmgr_device.video_out==0) {
+            dest_width = new_vf->width;
+            dest_height = new_vf->height;
+            dest_format = GE2D_FORMAT_S24_YUV444;
+        }else {
+            dest_width = out_width;
+            dest_height = out_height;
+            dest_format = GE2D_FORMAT_S24_BGR;
+        }
         scale_clear_count = 0;
     }else{
         pp_vf->angle = 0;
@@ -933,6 +956,15 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
             ppmgr_vf_put_dec(vf);
             vfq_push(&q_free, new_vf);
             return;
+        }
+        if(ppmgr_device.video_out==0) {
+            dest_width = new_vf->width;
+            dest_height = new_vf->height;
+            dest_format = GE2D_FORMAT_S24_YUV444;
+        }else {
+            dest_width = out_width;
+            dest_height = out_height;
+            dest_format = GE2D_FORMAT_S24_BGR;
         }
     }
 
@@ -1085,33 +1117,33 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
     ge2d_config->src1_gb_alpha = 0;//0xff;
     ge2d_config->dst_xy_swap = 0;
 
-	if(deinterlace){
-		canvas_read(PPMGR_DEINTERLACE_BUF_CANVAS,&cs0);
-		canvas_read(PPMGR_DEINTERLACE_BUF_CANVAS+1,&cs1);
-		canvas_read(PPMGR_DEINTERLACE_BUF_CANVAS+2,&cs2);
-		ge2d_config->src_planes[0].addr = cs0.addr;
-		ge2d_config->src_planes[0].w = cs0.width;
-		ge2d_config->src_planes[0].h = cs0.height;
-		ge2d_config->src_planes[1].addr = cs1.addr;
-		ge2d_config->src_planes[1].w = cs1.width;
-		ge2d_config->src_planes[1].h = cs1.height;
-		ge2d_config->src_planes[2].addr = cs2.addr;
-		ge2d_config->src_planes[2].w = cs2.width;
-		ge2d_config->src_planes[2].h = cs2.height;
+    if(deinterlace){
+        canvas_read(PPMGR_DEINTERLACE_BUF_CANVAS,&cs0);
+        canvas_read(PPMGR_DEINTERLACE_BUF_CANVAS+1,&cs1);
+        canvas_read(PPMGR_DEINTERLACE_BUF_CANVAS+2,&cs2);
+        ge2d_config->src_planes[0].addr = cs0.addr;
+        ge2d_config->src_planes[0].w = cs0.width;
+        ge2d_config->src_planes[0].h = cs0.height;
+        ge2d_config->src_planes[1].addr = cs1.addr;
+        ge2d_config->src_planes[1].w = cs1.width;
+        ge2d_config->src_planes[1].h = cs1.height;
+        ge2d_config->src_planes[2].addr = cs2.addr;
+        ge2d_config->src_planes[2].w = cs2.width;
+        ge2d_config->src_planes[2].h = cs2.height;
     }else{
-	    canvas_read(vf->canvas0Addr&0xff,&cs0);
-	    canvas_read((vf->canvas0Addr>>8)&0xff,&cs1);
-	    canvas_read((vf->canvas0Addr>>16)&0xff,&cs2);
-	    ge2d_config->src_planes[0].addr = cs0.addr;
-	    ge2d_config->src_planes[0].w = cs0.width;
-	    ge2d_config->src_planes[0].h = cs0.height;
-	    ge2d_config->src_planes[1].addr = cs1.addr;
-	    ge2d_config->src_planes[1].w = cs1.width;
-	    ge2d_config->src_planes[1].h = cs1.height;
-	    ge2d_config->src_planes[2].addr = cs2.addr;
-	    ge2d_config->src_planes[2].w = cs2.width;
-	    ge2d_config->src_planes[2].h = cs2.height;
-	}
+        canvas_read(vf->canvas0Addr&0xff,&cs0);
+        canvas_read((vf->canvas0Addr>>8)&0xff,&cs1);
+        canvas_read((vf->canvas0Addr>>16)&0xff,&cs2);
+        ge2d_config->src_planes[0].addr = cs0.addr;
+        ge2d_config->src_planes[0].w = cs0.width;
+        ge2d_config->src_planes[0].h = cs0.height;
+        ge2d_config->src_planes[1].addr = cs1.addr;
+        ge2d_config->src_planes[1].w = cs1.width;
+        ge2d_config->src_planes[1].h = cs1.height;
+        ge2d_config->src_planes[2].addr = cs2.addr;
+        ge2d_config->src_planes[2].w = cs2.width;
+        ge2d_config->src_planes[2].h = cs2.height;
+    }
     
     canvas_read(new_vf->canvas0Addr&0xff,&cd);
     ge2d_config->dst_planes[0].addr = cd.addr;
@@ -1121,14 +1153,14 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
     ge2d_config->src_key.key_enable = 0;
     ge2d_config->src_key.key_mask = 0;
     ge2d_config->src_key.key_mode = 0;
-   ge2d_config->src_para.mem_type = CANVAS_TYPE_INVALID;
+    ge2d_config->src_para.mem_type = CANVAS_TYPE_INVALID;
 
     if(deinterlace){
         ge2d_config->src_para.canvas_index=(PPMGR_DEINTERLACE_BUF_CANVAS)|((PPMGR_DEINTERLACE_BUF_CANVAS+1)<<8)|((PPMGR_DEINTERLACE_BUF_CANVAS+2)<<16);
         ge2d_config->src_para.format = GE2D_FORMAT_M24_YUV420;
     }else{
-	    ge2d_config->src_para.canvas_index=vf->canvas0Addr;    
-	    ge2d_config->src_para.format = GE2D_FORMAT_M24_YUV420|pic_struct;
+        ge2d_config->src_para.canvas_index=vf->canvas0Addr;    
+        ge2d_config->src_para.format = GE2D_FORMAT_M24_YUV420|pic_struct;
     }
     ge2d_config->src_para.fill_color_en = 0;
     ge2d_config->src_para.fill_mode = 0;
@@ -1167,6 +1199,16 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
             ge2d_config->dst_para.y_rev=1;
         }
     }
+
+    if(mirror == PPMGR_MIRROR_MODE_ALL){
+        ge2d_config->dst_para.x_rev = ge2d_config->dst_para.x_rev^1;
+        ge2d_config->dst_para.y_rev = ge2d_config->dst_para.y_rev^1;
+    }else if(mirror == PPMGR_MIRROR_MODE_X_DIR){
+        ge2d_config->dst_para.x_rev = ge2d_config->dst_para.x_rev^1;
+    }else if(mirror == PPMGR_MIRROR_MODE_Y_DIR){
+        ge2d_config->dst_para.y_rev = ge2d_config->dst_para.y_rev^1;
+    }
+
     ge2d_config->dst_para.color = 0;
     ge2d_config->dst_para.top = 0;
     ge2d_config->dst_para.left = 0;
@@ -1768,14 +1810,14 @@ static int ppmgr_task(void *data)
             vf_light_unreg_provider(&ppmgr_vf_prov);
             vf_local_init();
             //vf_reg_provider(&ppmgr_vf_prov);
-			if(ppmgr_device.video_out==0) {
-				vf_reg_provider(&ppmgr_vf_prov);
-			} 
-#			ifdef CONFIG_V4L_AMLOGIC_VIDEO 
-			else  {
-				v4l_reg_provider(&ppmgr_vf_prov);
-			}
-#			endif
+            if(ppmgr_device.video_out==0) {
+                vf_reg_provider(&ppmgr_vf_prov);
+            } 
+#ifdef CONFIG_V4L_AMLOGIC_VIDEO 
+            else{
+                v4l_reg_provider(&ppmgr_vf_prov);
+            }
+#endif
             ppmgr_blocking = false;
             up(&thread_sem);
             printk("ppmgr rebuild from light-unregister\n");
@@ -1859,20 +1901,20 @@ int ppmgr_buffer_init(void)
         return -1;
     }
     if(ppmgr_device.video_out==0) {
-		for (i = 0; i < VF_POOL_SIZE; i++) {
-			canvas_config(PPMGR_CANVAS_INDEX + i,
-						  (ulong)(buf_start + i * decbuf_size),
-						  canvas_width*3, canvas_height,
-						  CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
-		}
-	} else {
-		for (i = 0; i < VF_POOL_SIZE; i++) {
-			canvas_config(PPMGR_CANVAS_INDEX + i,
-						  (ulong)(buf_start + i * decbuf_size),
-						  canvas_width*3, canvas_height,
-						  CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR/*CANVAS_BLKMODE_32X32*/);
-		}
-	}
+        for (i = 0; i < VF_POOL_SIZE; i++) {
+            canvas_config(PPMGR_CANVAS_INDEX + i,
+                (ulong)(buf_start + i * decbuf_size),
+                canvas_width*3, canvas_height,
+                CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
+        }
+    } else {
+        for (i = 0; i < VF_POOL_SIZE; i++) {
+            canvas_config(PPMGR_CANVAS_INDEX + i,
+	         (ulong)(buf_start + i * decbuf_size),
+                canvas_width*3, canvas_height,
+                CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR/*CANVAS_BLKMODE_32X32*/);
+        }
+    }
     
     for(j = 0 ; j< ASS_POOL_SIZE;j++){
         canvas_config(PPMGR_CANVAS_INDEX + VF_POOL_SIZE + j,

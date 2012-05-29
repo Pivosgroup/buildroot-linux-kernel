@@ -1297,6 +1297,9 @@ static int amstream_ioctl(struct inode *inode, struct file *file,
 			}
 		}
 		break;
+    case AMSTREAM_IOC_SET_DEMUX:
+        tsdemux_set_demux((int)arg);
+        break;
     default:
         r = -ENOIOCTLCMD;
     }

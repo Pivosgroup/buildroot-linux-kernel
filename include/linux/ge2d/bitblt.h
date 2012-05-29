@@ -54,7 +54,12 @@ void bitblt_noalpha(ge2d_context_t *wq,
 void bitblt_noalpha_noblk(ge2d_context_t *wq,
                     int src_x, int src_y, int w, int h,
                     int dst_x, int dst_y);
-
+void bitblt_withoutkey(ge2d_context_t *wq,
+                    int src_x, int src_y, int w, int h,
+                    int dst_x, int dst_y);
+void bitblt_withoutkey_noblk(ge2d_context_t *wq,
+                    int src_x, int src_y, int w, int h,
+                    int dst_x, int dst_y);
 void stretchblt(ge2d_context_t *wq,
                 int src_x, int src_y, int src_w, int src_h,
                 int dst_x, int dst_y, int dst_w, int dst_h);

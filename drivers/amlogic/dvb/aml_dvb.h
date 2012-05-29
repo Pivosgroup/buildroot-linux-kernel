@@ -128,6 +128,11 @@ struct aml_dmx {
 	int                  vid_chan;
 	int                  sub_chan;
 	u32                  section_busy[SEC_BUF_BUSY_SIZE];
+	struct dvb_frontend *fe;
+	int                  int_check_count;
+	u32                  int_check_time;
+	int                  in_tune;
+	int                  error_check;
 };
 
 
@@ -182,6 +187,7 @@ extern int aml_dmx_hw_set_source(struct dmx_demux* demux, dmx_source_t src);
 extern int aml_stb_hw_set_source(struct aml_dvb *dvb, dmx_source_t src);
 extern int aml_dsc_hw_set_source(struct aml_dvb *dvb, dmx_source_t src);
 extern int aml_dmx_set_skipbyte(struct aml_dvb *dvb, int skipbyte);
+extern int aml_dmx_set_demux(struct aml_dvb *dvb, int id);
 
 extern int  dmx_alloc_chan(struct aml_dmx *dmx, int type, int pes_type, int pid);
 extern void dmx_free_chan(struct aml_dmx *dmx, int cid);
@@ -202,6 +208,13 @@ extern u32 aml_dmx_get_audio_pts(struct aml_dvb *dvb);
 
 /*Get the DVB device*/
 extern struct aml_dvb* aml_get_dvb_device(void);
+
+/*Demod interface*/
+extern void aml_dmx_register_frontend(aml_ts_source_t src, struct dvb_frontend *fe);
+extern void aml_dmx_before_retune(aml_ts_source_t src, struct dvb_frontend *fe);
+extern void aml_dmx_after_retune(aml_ts_source_t src, struct dvb_frontend *fe);
+extern void aml_dmx_start_error_check(aml_ts_source_t src, struct dvb_frontend *fe);
+extern int  aml_dmx_stop_error_check(aml_ts_source_t src, struct dvb_frontend *fe);
 
 #endif
 

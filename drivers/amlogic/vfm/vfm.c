@@ -68,6 +68,20 @@ static int vfm_map_remove_by_index(int index)
     ulong flags;
     int i;
     int ret = 0;
+    vfm_map_t *p;
+    struct vframe_provider_s *vfp;
+    for (i = 0; i < vfm_map[index]->vfm_map_size; i++) {
+        if( (i < (vfm_map[index]->vfm_map_size - 1)) &&
+            is_provider_active(vfm_map[index]->name[i])) {
+
+            vfp = vf_get_provider(vfm_map[index]->name[i+1]);
+            if(vfp && vfp->ops && vfp->ops->event_cb){
+                vfp->ops->event_cb(VFRAME_EVENT_RECEIVER_FORCE_UNREG, NULL, vfp->op_arg);
+                printk("%s: VFRAME_EVENT_RECEIVER_FORCE_UNREG %s\n", __func__, vfm_map[index]->name[i]);
+            }
+        }
+    }
+
     for (i = 0; i < vfm_map[index]->vfm_map_size; i++) {
         if( (i < (vfm_map[index]->vfm_map_size - 1)) &&
             is_provider_active(vfm_map[index]->name[i])) {
@@ -75,11 +89,9 @@ static int vfm_map_remove_by_index(int index)
         }
     }
     if (i == vfm_map[index]->vfm_map_size) {
-        spin_lock_irqsave(&vfm_lock, flags);
-        kfree(vfm_map[index]);
+    	p = vfm_map[index];
         vfm_map[index] = NULL;
-        spin_unlock_irqrestore(&vfm_lock, flags);
-
+        kfree(p);
     }
     else {
         pr_err("failed to remove vfm map %s with active provider %s.\n",
@@ -113,22 +125,31 @@ static int vfm_map_remove(char* id)
 
 static int vfm_map_add(char* id,   char* name_chain)
 {
-    ulong flags;
-    int i;
+    int i,j;
     int ret = -1;
     char* ptr, *token;
+    vfm_map_t *p;
     for (i = 0; i < VFM_MAP_COUNT; i++) {
         if (vfm_map[i] == NULL){
             break;
         }
     }
-    if (i < VFM_MAP_COUNT) {
-        spin_lock_irqsave(&vfm_lock, flags);
+    /* avoid to add the path with the same path name */
+    for (j = 0; j < VFM_MAP_COUNT; j++) {
+        if (vfm_map[j] != NULL){
+            if (!strcmp(vfm_map[j]->name, id)) {
 
-        vfm_map[i] = kmalloc(sizeof(vfm_map_t), GFP_KERNEL);
-        if (vfm_map[i]) {
-            memset(vfm_map[i], 0, sizeof(vfm_map_t));
-            memcpy(vfm_map[i]->id, id, strlen(id));
+                pr_err("[vfm] failed to add the path due to same path name\n");
+                return ret;
+            }
+        }
+    }
+    if (i < VFM_MAP_COUNT) {
+
+        p = kmalloc(sizeof(vfm_map_t), GFP_KERNEL);
+        if (p) {
+            memset(p, 0, sizeof(vfm_map_t));
+            memcpy(p->id, id, strlen(id));
             ptr = name_chain;
             while (1) {
                 token = strsep(&ptr, " \n");
@@ -136,13 +157,13 @@ static int vfm_map_add(char* id,   char* name_chain)
                     break;
                 if (*token == '\0')
                     continue;
-                memcpy(vfm_map[i]->name[vfm_map[i]->vfm_map_size],
+                memcpy(p->name[p->vfm_map_size],
                     token, strlen(token));
-                vfm_map[i]->vfm_map_size++;
+                p->vfm_map_size++;
             }
             ret = 0;
+            vfm_map[i] = p;
         }
-        spin_unlock_irqrestore(&vfm_lock, flags);
     }
     return ret;
 
@@ -150,7 +171,7 @@ static int vfm_map_add(char* id,   char* name_chain)
 
 char* vf_get_provider_name(const char* receiver_name)
 {
-    ulong flags;
+    ulong flags = 0;
     int i,j;
     char* provider_name = NULL;
     unsigned char receiver_is_amvideo = 0;

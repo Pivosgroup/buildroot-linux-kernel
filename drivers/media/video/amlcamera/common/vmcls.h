@@ -131,6 +131,25 @@ static ssize_t mirror_write(struct class *cla,
     return count;
 }
 
+int camera_disable_video=0;  // 1: disable, 0: enable
+int cur_disable_mode = 0;
+static ssize_t disable_video_read(struct class *cla,struct class_attribute *attr,char *buf)
+{
+    return snprintf(buf,80,"currnet camera disable video mode:%d, next mode:%d.\n",cur_disable_mode,camera_disable_video);
+}
+
+static ssize_t disable_video_write(struct class *cla,
+					struct class_attribute *attr,
+					const char *buf, size_t count)
+{
+    ssize_t size;
+    char *endp;
+    camera_disable_video = simple_strtoul(buf, &endp, 0);
+    size = endp - buf;
+    return count;
+}
+
+
 static struct class_attribute vm_class_attrs[] = {
     __ATTR(info,
            S_IRUGO | S_IWUSR,
@@ -152,6 +171,10 @@ static struct class_attribute vm_class_attrs[] = {
            S_IRUGO | S_IWUGO,
            mirror_read,
            mirror_write),
+    __ATTR(disable_video,
+           S_IRUGO | S_IWUGO,
+           disable_video_read,
+           disable_video_write),
     __ATTR_NULL
 };
 
@@ -162,11 +185,12 @@ static struct class vm_class = {
 
 struct class* init_vm_cls() {
     int  ret=0;
+    camera_disable_video = 0;
+    cur_disable_mode = 0;
     ret = class_register(&vm_class);
-	if(ret<0 )
-	{
-		amlog_level(LOG_LEVEL_HIGH,"error create vm class\r\n");
-		return NULL;
-	}
+    if(ret<0 ){
+        amlog_level(LOG_LEVEL_HIGH,"error create vm class\r\n");
+        return NULL;
+    }
     return &vm_class;
 }

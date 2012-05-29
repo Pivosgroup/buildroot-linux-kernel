@@ -19,7 +19,7 @@
 #include <linux/amports/timestamp.h>
 #include "dsp_mailbox.h"
 #include "dsp_codec.h"
-
+extern set_pcminfo_data(void * pcm_encoded_info);
 static void audiodsp_mailbox_work_queue(struct work_struct*);
 static struct audiodsp_work_t{
 char buf[81];
@@ -64,9 +64,9 @@ int dsp_mailbox_send(struct audiodsp_priv *priv,int overwrite,int num,int cmd,co
 		after_change_mailbox(m);
 		if(data!=NULL && len >0)
 		{
-			buf_map = dma_map_single(NULL, (void *)data, len, DMA_FROM_DEVICE);
-			dma_unmap_single(NULL, buf_map, len, DMA_FROM_DEVICE);
-    	}
+			buf_map = dma_map_single(NULL, (void *)data, len, DMA_TO_DEVICE);
+			dma_unmap_single(NULL, buf_map, len, DMA_TO_DEVICE);
+    		}
 		MAIBOX2_IRQ_ENABLE(num);
 		DSP_TRIGGER_IRQ(num);
 		res=0;
@@ -79,6 +79,7 @@ int dsp_mailbox_send(struct audiodsp_priv *priv,int overwrite,int num,int cmd,co
 int get_mailbox_data(struct audiodsp_priv *priv,int num,struct mail_msg *msg)
 {
 	unsigned long flags;
+    	dma_addr_t buf_map;	
 	struct mail_msg *m;
 	if(num>31 || num <0)
 			return -1;
@@ -89,9 +90,13 @@ int get_mailbox_data(struct audiodsp_priv *priv,int num,struct mail_msg *msg)
     //dma_unmap_single(priv->dev,dsp_addr_map,sizeof(*m),DMA_FROM_DEVICE);
 	msg->cmd=m->cmd; 
 	msg->data=m->data;
-    msg->data = (char *)((unsigned)msg->data+AUDIO_DSP_START_ADDR);
+       msg->data = (char *)((unsigned)msg->data+AUDIO_DSP_START_ADDR);
 	msg->status=m->status;
 	msg->len=m->len;
+	if(msg->len && msg->data != NULL){
+	    buf_map = dma_map_single(priv->dev,(void*)msg->data ,msg->len,DMA_FROM_DEVICE);
+	    dma_unmap_single(priv->dev,buf_map,msg->len,DMA_FROM_DEVICE);
+	}
 	m->status=0;
 	after_change_mailbox(m);
 	local_irq_restore(flags);
@@ -180,6 +185,9 @@ static irqreturn_t audiodsp_mailbox_irq(int irq, void *data)
 				priv->frame_format.data_width=fmt->data_width;
 				priv->frame_format.valid|=DATA_WIDTH_VALID;
 				}
+			}
+			if(fmt->data.pcm_encoded_info){
+				set_pcminfo_data(fmt->data.pcm_encoded_info);
 			}
 		}
         if(status & (1<<M1B_IRQ8_IEC958_INFO)){

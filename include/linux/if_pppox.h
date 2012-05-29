@@ -51,7 +51,7 @@ struct pppoe_addr{
 /************************************************************************ 
  * Protocols supported by AF_PPPOX 
  */
-#ifndef CONFIG_MACH_MESON_8726M_REFC03_ICS //ics use 3.x kernel head file,so redefine this macro
+#if !defined (CONFIG_MACH_MESON_8726M_REFC03_ICS) && !defined (CONFIG_MACH_MESON_8726M_REFC09_ICS)//ics use 3.x kernel head file,so redefine this macro
 #define PX_PROTO_OE    0 /* Currently just PPPoE */
 #define PX_PROTO_OL2TP 1 /* Now L2TP also */
 #define PX_PROTO_OLAC  2

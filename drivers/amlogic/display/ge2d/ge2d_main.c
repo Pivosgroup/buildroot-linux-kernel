@@ -21,7 +21,7 @@ MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0x00, LOG_LEVEL_DESC, LOG_MASK_DESC);
 ************************************************************************/
 static  bool   command_valid(unsigned int cmd)
 {
-    return (cmd <= GE2D_STRETCHBLIT_NOALPHA_NOBLOCK && cmd >= GE2D_ANTIFLICKER_ENABLE );
+    return (cmd <= GE2D_BLIT_WITHOUTKEY_NOBLOCK && cmd >= GE2D_BLIT_WITHOUTKEY );
 }
 static int 
 ge2d_open(struct inode *inode, struct file *file) 
@@ -170,6 +170,20 @@ ge2d_ioctl(struct inode *inode, struct file *filp,
            		para.dst_rect.w, para.dst_rect.h,
            		para.op) ;	
 		break;
+		case	 GE2D_BLIT_WITHOUTKEY:
+		amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"blit_withoutkey...\r\n");
+            	bitblt_withoutkey(context ,
+                   para.src1_rect.x, para.src1_rect.y,
+                   para.src1_rect.w, para.src1_rect.h,
+                   para.dst_rect.x, para.dst_rect.y);		
+		break;
+		case	 GE2D_BLIT_WITHOUTKEY_NOBLOCK:
+		amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"blit_withoutkey_noblk...\r\n");
+            	bitblt_withoutkey_noblk(context ,
+                   para.src1_rect.x, para.src1_rect.y,
+                   para.src1_rect.w, para.src1_rect.h,
+                   para.dst_rect.x, para.dst_rect.y);		
+		break;	
 		case GE2D_BLIT_NOALPHA:
 		//bitblt_noalpha
             	amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"blit_noalpha...\r\n");

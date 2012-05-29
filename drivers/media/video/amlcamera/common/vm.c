@@ -208,6 +208,33 @@ static void local_vf_put(vframe_t *vf)
     }           
 }
 
+static vframe_t *local_vf_peek_ex(void)
+{
+    vframe_t *vf = NULL;
+    vf = vm_vf_peek_from_provider();
+    if(vf){
+        if(vm_skip_count > 0){
+            vm_skip_count--;	
+            vm_vf_get_from_provider();	
+            vm_vf_put_from_provider(vf); 
+            vf = NULL;						
+       }
+    }
+    return vf;
+}
+
+static vframe_t *local_vf_get_ex(void)
+{
+    return vm_vf_get_from_provider();
+}
+
+static void local_vf_put_ex(vframe_t *vf)
+{
+    if(vf)
+        vm_vf_put_from_provider(vf); 
+    return;
+}
+
 
 /*static int  local_vf_states(vframe_states_t *states)
 {
@@ -332,8 +359,11 @@ static vframe_receiver_op_t* vf_vm_reg_provider( )
 
     spin_lock_irqsave(&lock, flags);
     spin_unlock_irqrestore(&lock, flags);
-    
-    vf_reg_provider(&vm_vf_prov);
+    cur_disable_mode = camera_disable_video;
+    if(!cur_disable_mode)
+        vf_reg_provider(&vm_vf_prov);
+    else
+        vf_unreg_provider(&vm_vf_prov);
     start_vm_task();   
 #if 0   
     start_simulate_task();
@@ -399,28 +429,32 @@ static int get_input_format(vframe_t* vf)
 
 static int  get_input_frame(display_frame_t* frame ,vframe_t* vf)
 {
-	int ret = 0 ;	
-	int top, left,  bottom ,right;
-	if(!vf){
-		return -1;	
-	}
-	frame->frame_top  =     0;   
-	frame->frame_left  =     0 ;   
-	frame->frame_width   =  vf->width;
-	frame->frame_height   = vf->height;
-	ret = get_curren_frame_para(&top ,&left , &bottom, &right);	
-	if(ret >= 0 ){
-  		frame->content_top     =  top&(~1);
-		frame->content_left    =  left&(~1);
-		frame->content_width   =  vf->width - 2*frame->content_left ;
-		frame->content_height  =  vf->height - 2*frame->content_top;
-	}else{
-		frame->content_top     = 0;             
-		frame->content_left    =  0 ;           
-		frame->content_width   = vf->width;     
-		frame->content_height  = vf->height   	;
-	}
-	return 0;
+    int ret = 0;
+    int top, left,  bottom ,right;
+    if (!vf)
+        return -1;
+
+    frame->frame_top = 0;   
+    frame->frame_left = 0 ;   
+    frame->frame_width = vf->width;
+    frame->frame_height = vf->height;
+    top = 0;
+    bottom = vf->height-1;
+    left = 0;
+    right = vf->width-1;
+    ret = get_curren_frame_para(&top ,&left , &bottom, &right,cur_disable_mode);
+    if(ret >= 0 ){
+        frame->content_top = top&(~1);
+        frame->content_left = left&(~1);
+        frame->content_width = vf->width - 2*frame->content_left ;
+        frame->content_height = vf->height - 2*frame->content_top;
+    }else{
+        frame->content_top = 0;             
+        frame->content_left = 0 ;           
+        frame->content_width = vf->width;     
+        frame->content_height = vf->height;
+    }
+    return 0;
 }
 
 static int get_output_format(int v4l2_format)
@@ -906,21 +940,34 @@ static int vm_task(void *data) {
         timer_count = 0;
        
 		/*wait for frame from 656 provider until 500ms runs out*/        
-        while(((vf = local_vf_peek()) == NULL)&&(timer_count < 200)){
-            timer_count ++;
+        if(cur_disable_mode)
+            vf = local_vf_peek_ex();
+        else
+            vf = local_vf_peek();
+        while((vf == NULL) && (timer_count < 200)) {
+            if(cur_disable_mode)
+                vf = local_vf_peek_ex();
+            else
+                vf = local_vf_peek();
+            timer_count++;
             msleep(5);
-        }            		
-        vf = local_vf_get();
+        }
+        if(cur_disable_mode)
+            vf = local_vf_get_ex();
+        else
+            vf = local_vf_get();
         if(vf){
             src_canvas = vf->canvas0Addr ;
             
-			/*here we need translate 422 format to rgb format ,etc*/            
-            if(is_need_ge2d_pre_process()){
-                src_canvas = vm_ge2d_pre_process(vf,context,&ge2d_config);
-            }  
-            local_vf_put(vf);         
-			
-			/*here we need copy the translated data to vmalloc cache*/  
+            /*here we need translate 422 format to rgb format ,etc*/            
+            if (is_need_ge2d_pre_process())
+                src_canvas = vm_ge2d_pre_process(vf,context,&ge2d_config); 
+            if(cur_disable_mode)
+                local_vf_put_ex(vf);
+            else
+                local_vf_put(vf);
+
+            /*here we need copy the translated data to vmalloc cache*/  
             if(is_need_sw_post_process()){          
                 vm_sw_post_process(src_canvas ,output_para.vaddr);
             }
@@ -1190,6 +1237,7 @@ int  init_vm_device(void)
     
     if(vm_buffer_init()<0) goto unregister_dev;
         vf_provider_init(&vm_vf_prov, PROVIDER_NAME ,&vm_vf_provider, NULL);	
+    cur_disable_mode = camera_disable_video;
     //vf_reg_provider(&vm_vf_prov);
     vf_receiver_init(&vm_vf_recv, RECEIVER_NAME, &vm_vf_receiver, NULL);    
     vf_reg_receiver(&vm_vf_recv);

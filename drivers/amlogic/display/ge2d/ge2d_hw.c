@@ -325,10 +325,10 @@ void ge2d_set_dp_gen (ge2d_dp_gen_t *cfg)
     unsigned int antiflick_color_filter_n2[] = {128, 112,  96, 64};
     unsigned int antiflick_color_filter_n3[] = {0,   8,    16, 32};
     unsigned int antiflick_color_filter_th[] = {8, 16, 64};
-    unsigned int antiflick_alpha_filter_n1[] = {0,    8,  16, 32};
-    unsigned int antiflick_alpha_filter_n2[] = {128,112,  96, 64};
-    unsigned int antiflick_alpha_filter_n3[] = {0,    8,  16, 32};
-    unsigned int antiflick_alpha_filter_th[] = {8, 16, 64};        
+    unsigned int antiflick_alpha_filter_n1[] = {0, 0, 0, 0};
+    unsigned int antiflick_alpha_filter_n2[] = {128, 128, 128, 128};
+    unsigned int antiflick_alpha_filter_n3[] = {0, 0, 0, 0};
+    unsigned int antiflick_alpha_filter_th[] = {256, 256, 256};        
 
     if( cfg->conv_matrix_en )
     {
@@ -365,7 +365,6 @@ void ge2d_set_dp_gen (ge2d_dp_gen_t *cfg)
    WRITE_MPEG_REG_BITS(GE2D_SC_MISC_CTRL, ((cfg->src1_vsc_nearest_en <<1) |
                                   (cfg->src1_hsc_nearest_en << 0)), 29, 2);
   if (cfg->antiflick_en == 1) {
-     //Wr(GE2D_ANTIFLICK_CTRL0, 0x81000100); 
      WRITE_MPEG_REG(GE2D_ANTIFLICK_CTRL0, 0x80000000); 
      WRITE_MPEG_REG(GE2D_ANTIFLICK_CTRL1, 
             (cfg->antiflick_ycbcr_rgb_sel << 25) |

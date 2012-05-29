@@ -252,7 +252,10 @@ static int aml_fe_dvbc_init(struct dvb_frontend *fe)
 	sys.pll_sys_xd = 20;
 	sys.pll_adc_xd = 21;// 28.571M
   
-	sys.agc_sel = 2;
+	if(state->config.tuner_type!=5){
+		sys.agc_sel = 2;
+	}
+
 	sys.adc_en = 1;
 	sys.i2c = (long)&i2c;
 	sys.debug = 0;
@@ -340,6 +343,9 @@ static int aml_fe_dvbc_set_frontend(struct dvb_frontend *fe, struct dvb_frontend
 {
 	struct amlfe_state *state = fe->demodulator_priv;
 	struct aml_demod_dvbc param;//mode 0:16, 1:32, 2:64, 3:128, 4:256
+	struct aml_demod_sts demod_sts;
+	int error;
+	int times = 2;
 	
 	memset(&param, 0, sizeof(param));
 	param.ch_freq = p->frequency/1000;
@@ -347,6 +353,13 @@ static int aml_fe_dvbc_set_frontend(struct dvb_frontend *fe, struct dvb_frontend
 	param.symb_rate = p->u.qam.symbol_rate/1000;
 	
 	last_lock = -1;
+
+	state->freq=p->frequency;
+	state->mode=p->u.qam.modulation ;
+	state->symbol_rate=p->u.qam.symbol_rate;
+
+retry:
+	aml_dmx_before_retune(AM_TS_SRC_TS2, fe);
 
 	dvbc_set_ch(state->sta, state->i2c, &param);
 
@@ -356,10 +369,22 @@ static int aml_fe_dvbc_set_frontend(struct dvb_frontend *fe, struct dvb_frontend
 		if(!ret)	pr_error("amlfe wait lock timeout.\n");
 	}
 
-	state->freq=p->frequency;
-	state->mode=p->u.qam.modulation ;
-	state->symbol_rate=p->u.qam.symbol_rate;
-	
+	times--;
+	if(amdemod_dvbc_stat_islock(state) && times){
+		int lock;
+
+		aml_dmx_start_error_check(AM_TS_SRC_TS2, fe);
+		msleep(20);
+		error = aml_dmx_stop_error_check(AM_TS_SRC_TS2, fe);
+		lock  = amdemod_dvbc_stat_islock(state);
+		if((error > 200) || !lock){
+			pr_error("amlfe too many error, error count:%d lock statuc:%d, retry\n", error, lock);
+			goto retry;
+		}
+	}
+
+	aml_dmx_after_retune(AM_TS_SRC_TS2, fe);
+
 	pr_dbg("AML DEMOD => frequency=%d,symbol_rate=%d\r\n",p->frequency,p->u.qam.symbol_rate);
 	return  0;
 }
@@ -396,7 +421,11 @@ static int aml_fe_dvbt_init(struct dvb_frontend *fe)
 	sys.pll_sys_xd = 20;//20;
 	if (state->config.tuner_type ==5)  sys.pll_adc_xd = 14;// 42.857M
 	else	                             sys.pll_adc_xd = 21;// 28.571M
-	sys.agc_sel = 2;
+
+	if(state->config.tuner_type!=5){
+		sys.agc_sel = 2;
+	}
+
 	sys.adc_en = 1;
 	sys.i2c = (long)&i2c;
 	sys.debug = 0;
@@ -503,10 +532,14 @@ static int aml_fe_dvbt_set_frontend(struct dvb_frontend *fe, struct dvb_frontend
 {
 	struct amlfe_state *state = fe->demodulator_priv;
 
-	amdemod_dvbt_tune(state, p);
+	aml_dmx_before_retune(AM_TS_SRC_TS2, fe);
 	
 	state->freq=p->frequency;
 	state->mode=p->u.ofdm.bandwidth;
+
+	amdemod_dvbt_tune(state, p);
+
+	aml_dmx_after_retune(AM_TS_SRC_TS2, fe);
 	
 	pr_dbg("AML DEMOD => frequency=%d,bw=%d\r\n",p->frequency,p->u.ofdm.bandwidth);
 	return  0;

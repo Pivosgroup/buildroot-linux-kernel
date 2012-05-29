@@ -175,6 +175,27 @@ static ssize_t orientation_write(struct class *cla,
     return count;
 }
 
+static ssize_t mirror_read(struct class *cla,struct class_attribute *attr,char *buf)
+{
+    const char *mirror_str[] = {"disable", "L-R", "T-B", "ALL"};
+    return snprintf(buf,80,"current mirror mode is :%s (%d).\n",mirror_str[ppmgr_device.mirror_mode],ppmgr_device.mirror_mode);
+}
+
+static ssize_t mirror_write(struct class *cla,
+					struct class_attribute *attr,
+					const char *buf, size_t count)
+{
+    ssize_t size;
+    char *endp;
+    int mirror =  simple_strtoul(buf, &endp, 0);
+    if((mirror<PPMGR_MIRROR_MODE_MAX)&&(mirror>=PPMGR_MIRROR_MODE_DISABLE)&&(ppmgr_device.mirror_mode != mirror)){
+        ppmgr_device.mirror_mode = mirror;
+        property_change = 1;
+    }
+    size = endp - buf;
+    return count;
+}
+
 static ssize_t bypass_read(struct class *cla,struct class_attribute *attr,char *buf)
 {
     //ppmgr_device_t* ppmgr_dev=(ppmgr_device_t*)cla;
@@ -375,6 +396,10 @@ static struct class_attribute ppmgr_class_attrs[] = {
            S_IRUGO | S_IWUSR,
            orientation_read,
            orientation_write),           
+    __ATTR(mirror,
+           S_IRUGO | S_IWUSR,
+           mirror_read,
+           mirror_write),           
 #ifdef CONFIG_MIX_FREE_SCALE
     __ATTR(ppscaler,
            S_IRUGO | S_IWUSR,
@@ -515,6 +540,7 @@ int  init_ppmgr_device(void)
     ppmgr_device.scale_v_end = 0;
 #endif
 	ppmgr_device.video_out=0;
+    ppmgr_device.mirror_mode = 0;
     amlog_level(LOG_LEVEL_LOW,"ppmgr_dev major:%d\r\n",ret);
     
     if((ppmgr_device.cla = init_ppmgr_cls())==NULL) return -1;

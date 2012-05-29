@@ -130,17 +130,34 @@ void osddev_free_scale_enable(u32 index ,u32 enable)
 	osd_free_scale_enable_hw(index,enable);
 	
 }
+
+void osddev_get_free_scale_enable(u32 index, u32 *free_scale_enable)
+{
+	osd_get_free_scale_enable_hw(index, free_scale_enable);
+}
+
 void osddev_free_scale_width(u32 index ,u32 width)
 {
 	//at present we only support osd1 & osd2 have the same random scale mode.
 	osd_free_scale_width_hw(index,width);
 	
 }
+
+void osddev_get_free_scale_width(u32 index, u32 *free_scale_width)
+{
+	osd_get_free_scale_width_hw(index, free_scale_width);
+}
+
 void osddev_free_scale_height(u32 index ,u32 height)
 {
 	//at present we only support osd1 & osd2 have the same random scale mode.
 	osd_free_scale_height_hw(index,height);
 	
+}
+
+void osddev_get_free_scale_height(u32 index, u32 *free_scale_height)
+{
+	osd_get_free_scale_height_hw(index, free_scale_height);
 }
 
 void osddev_get_free_scale_axis(u32 index, s32 *x0, s32 *y0, s32 *x1, s32 *y1)
@@ -171,6 +188,11 @@ void osddev_get_scale_axis(u32 index, s32 *x0, s32 *y0, s32 *x1, s32 *y1)
 	osd_get_scale_axis_hw(index, x0, y0, x1, y1);
 }
 
+void osddev_get_osd_info(u32 index, s32 (*posdval)[4], u32 (*posdreg)[5], s32 info_flag)
+{
+	osd_get_osd_info_hw(index, posdval, posdreg, info_flag);
+}
+
 void osddev_set_2x_scale(u32 index,u16 h_scale_enable,u16 v_scale_enable)
 {
 	osd_set_2x_scale_hw(index,h_scale_enable,v_scale_enable);
@@ -194,6 +216,16 @@ void osddev_set_block_mode(u32 index, u32 mode)
 void osddev_get_block_mode(u32 index, u32 *mode)
 {
 	osd_get_block_mode_hw(index, mode);
+}
+
+void osddev_set_enforce_progressive(u32 index, u32 enforce_progressive)
+{
+	osd_set_enforce_progressive_hw(index, enforce_progressive);
+}
+
+void osddev_get_enforce_progressive(u32 index, u32 *enforce_progressive)
+{
+	osd_get_enforce_progressive_hw(index, enforce_progressive);
 }
 
 void osddev_enable(int enable,int  index)

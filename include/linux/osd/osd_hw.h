@@ -25,6 +25,7 @@ typedef  enum{
 	OSD_CHANGE_ORDER,
 	DISP_GEOMETRY,
 	DISP_SCALE_ENABLE,
+	OSD_ENFORCE_PROGRESSIVE,
 	HW_REG_INDEX_MAX
 }hw_reg_index;
 
@@ -74,16 +75,22 @@ extern void  osddev_update_disp_axis_hw(
 extern void osd_change_osd_order_hw(u32 index,u32 order);
 extern u32 osd_get_osd_order_hw(u32 index);
 extern void osd_free_scale_enable_hw(u32 index,u32 enable);
+extern void osd_get_free_scale_enable_hw(u32 index, u32 * free_scale_enable);
 extern void osd_free_scale_width_hw(u32 index,u32 width) ;
+extern void osd_get_free_scale_width_hw(u32 index, u32 * free_scale_width);
 extern void osd_free_scale_height_hw(u32 index,u32 height);
+extern void osd_get_free_scale_height_hw(u32 index, u32 * free_scale_height);
 extern void osd_get_free_scale_axis_hw(u32 index, s32 *x0, s32 *y0, s32 *x1, s32 *y1);
 extern void osd_set_free_scale_axis_hw(u32 index, s32 x0, s32 y0, s32 x1, s32 y1);
 extern void osd_get_scale_axis_hw(u32 index, s32 *x0, s32 *y0, s32 *x1, s32 *y1);
 extern void osd_set_scale_axis_hw(u32 index, s32 x0, s32 y0, s32 x1, s32 y1);
+extern void osd_get_osd_info_hw(u32 index, s32 (*posdval)[4], u32 (*posdreg)[5], s32 info_flag);
 extern void osd_get_block_windows_hw(u32 index, u32 *windows);
 extern void osd_set_block_windows_hw(u32 index, u32 *windows);
 extern void osd_get_block_mode_hw(u32 index, u32 *mode);
 extern void osd_set_block_mode_hw(u32 index, u32 mode);
+extern void osd_get_enforce_progressive_hw(u32 index, u32 *enforce_progressive);
+extern void osd_set_enforce_progressive_hw(u32 index, u32 enforce_progressive);
 extern void osd_enable_3d_mode_hw(int index,int enable);
 extern void osd_set_2x_scale_hw(u32 index,u16 h_scale_enable,u16 v_scale_enable);
 extern void osd_setpal_hw(unsigned regno, unsigned red, unsigned green, unsigned blue, unsigned transp,int index);

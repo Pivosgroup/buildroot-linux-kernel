@@ -8,7 +8,7 @@
 #include <asm/dsp/dsp_register.h>
 */
 #include "audiodsp_control.h"
-#include "dsp_register.h"
+#include <linux/amports/dsp_register.h>
 
 #include "codec_message.h"
 #include <linux/dma-mapping.h>

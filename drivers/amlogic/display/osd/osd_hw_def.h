@@ -128,6 +128,7 @@ typedef  struct {
 	u32 			block_windows[HW_OSD_COUNT][HW_OSD_BLOCK_REG_COUNT];
 	u32 			block_mode[HW_OSD_COUNT];
 	pandata_t 		free_scale_data[HW_OSD_COUNT];
+	u32 			enforce_progressive;
 }hw_para_t;
 
 /************************************************************************
@@ -145,6 +146,7 @@ static  void  osd2_update_order(void);
 static  void  osd2_update_disp_geometry(void);
 static  void  osd2_update_disp_scale_enable(void);
 static  void  osd2_update_disp_3d_mode(void);
+static  void  osd2_update_enforce_progressive(void);
 
 static  void  osd1_update_color_mode(void);
 static  void  osd1_update_enable(void);
@@ -155,7 +157,7 @@ static  void  osd1_update_order(void);
 static  void  osd1_update_disp_geometry(void);
 static  void  osd1_update_disp_scale_enable(void);
 static  void  osd1_update_disp_3d_mode(void);
-
+static  void  osd1_update_enforce_progressive(void);
 
 /************************************************************************
 **
@@ -180,6 +182,7 @@ static update_func_t     hw_func_array[HW_OSD_COUNT][HW_REG_INDEX_MAX]={
 		osd1_update_order,
 		osd1_update_disp_geometry,
 		osd1_update_disp_scale_enable,
+		osd1_update_enforce_progressive,
 	},
 	{
 		osd2_update_color_mode,
@@ -190,6 +193,7 @@ static update_func_t     hw_func_array[HW_OSD_COUNT][HW_REG_INDEX_MAX]={
 		osd2_update_order,
 		osd2_update_disp_geometry,
 		osd2_update_disp_scale_enable,
+		osd2_update_enforce_progressive,
 	},
 };
 

@@ -354,6 +354,19 @@ static void vmjpeg_canvas_init(void)
         decbuf_size    = 0x300000;
     }
 
+    if ((frame_width > canvas_width) || (frame_height > canvas_height))
+    {
+        
+        canvas_width  = (frame_width + 31) & (~31);
+        canvas_height = (frame_height + 31) & (~31);
+        
+        if (canvas_width * canvas_height > 1920 * 1088)
+        {
+            printk("unsupport so large resolutions\n");
+        }
+    }
+    //printk("canvas_width=%d, canvas_height=%d\n", canvas_width, canvas_height);
+    
     for (i = 0; i < 4; i++) {
         canvas_config(3 * i + 0,
                       buf_start + i * decbuf_size,

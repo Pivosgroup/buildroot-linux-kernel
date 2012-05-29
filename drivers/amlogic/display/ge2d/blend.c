@@ -8,6 +8,7 @@ void blend(ge2d_context_t *wq,
            int op)
 {
     ge2d_cmd_t *ge2d_cmd_cfg = ge2d_wq_get_cmd(wq);
+    ge2d_dp_gen_t *dp_gen_cfg = ge2d_wq_get_dp_gen(wq);
             
     ge2d_cmd_cfg->src1_x_start = src_x;
     ge2d_cmd_cfg->src1_x_end   = src_x+src_w-1;
@@ -24,7 +25,7 @@ void blend(ge2d_context_t *wq,
     ge2d_cmd_cfg->dst_y_start  = dst_y;
     ge2d_cmd_cfg->dst_y_end    = dst_y+dst_h-1;
 
-    if ((dst_w != src_w) || (dst_h != src_h)) {
+    if ((dst_w != src_w) || (dst_h != src_h) || dp_gen_cfg->antiflick_en) {
         ge2d_cmd_cfg->sc_hsc_en = 1;
         ge2d_cmd_cfg->sc_vsc_en = 1;
         ge2d_cmd_cfg->hsc_rpt_p0_num = 1;
@@ -67,6 +68,7 @@ void blend_noblk(ge2d_context_t *wq,
            int op)
 {
     ge2d_cmd_t *ge2d_cmd_cfg = ge2d_wq_get_cmd(wq);
+    ge2d_dp_gen_t *dp_gen_cfg = ge2d_wq_get_dp_gen(wq);
             
     ge2d_cmd_cfg->src1_x_start = src_x;
     ge2d_cmd_cfg->src1_x_end   = src_x+src_w-1;
@@ -83,7 +85,7 @@ void blend_noblk(ge2d_context_t *wq,
     ge2d_cmd_cfg->dst_y_start  = dst_y;
     ge2d_cmd_cfg->dst_y_end    = dst_y+dst_h-1;
 
-    if ((dst_w != src_w) || (dst_h != src_h)) {
+    if ((dst_w != src_w) || (dst_h != src_h) || dp_gen_cfg->antiflick_en) {
         ge2d_cmd_cfg->sc_hsc_en = 1;
         ge2d_cmd_cfg->sc_vsc_en = 1;
         ge2d_cmd_cfg->hsc_rpt_p0_num = 1;

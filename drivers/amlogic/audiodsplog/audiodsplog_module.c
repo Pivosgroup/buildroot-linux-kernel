@@ -5,7 +5,7 @@
 #include <asm/uaccess.h>	
 #include <linux/device.h>	
 #include "log_stream.h"	
-#include "dsp_register.h"	
+#include <linux/amports/dsp_register.h>
 
 MODULE_LICENSE("GPL");
 

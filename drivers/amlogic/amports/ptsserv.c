@@ -148,6 +148,7 @@ static inline void get_rdpage_offset(u8 type, u32 *page, u32 *page_offset)
 int pts_cached_time(u8 type)
 {
     pts_table_t *pTable;
+    u32 pts;
 
     if (type >= PTS_TYPE_MAX) {
         return 0;
@@ -155,10 +156,18 @@ int pts_cached_time(u8 type)
 
     pTable = &pts_table[type];
 
-    if((pTable->last_checkin_pts==-1) || (pTable->last_checkout_pts==-1))
-	    return 0;
+    if(type==PTS_TYPE_VIDEO)
+        pts = timestamp_apts_get();
+    else
+        pts = timestamp_vpts_get();
 
-    return pTable->last_checkin_pts-pTable->last_checkout_pts;
+    if(pts==-1)
+        pts = pTable->last_checkout_pts;
+
+    if((pTable->last_checkin_pts==-1) || (pts==-1))
+        return 0;
+
+    return pTable->last_checkin_pts-pts;
 }
 
 EXPORT_SYMBOL(pts_cached_time);

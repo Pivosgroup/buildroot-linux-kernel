@@ -117,6 +117,8 @@
 #define AMSTREAM_IOC_APTS_LOOKUP    _IOR(AMSTREAM_IOC_MAGIC, 0x81, unsigned long)
 #define GET_FIRST_APTS_FLAG    _IOR(AMSTREAM_IOC_MAGIC, 0x82, long)
 
+#define AMSTREAM_IOC_SET_DEMUX    _IOW(AMSTREAM_IOC_MAGIC, 0x90, unsigned long)
+
 #define TRICKMODE_NONE       0x00
 #define TRICKMODE_I          0x01
 #define TRICKMODE_FFFB       0x02
@@ -238,6 +240,7 @@ struct tsdemux_ops {
     int (*set_aid)(int apid);
     int (*set_sid)(int spid);
     int (*set_skipbyte)(int skipbyte);
+    int (*set_demux)(int dev);
 };
 
 void tsdemux_set_ops(struct tsdemux_ops *ops);

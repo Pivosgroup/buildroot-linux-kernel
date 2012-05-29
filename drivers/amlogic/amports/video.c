@@ -259,6 +259,7 @@ static u32 blackout = 0;
 #else
 static u32 blackout = 1;
 #endif
+static u32 force_blackout = 0;
 
 /* disable video */
 static u32 disable_video = VIDEO_DISABLE_NONE;
@@ -782,7 +783,7 @@ static void viu_set_dcu(vpp_frame_par_t *frame_par, vframe_t *vf)
     static const u32 vpat[] = {0, 0x8, 0x9, 0xa, 0xb, 0xc};
 
     r = (3 << VDIF_URGENT_BIT) |
-        (15 << VDIF_HOLD_LINES_BIT) |
+        (11 << VDIF_HOLD_LINES_BIT) |
         VDIF_FORMAT_SPLIT  |
         VDIF_CHRO_RPT_LAST |
         VDIF_ENABLE |
@@ -873,7 +874,7 @@ static void viu_set_dcu(vpp_frame_par_t *frame_par, vframe_t *vf)
         loop = 0;
 
         if (vf->type & VIDTYPE_INTERLACE) {
-            pat = vpat[frame_par->vscale_skip_count - 1];
+            pat = vpat[frame_par->vscale_skip_count >> 1];
         }
     } else if (vf->type & VIDTYPE_MVC) {
         loop = 0x11;
@@ -1204,7 +1205,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
 
         } else if ((cur_dispbuf == &vf_local) && (video_property_changed)) {
-            if (!blackout) {
+            if (!(blackout|force_blackout)) {
 #ifdef CONFIG_AM_DEINTERLACE
                 if ((deinterlace_mode == 0) || (cur_dispbuf->duration == 0)
 #if defined(CONFIG_AM_DEINTERLACE_SD_ONLY)
@@ -1225,7 +1226,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
                 video_property_changed = false;
             }
         } else {
-            goto exit;
+            goto set;
         }
     }
 
@@ -1253,6 +1254,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
             amlog_mask_if(toggle_cnt > 0, LOG_MASK_FRAMESKIP, "skipped\n");
 
             vf = video_vf_get();
+            force_blackout = 0;
 
             vsync_toggle_frame(vf);
 
@@ -1291,7 +1293,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
                 /* setting video display property in pause mode */
                 if (video_property_changed && cur_dispbuf) {
-                    if (blackout) {
+                    if (blackout|force_blackout) {
                         if (cur_dispbuf != &vf_local) {
                             vsync_toggle_frame(cur_dispbuf);
                                 } else {
@@ -1309,6 +1311,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
     }
 
+set:
     /* filter setting management */
     if ((frame_par_ready_to_set) || (frame_par_force_to_set)) {
         cur_frame_par = next_frame_par;
@@ -1569,16 +1572,34 @@ static void vsync_fiq_down(void)
 #endif
 }
 
-int get_curren_frame_para(int* top ,int* left , int* bottom, int* right)
+int get_curren_frame_para(int* top ,int* left , int* bottom, int* right,int flag)
 {
-	if(!cur_frame_par){
-		return -1;	
-	}
-	*top    =  cur_frame_par->VPP_vd_start_lines_ ;
-	*left   =  cur_frame_par->VPP_hd_start_lines_ ;
-	*bottom =  cur_frame_par->VPP_vd_end_lines_ ;
-	*right  =  cur_frame_par->VPP_hd_end_lines_;
-	return 	0;
+    if(flag){
+        vpp_frame_par_t cur_frame;
+        vframe_t cur_vf;
+        memset(&cur_frame,0,sizeof(cur_frame));
+        memset(&cur_vf,0,sizeof(vframe_t));
+        cur_vf.width = *right-*left + 1;
+        cur_vf.height= *bottom-*top + 1;
+        if(vinfo){
+            vpp_set_filters(wide_setting, &cur_vf, &cur_frame, vinfo);
+        }else{
+            printk("current vinfo pointer is NULL!\n");
+            return -1;
+        }
+        *top    =  cur_frame.VPP_vd_start_lines_ ;
+        *left   =  cur_frame.VPP_hd_start_lines_ ;
+        *bottom =  cur_frame.VPP_vd_end_lines_ ;
+        *right  =  cur_frame.VPP_hd_end_lines_;
+    }else{
+        if(!cur_frame_par)
+            return -1;	
+        *top    =  cur_frame_par->VPP_vd_start_lines_ ;
+        *left   =  cur_frame_par->VPP_hd_start_lines_ ;
+        *bottom =  cur_frame_par->VPP_vd_end_lines_ ;
+        *right  =  cur_frame_par->VPP_hd_end_lines_;
+    }
+    return 0;
 }
 
 static void video_vf_unreg_provider(void)
@@ -1601,7 +1622,7 @@ static void video_vf_unreg_provider(void)
         atomic_set(&trickmode_framedone, 0);
     }
 
-    if (blackout) {
+    if (blackout|force_blackout) {
 #ifdef CONFIG_MIX_FREE_SCALE
         if(video_scaler_mode)
             DisableVideoLayer_PREBELEND();
@@ -1613,6 +1634,7 @@ static void video_vf_unreg_provider(void)
     }
 
     //if (!trickmode_fffb)
+    if(cur_dispbuf)
     {
         vf_keep_current();
     }
@@ -1645,11 +1667,16 @@ static void video_vf_light_unreg_provider(void)
 
 static int video_receiver_event_fun(int type, void* data, void* private_data)
 {
-    if(type == VFRAME_EVENT_PROVIDER_UNREG){
+	  if(type == VFRAME_EVENT_PROVIDER_REG){
+	  	  video_vf_light_unreg_provider();
+	  }else if(type == VFRAME_EVENT_PROVIDER_UNREG){
         video_vf_unreg_provider();
     }
     else if(type == VFRAME_EVENT_PROVIDER_LIGHT_UNREG){
         video_vf_light_unreg_provider();
+    }
+    else if(type == VFRAME_EVENT_PROVIDER_FORCE_BLACKOUT){
+    	  force_blackout = 1;	
     }
     return 0;
 }
@@ -1679,7 +1706,7 @@ unsigned int vf_keep_current(void)
 #ifdef CONFIG_AM_DEINTERLACE
     int deinterlace_mode = get_deinterlace_mode();
 #endif
-    if (blackout) {
+    if (blackout|force_blackout) {
         return 0;
     }
 
@@ -1743,6 +1770,11 @@ unsigned int vf_keep_current(void)
 EXPORT_SYMBOL(get_post_canvas);
 EXPORT_SYMBOL(vf_keep_current);
 
+u32 get_blackout_policy(void)
+{
+    return blackout;
+}
+EXPORT_SYMBOL(get_blackout_policy);
 /*********************************************************
  * /dev/amvideo APIs
  *********************************************************/
@@ -1753,7 +1785,7 @@ static int amvideo_open(struct inode *inode, struct file *file)
 
 static int amvideo_release(struct inode *inode, struct file *file)
 {
-    if (blackout) {
+    if (blackout|force_blackout) {
         ///DisableVideoLayer();/*don't need it ,it have problem on  pure music playing*/
     }
     return 0;

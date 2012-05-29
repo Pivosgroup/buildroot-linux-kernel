@@ -5,9 +5,9 @@ menu "Amlogic audio dsp process "
 
 config  AML_AUDIO_DSP
 	tristate  "audio dsp control support "
-	default m
+	default y
 	help  
-		aupport the audio dsp ;
+		support the audio dsp ;
 		
 
 endmenu	

@@ -60,14 +60,28 @@ dsp_register.h
 #define DSP_DECODE_OPTION       DSP_REG(21)
 #define DSP_AUDIO_FORMAT_INFO  DSP_REG(22)
 
+#define DSP_GET_EXTRA_INFO_FINISH    DSP_REG(23)
+#define DSP_HDMI_SR                  DSP_REG(24)
+
 #define DSP_LOG_START_ADDR  	DSP_REG(28)
 #define DSP_LOG_END_ADDR   	    DSP_REG(29)
 #define DSP_LOG_RD_ADDR  	    DSP_REG(30)
 #define DSP_LOG_WD_ADDR  		DSP_REG(31)
 
+
 #define MAILBOX1_REG(n)	DSP_REG(40+n)
 #define MAILBOX2_REG(n)	DSP_REG(40+32+n)
+
+
+//----------------------------------------------
+#define DSP_DECODE_51PCM_OUT_START_ADDR  	DSP_REG(106)
+#define DSP_DECODE_51PCM_OUT_END_ADDR   	DSP_REG(107)
+#define DSP_DECODE_51PCM_OUT_RD_ADDR  	    DSP_REG(108)
+#define DSP_DECODE_51PCM_OUT_WD_ADDR  		DSP_REG(109)
+//------------------------------------------------
+
 #define DSP_WORK_INFO (AUDIO_DSP_END_ADDR - 128)
+
 
 
 #ifndef __ASSEMBLY__
@@ -88,6 +102,8 @@ int len;
 #define M1B_IRQ5_STREAM_FMT_CHANGED 			(5+16)
 #define M1B_IRQ5_STREAM_RD_WD_TEST 			(6+16)
 #define M1B_IRQ7_DECODE_FATAL_ERR			(7+16)
+#define M1B_IRQ8_IEC958_INFO                (8+16)
+
 
 #define M2B_IRQ0_DSP_HALT							(0)
 #define M2B_IRQ1_DSP_RESET						(1)
@@ -124,8 +140,9 @@ int len;
 #define ARC_2_ARM_ADDR_SWAP(addr)  ((unsigned long)(phys_to_virt(addr)))
 #define ARM_2_ARC_ADDR_SWAP(addr)  (virt_to_phys((void*)addr))
 
-#define DSP_RD(reg)    (*((volatile unsigned long *)(reg)))
-#define DSP_WD(reg,val)    ({(*((volatile unsigned long *)(reg)))=val;})
+#define DSP_RD(reg)	  (*((volatile unsigned long *)reg))
+#define DSP_WD(reg,val)	({(*((volatile unsigned long *)(reg)))=val;})
+
 #endif
 
 

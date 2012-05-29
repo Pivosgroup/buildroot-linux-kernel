@@ -19,7 +19,7 @@
 ***************************************************************/
 
 #define    	GE2D_CLASS_NAME   				"ge2d"
-
+#define 		GE2D_BLIT_WITHOUTKEY_NOBLOCK		0x4709
 #define  	 	GE2D_STRETCHBLIT_NOALPHA_NOBLOCK   	0x4708
 #define  		GE2D_BLIT_NOALPHA_NOBLOCK 			0x4707
 #define  		GE2D_BLEND_NOBLOCK 	 				0x4706
@@ -39,6 +39,7 @@
 #define  		GE2D_CONFIG_EX  			       			0x46fa
 #define  		GE2D_CONFIG							0x46f9
 #define		GE2D_ANTIFLICKER_ENABLE				0x46f8
+#define 		GE2D_BLIT_WITHOUTKEY				0x46f7
 
 /**************************************************************
 **																	 **

@@ -16,7 +16,8 @@ typedef  struct {
 	unsigned angle;
 	unsigned orientation;
 	unsigned videoangle; 
-	
+
+	int mirror_mode;
 	int bypass;
 	int disp_width;
 	int disp_height;
@@ -37,4 +38,11 @@ typedef  struct {
 }ppmgr_device_t;
 
 extern ppmgr_device_t  ppmgr_device;
+
+#define PPMGR_MIRROR_MODE_DISABLE     0
+#define PPMGR_MIRROR_MODE_X_DIR         1
+#define PPMGR_MIRROR_MODE_Y_DIR         2
+#define PPMGR_MIRROR_MODE_ALL             3
+#define PPMGR_MIRROR_MODE_MAX            4
+
 #endif /* PPMGR_DEV_INCLUDE_H. */

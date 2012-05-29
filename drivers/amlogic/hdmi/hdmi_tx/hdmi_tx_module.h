@@ -80,6 +80,7 @@ typedef struct hdmi_tx_dev_s {
     unsigned char unplug_powerdown;
     /**/
     unsigned char hpd_event; /* 1, plugin; 2, plugout */
+    unsigned char hpd_state; /* 1, connect; 0, disconnect */
     unsigned char force_audio_flag;
     unsigned char mux_hpd_if_pin_high_flag; 
 	unsigned char cec_func_flag;
@@ -103,7 +104,7 @@ typedef struct hdmi_tx_dev_s {
 #endif        
 
 
-#define HDMITX_VER "2012Jan04a"
+#define HDMITX_VER "2012Apr24a"
 
 /************************************
 *    hdmitx protocol level interface
