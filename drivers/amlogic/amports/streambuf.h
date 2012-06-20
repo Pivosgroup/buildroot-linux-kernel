@@ -35,7 +35,7 @@
 
 #define INVALID_PTS 0xffffffff
 
-#define FETCHBUF_SIZE   (64*1024)
+#define FETCHBUF_SIZE   (128*1024)
 
 typedef struct stream_buf_s {
     s32   flag;

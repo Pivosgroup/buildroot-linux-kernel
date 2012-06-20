@@ -135,7 +135,7 @@ typedef struct vframe_s {
 #if 0
 struct vframe_prop_s * vdin_get_vframe_prop(u32 index);
 #endif
-int get_curren_frame_para(int* top ,int* left , int* bottom, int* right,int flag);
+int get_curren_frame_para(int* top ,int* left , int* bottom, int* right);
 
 #endif /* VFRAME_H */
 

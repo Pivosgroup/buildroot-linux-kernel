@@ -88,7 +88,10 @@ static vframe_t *vmjpeg_vf_peek(void*);
 static vframe_t *vmjpeg_vf_get(void*);
 static void vmjpeg_vf_put(vframe_t *, void*);
 static int  vmjpeg_vf_states(vframe_states_t *states, void*);
+static int vmjpeg_event_cb(int type, void *data, void *private_data);
 
+static void vmjpeg_prot_init(void);
+static void vmjpeg_local_init(void);
 
 static const char vmjpeg_dec_id[] = "vmjpeg-dev";
 
@@ -97,6 +100,7 @@ static const struct vframe_operations_s vmjpeg_vf_provider = {
     .peek = vmjpeg_vf_peek,
     .get  = vmjpeg_vf_get,
     .put  = vmjpeg_vf_put,
+    .event_cb =  vmjpeg_event_cb,
     .vf_states = vmjpeg_vf_states,
 };
 static struct vframe_provider_s vmjpeg_vf_prov;
@@ -274,6 +278,27 @@ static void vmjpeg_vf_put(vframe_t *vf, void* op_arg)
 {
     INCPTR(putting_ptr);
 }
+
+static int vmjpeg_event_cb(int type, void *data, void *private_data)
+{
+    if(type & VFRAME_EVENT_RECEIVER_RESET){
+        unsigned long flags;
+        amvdec_stop();
+#ifndef CONFIG_POST_PROCESS_MANAGER
+        vf_light_unreg_provider(&vmjpeg_vf_prov);
+#endif
+        spin_lock_irqsave(&lock, flags);
+        vmjpeg_local_init();
+        vmjpeg_prot_init();
+        spin_unlock_irqrestore(&lock, flags); 
+#ifndef CONFIG_POST_PROCESS_MANAGER
+        vf_reg_provider(&vmjpeg_vf_prov);
+#endif              
+        amvdec_start();
+    }
+    return 0;        
+}
+
 static int  vmjpeg_vf_states(vframe_states_t *states, void* op_arg)
 {
     int i;
@@ -354,19 +379,6 @@ static void vmjpeg_canvas_init(void)
         decbuf_size    = 0x300000;
     }
 
-    if ((frame_width > canvas_width) || (frame_height > canvas_height))
-    {
-        
-        canvas_width  = (frame_width + 31) & (~31);
-        canvas_height = (frame_height + 31) & (~31);
-        
-        if (canvas_width * canvas_height > 1920 * 1088)
-        {
-            printk("unsupport so large resolutions\n");
-        }
-    }
-    //printk("canvas_width=%d, canvas_height=%d\n", canvas_width, canvas_height);
-    
     for (i = 0; i < 4; i++) {
         canvas_config(3 * i + 0,
                       buf_start + i * decbuf_size,

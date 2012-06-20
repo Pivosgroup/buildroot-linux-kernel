@@ -61,6 +61,7 @@
 static vframe_t *vh264mvc_vf_peek(void*);
 static vframe_t *vh264mvc_vf_get(void*);
 static void vh264mvc_vf_put(vframe_t *, void*);
+static int vh264mvc_event_cb(int type, void *data, void *private_data);
 
 static void vh264mvc_prot_init(void);
 static void vh264mvc_local_init(void);
@@ -71,10 +72,11 @@ static const char vh264mvc_dec_id[] = "vh264mvc-dev";
 #define PROVIDER_NAME   "decoder.h264mvc"
 
 static const struct vframe_operations_s vh264mvc_vf_provider = {
-        .peek = vh264mvc_vf_peek,
-        .get = vh264mvc_vf_get,
-        .put = vh264mvc_vf_put,
-        .vf_states=NULL,
+    .peek = vh264mvc_vf_peek,
+    .get = vh264mvc_vf_get,
+    .put = vh264mvc_vf_put,
+    .event_cb = vh264mvc_event_cb,
+    .vf_states=NULL,
 };
 static struct vframe_provider_s vh264mvc_vf_prov;
 
@@ -146,7 +148,7 @@ static s32 vh264mvc_init(void);
 #define CMD_ALLOC_VIEW_1           2 
 #define CMD_FRAME_DISPLAY          3 
 
-#define CANVAS_INDEX_START         106
+#define CANVAS_INDEX_START         120
 
 unsigned  DECODE_BUFFER_START=0x00200000;
 unsigned DECODE_BUFFER_END=0x05000000;
@@ -408,6 +410,26 @@ static void vh264mvc_vf_put(vframe_t *vf, void* op_arg)
     mvc_buf = to_mvcbuf(vf);
     list_add_tail(&mvc_buf->list, &recycle_list_head);
     recycle_vframe();
+}
+
+static int vh264mvc_event_cb(int type, void *data, void *private_data)
+{
+    if(type & VFRAME_EVENT_RECEIVER_RESET){
+        unsigned long flags;
+        amvdec_stop();
+#ifndef CONFIG_POST_PROCESS_MANAGER
+        vf_light_unreg_provider(&vh264mvc_vf_prov);
+#endif
+        spin_lock_irqsave(&lock, flags);
+        vh264mvc_local_init();
+        vh264mvc_prot_init();
+        spin_unlock_irqrestore(&lock, flags); 
+#ifndef CONFIG_POST_PROCESS_MANAGER
+        vf_reg_provider(&vh264mvc_vf_prov);
+#endif              
+        amvdec_start();
+    }
+    return 0;        
 }
 
 /**/
@@ -1183,6 +1205,7 @@ static s32 vh264mvc_init(void)
 
     vf_provider_init(&vh264mvc_vf_prov, PROVIDER_NAME, &vh264mvc_vf_provider, NULL);
     vf_reg_provider(&vh264mvc_vf_prov);
+    vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_START,NULL);
 
     stat |= STAT_VF_HOOK;
 

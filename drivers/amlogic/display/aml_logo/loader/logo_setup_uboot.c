@@ -19,9 +19,7 @@
 **																   **
 *******************************************************************/
 /******************logo entry point ***************/
- #ifdef CONFIG_FB_MULTI_OUTPUT_MODE
- char outputmode[] = "720p";
-#endif
+
 MODULE_AMLOG(LOG_LEVEL_MAX-1, LOG_MASK_ALL, LOG_LEVEL_DESC, LOG_MASK_DESC);
 logo_object_t  aml_logo={
 	.name="default",
@@ -95,9 +93,6 @@ static inline int install_logo_info(logo_object_t *plogo,char *para)
 				break;
 				case PARA_SECOND_GROUP_START:
 				plogo->para.vout_mode=(vmode_t)para_info_pair[i].info;
-				#ifdef CONFIG_FB_MULTI_OUTPUT_MODE
-				strcpy(outputmode,para_info_pair[i].name);
-				#endif
 				break;
 				case PARA_THIRD_GROUP_START:
 				plogo->para.dis_mode=(logo_display_mode_t)para_info_pair[i].info;

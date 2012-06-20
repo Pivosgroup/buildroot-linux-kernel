@@ -108,6 +108,7 @@ static vframe_t *vh264_vf_peek(void*);
 static vframe_t *vh264_vf_get(void*);
 static void vh264_vf_put(vframe_t *, void*);
 static int  vh264_vf_states(vframe_states_t *states, void*);
+static int vh264_event_cb(int type, void *data, void *private_data);
 
 static void vh264_prot_init(void);
 static void vh264_local_init(void);
@@ -121,6 +122,7 @@ static const struct vframe_operations_s vh264_vf_provider = {
     .peek = vh264_vf_peek,
     .get = vh264_vf_get,
     .put = vh264_vf_put,
+    .event_cb = vh264_event_cb,
     .vf_states = vh264_vf_states,
 };
 static struct vframe_provider_s vh264_vf_prov;
@@ -252,6 +254,31 @@ static void vh264_vf_put(vframe_t *vf, void* op_arg)
 {
     INCPTR(putting_ptr);
 }
+
+static int vh264_event_cb(int type, void *data, void *private_data)
+{
+#if 0  // currently for h264, disable it
+    if(type & VFRAME_EVENT_RECEIVER_RESET){
+        unsigned long flags;
+        amvdec_stop();
+#ifndef CONFIG_POST_PROCESS_MANAGER
+        vf_light_unreg_provider(&vh264_vf_provider);
+#endif
+        spin_lock_irqsave(&lock, flags);
+        const struct vframe_receiver_op_s *vf_receiver_bak = vf_receiver;
+        vh264_local_init();
+        vf_receiver = vf_receiver_bak;
+        vh264_prot_init();
+        spin_unlock_irqrestore(&lock, flags); 
+#ifndef CONFIG_POST_PROCESS_MANAGER
+        vf_reg_provider(&vh264_vf_provider);
+#endif              
+        amvdec_start();
+    }
+#endif
+    return 0;        
+}
+
 static int  vh264_vf_states(vframe_states_t *states, void* op_arg)
 {
     unsigned long flags;
@@ -277,11 +304,21 @@ static int  vh264_vf_states(vframe_states_t *states, void* op_arg)
 
 static void set_frame_info(vframe_t *vf)
 {
+    unsigned int ar = 0;
+
     vf->width = frame_width;
     vf->height = frame_height;
     vf->duration = frame_dur;
-    vf->ratio_control = (min(h264_ar, (u32)DISP_RATIO_ASPECT_RATIO_MAX)) << DISP_RATIO_ASPECT_RATIO_BIT;
     vf->orientation = vh264_rotation;
+
+    if (vh264_ratio == 0) {
+        vf->ratio_control |= (0x90 << DISP_RATIO_ASPECT_RATIO_BIT); // always stretch to 16:9
+    } else {
+        //h264_ar = ((float)frame_height/frame_width)*customer_ratio;
+        ar = min(h264_ar, (u32)DISP_RATIO_ASPECT_RATIO_MAX);
+
+        vf->ratio_control = (ar << DISP_RATIO_ASPECT_RATIO_BIT);
+    }
 
     return;
 }
@@ -559,22 +596,13 @@ static void vh264_isr(void)
                     h264_ar = 0x100 * frame_height * 1 / (frame_width * 2);
                     break;
                 default:
-                    if (vh264_ratio>>16) {
-                        h264_ar = (frame_height * (vh264_ratio&0xffff)  *0x100 + ((vh264_ratio>>16) *  frame_width/2))/((vh264_ratio>>16) *  frame_width);
-                    } else {
-                        h264_ar = frame_height * 0x100 / frame_width;
-                    }
+                    h264_ar = frame_height * vh264_ratio / frame_width;
                     break;
                 }
             }
         } else {
             printk("v264dec: aspect_ratio not available from source\n");
-            if (vh264_ratio>>16) {
-                /* high 16 bit is width, low 16 bit is height */
-                h264_ar = ((vh264_ratio&0xffff) * frame_height* 0x100 + (vh264_ratio>>16)*frame_width/2) /( (vh264_ratio>>16) * frame_width);
-            } else {
-                h264_ar = frame_height * 0x100 / frame_width;
-            }
+            h264_ar = frame_height * vh264_ratio / frame_width;
         }
 
         WRITE_MPEG_REG(AV_SCRATCH_1, addr);
@@ -892,7 +920,7 @@ static void vh264_put_timer_func(unsigned long arg)
 #ifdef CONFIG_POST_PROCESS_MANAGER
             vh264_ppmgr_reset();
 #else
-            vf_light_unreg_provider(PROVIDER_NAME);
+            vf_light_unreg_provider(&vh264_vf_prov);
             vh264_local_init();
             vf_reg_provider(vh264_vf_prov);
 #endif
@@ -995,7 +1023,7 @@ static void vh264_prot_init(void)
     WRITE_MPEG_REG(AV_SCRATCH_7, 0);
     WRITE_MPEG_REG(AV_SCRATCH_8, 0);
     WRITE_MPEG_REG(AV_SCRATCH_9, 0);
-    WRITE_MPEG_REG(AV_SCRATCH_F, (READ_MPEG_REG(AV_SCRATCH_F) & 0xffffffc3) | ((error_recovery_mode & 0x3) << 4));
+    WRITE_MPEG_REG(AV_SCRATCH_F, (READ_MPEG_REG(AV_SCRATCH_F) & 0xffffffcf) | ((error_recovery_mode & 0x3) << 4));
 
     /* clear mailbox interrupt */
     WRITE_MPEG_REG(ASSIST_MBOX1_CLR_REG, 1);
@@ -1008,8 +1036,8 @@ static void vh264_local_init(void)
 {
     int i;
 
-    vh264_ratio = vh264_amstream_dec_info.ratio;
-    //vh264_ratio = 0x100;
+    //vh264_ratio = vh264_amstream_dec_info.ratio;
+    vh264_ratio = 0x100;
 
     vh264_rotation = (((u32)vh264_amstream_dec_info.param) >> 16) & 0xffff;
 
@@ -1132,7 +1160,7 @@ static s32 vh264_init(void)
     add_timer(&recycle_timer);
 
     stat |= STAT_TIMER_ARM;
-
+	vh264_running = 0;
     amvdec_start();
 
     stat |= STAT_VDEC_RUN;

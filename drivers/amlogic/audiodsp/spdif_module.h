@@ -21,7 +21,7 @@ typedef struct {
 static int audio_spdif_open(struct inode *inode, struct file *file);
 static int audio_spdif_release(struct inode *inode, struct file *file);
 static int audio_spdif_ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsigned long args);
-static ssize_t audio_spdif_write(struct file *filp, const char *buff, size_t len, loff_t * off);
+static ssize_t audio_spdif_write(struct file *file, const char __user *userbuf,size_t len, loff_t * off);
 static ssize_t audio_spdif_read(struct file *filp,	char __user *buffer,	size_t length,	 loff_t * offset);
 static int audio_spdif_mmap(struct file *file, struct vm_area_struct *vma);
 

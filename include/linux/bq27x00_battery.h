@@ -21,7 +21,8 @@ struct bq27x00_battery_pdata {
 	void (*set_charge)(int flags);
 	void (*set_bat_off)(void);
 	int (*get_charge_status)(void);
-
+    void (*set_lcd_on)(void);
+    void (*set_lcd_off)(void);
 	unsigned int wait_for_status; /* msecs, default is 500 */
 	unsigned int polling_interval; /* msecs, default is 12000 */
     unsigned int chip;

@@ -38,6 +38,7 @@
 #define MANAGE_PTS
 
 static u32 fetch_done;
+static u32 parse_halt;
 
 static DECLARE_WAIT_QUEUE_HEAD(rm_wq);
 const static char rmparser_id[] = "rmparser-id";
@@ -64,7 +65,7 @@ extern int tsdemux_set_reset_flag(void);
 s32 rmparser_init(void)
 {
     s32 r;
-
+    parse_halt = 0;
     if (fetchbuf == 0) {
         printk("%s: no fetchbuf\n", __FUNCTION__);
         return -ENOMEM;
@@ -180,7 +181,14 @@ static ssize_t _rmparser_write(const char __user *buf, size_t count)
         ret = wait_event_interruptible_timeout(rm_wq, fetch_done != 0, HZ/10);
         if (ret == 0) {
             WRITE_MPEG_REG(PARSER_FETCH_CMD, 0);
-			printk("write timeout, retry\n");
+            parse_halt ++;
+			printk("write timeout, retry,halt_count=%d parse_control=%x \n",
+			    parse_halt,READ_MPEG_REG(PARSER_CONTROL));
+			
+			if(parse_halt > 10) {			    
+			    WRITE_MPEG_REG(PARSER_CONTROL, (ES_SEARCH | ES_PARSER_START));
+			    printk("reset parse_control=%x\n",READ_MPEG_REG(PARSER_CONTROL));
+			}			
             return -EAGAIN;
         } else if (ret < 0) {
             return -ERESTARTSYS;
@@ -188,8 +196,8 @@ static ssize_t _rmparser_write(const char __user *buf, size_t count)
 
         p += len;
         r -= len;
-    }
-
+        parse_halt = 0;
+    }   
     return count - r;
 }
 

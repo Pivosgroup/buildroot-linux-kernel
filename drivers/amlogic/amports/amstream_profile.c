@@ -2,13 +2,12 @@
 #include <linux/kernel.h>
 #include <linux/fs.h>
 #include <linux/device.h>
-#include <linux/interrupt.h>
 #include <linux/amports/amstream.h>
 
 static const struct codec_profile_t *vcodec_profile[SUPPORT_VDEC_NUM] = {0};
 static int vcodec_profile_idx = 0;
 
-ssize_t vcodec_profile_read(const char *buf,int size)
+ssize_t vcodec_profile_read(char *buf)
 {	
 	char *pbuf = buf;
 	int i = 0;

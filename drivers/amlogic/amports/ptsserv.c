@@ -52,11 +52,6 @@ typedef struct pts_table_s {
     struct list_head *pts_search;
     struct list_head valid_list;
     struct list_head free_list;
-#ifdef CALC_CACHED_TIME
-    u32 last_checkin_offset;
-    u32 last_checkin_pts;
-    u32 last_checkout_pts;
-#endif
 } pts_table_t;
 
 static spinlock_t lock = SPIN_LOCK_UNLOCKED;
@@ -144,35 +139,6 @@ static inline void get_rdpage_offset(u8 type, u32 *page, u32 *page_offset)
     }
 }
 
-#ifdef CALC_CACHED_TIME
-int pts_cached_time(u8 type)
-{
-    pts_table_t *pTable;
-    u32 pts;
-
-    if (type >= PTS_TYPE_MAX) {
-        return 0;
-    }
-
-    pTable = &pts_table[type];
-
-    if(type==PTS_TYPE_VIDEO)
-        pts = timestamp_apts_get();
-    else
-        pts = timestamp_vpts_get();
-
-    if(pts==-1)
-        pts = pTable->last_checkout_pts;
-
-    if((pTable->last_checkin_pts==-1) || (pts==-1))
-        return 0;
-
-    return pTable->last_checkin_pts-pts;
-}
-
-EXPORT_SYMBOL(pts_cached_time);
-#endif
-
 int pts_checkin_offset(u8 type, u32 offset, u32 val)
 {
     ulong flags;
@@ -228,16 +194,6 @@ int pts_checkin_offset(u8 type, u32 offset, u32 val)
 
         rec->offset = offset;
         rec->val = val;
-
-#ifdef CALC_CACHED_TIME
-	{
-		s32 diff = offset-pTable->last_checkin_offset;
-		if(diff>0){
-			pTable->last_checkin_offset = offset;
-			pTable->last_checkin_pts    = val;
-		}
-	}
-#endif
 
         list_move_tail(&rec->list, &pTable->valid_list);
 
@@ -442,10 +398,6 @@ int pts_lookup_offset(u8 type, u32 offset, u32 *val, u32 pts_margin)
 #endif
             *val = p2->val;
 
-#ifdef CALC_CACHED_TIME
-	    pTable->last_checkout_pts = p2->val;
-#endif
-
             pTable->lookup_cache_pts = *val;
             pTable->lookup_cache_offset = offset;
             pTable->lookup_cache_valid = true;
@@ -573,7 +525,7 @@ static void free_pts_list(pts_table_t *pTable)
 	unsigned long *p=pTable->pages_list;
 	void *onepage=(void  *)p[0];
 	while(onepage!=NULL){
-		free_page(onepage);
+		free_page((unsigned long)onepage);
 		p++;
 		onepage=(void  *)p[0];
 	}
@@ -632,7 +584,6 @@ error_alloc_pages:
 int pts_start(u8 type)
 {
     ulong flags;
-    int i;
     pts_table_t *pTable;
 
     if (type >= PTS_TYPE_MAX) {
@@ -665,7 +616,6 @@ int pts_start(u8 type)
             //BUG_ON(pTable->buf_size <= 0x10000);
 
             WRITE_MPEG_REG(VIDEO_PTS, 0);
-            timestamp_pcrscr_set(0);//video always need the pcrscr,Clear it to use later
             pTable->first_checkin_pts = -1;
             pTable->first_lookup_ok = 0;
 	     pTable->first_lookup_is_fail = 0;
@@ -679,14 +629,10 @@ int pts_start(u8 type)
             WRITE_MPEG_REG(AUDIO_PTS, 0);
             pTable->first_checkin_pts = -1;
             pTable->first_lookup_ok = 0;
-	    pTable->first_lookup_is_fail = 0;
+	     	pTable->first_lookup_is_fail = 0;
         }
 
-#ifdef CALC_CACHED_TIME
-	pTable->last_checkin_offset = 0;
-	pTable->last_checkin_pts    = -1;
-	pTable->last_checkout_pts   = -1;
-#endif
+
 
         pTable->pts_search = &pTable->valid_list;
         pTable->status = PTS_LOADING;
@@ -771,4 +717,3 @@ int first_pts_checkin_complete(u8 type)
         return 1;
 }
 EXPORT_SYMBOL(first_pts_checkin_complete);
-

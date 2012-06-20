@@ -16,6 +16,11 @@
 #include <linux/amlog.h>
 #include <linux/ctype.h>
 #include <linux/vout/vout_notify.h>
+#include <linux/amports/vframe.h>
+#include <linux/amports/vframe_provider.h>
+#include <linux/amports/vframe_receiver.h>
+
+
 
 #include "ppmgr_log.h"
 #include "ppmgr_pri.h"
@@ -28,6 +33,7 @@
 ************************************************************************/
 static int ppmgr_enable_flag=0;
 static int property_change = 0;
+static int buff_change = 0;
 ppmgr_device_t  ppmgr_device;
 
 int get_bypass_mode(void)
@@ -44,6 +50,15 @@ void set_property_change(int flag)
     property_change = flag;	
 }
 
+int get_buff_change(void)
+{
+    return buff_change;	
+}
+void set_buff_change(int flag)
+{
+    buff_change = flag;	
+}
+
 int get_ppmgr_status(void) {
     return ppmgr_enable_flag;
 }
@@ -51,6 +66,40 @@ int get_ppmgr_status(void) {
 void set_ppmgr_status(int flag) {
     if(flag) ppmgr_enable_flag=1;
     else ppmgr_enable_flag=0;
+}
+
+/***********************************************************************
+*
+* Utilities.
+*
+************************************************************************/
+static ssize_t _ppmgr_angle_write(unsigned long val)
+{
+    unsigned long angle = val;
+
+    if(angle>3) {
+        if(angle==90) angle=1;
+        else if(angle==180) angle=2;
+        else if(angle==270) angle=3;
+        else {
+            printk("invalid orientation value\n");
+            printk("you should set 0 or 0 for 0 clock wise,");
+            printk("1 or 90 for 90 clockwise,2 or 180 for 180 clockwise");
+            printk("3 or 270 for 270 clockwise\n");
+            return -EINVAL;
+        }
+    }
+
+    if(angle != ppmgr_device.angle ){		
+        property_change = 1;
+    }
+
+    ppmgr_device.angle = angle;
+    ppmgr_device.videoangle = (ppmgr_device.angle+ ppmgr_device.orientation)%4;
+    printk("angle:%d,orientation:%d,videoangle:%d \n",ppmgr_device.angle ,
+        ppmgr_device.orientation, ppmgr_device.videoangle);
+
+    return 0;
 }
 
 /***********************************************************************
@@ -114,21 +163,13 @@ static ssize_t angle_write(struct class *cla,
 {
     ssize_t size;
     char *endp;
-    int angle  =  simple_strtoul(buf, &endp, 0);
-    printk("==%d==\n",angle);
-    if(angle>3) {
-        if(angle==90) angle=1;
-        else if(angle==180) angle=2;
-        else if(angle==270) angle=3;
-        else {
-            printk("invalid angle value\n");
-            printk("you should set 0 or 0 for 0 clock wise,");
-            printk("1 or 90 for 90 clockwise,2 or 180 for 180 clockwise");
-            printk("3 or 270 for 270 clockwise\n");
-            return -EINVAL;
-        }
+    unsigned long angle  =  simple_strtoul(buf, &endp, 0);
+    printk("==%ld==\n",angle);
+
+    if (_ppmgr_angle_write(angle) < 0) {
+        return -EINVAL;
     }
-	
+/*	
     if(angle != ppmgr_device.angle ){		
         property_change = 1;
     }
@@ -136,6 +177,7 @@ static ssize_t angle_write(struct class *cla,
     ppmgr_device.videoangle = (ppmgr_device.angle+ ppmgr_device.orientation)%4;
     printk("angle:%d,orientation:%d,videoangle:%d \n",ppmgr_device.angle ,
     ppmgr_device.orientation, ppmgr_device.videoangle);
+*/
     size = endp - buf;
     return count;
 }
@@ -171,27 +213,6 @@ static ssize_t orientation_write(struct class *cla,
     ppmgr_device.videoangle = (ppmgr_device.angle+ ppmgr_device.orientation)%4;
     printk("angle:%d,orientation:%d,videoangle:%d \n",ppmgr_device.angle ,
         ppmgr_device.orientation, ppmgr_device.videoangle);
-    size = endp - buf;
-    return count;
-}
-
-static ssize_t mirror_read(struct class *cla,struct class_attribute *attr,char *buf)
-{
-    const char *mirror_str[] = {"disable", "L-R", "T-B", "ALL"};
-    return snprintf(buf,80,"current mirror mode is :%s (%d).\n",mirror_str[ppmgr_device.mirror_mode],ppmgr_device.mirror_mode);
-}
-
-static ssize_t mirror_write(struct class *cla,
-					struct class_attribute *attr,
-					const char *buf, size_t count)
-{
-    ssize_t size;
-    char *endp;
-    int mirror =  simple_strtoul(buf, &endp, 0);
-    if((mirror<PPMGR_MIRROR_MODE_MAX)&&(mirror>=PPMGR_MIRROR_MODE_DISABLE)&&(ppmgr_device.mirror_mode != mirror)){
-        ppmgr_device.mirror_mode = mirror;
-        property_change = 1;
-    }
     size = endp - buf;
     return count;
 }
@@ -270,20 +291,22 @@ static void set_disp_para(const char *para)
         int w, h;
         w = parsed[0] ;
         h = parsed[1];
+        if((ppmgr_device.disp_width != w)||(ppmgr_device.disp_height != h))
+            buff_change = 1;
         ppmgr_device.disp_width = w ;
         ppmgr_device.disp_height =  h ;
     }
 }
 
-static ssize_t disp_write(struct device *dev,
-					struct device_attribute *attr,
+static ssize_t disp_write(struct class *cla,
+					struct class_attribute *attr,
 					const char *buf, size_t count)
 {
     set_disp_para(buf);
     return 0;
 }
 
-#ifdef CONFIG_MIX_FREE_SCALE
+#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
 extern int video_scaler_notify(int flag);
 extern void amvideo_set_scaler_para(int x, int y, int w, int h,int flag);
 
@@ -343,30 +366,24 @@ static ssize_t ppscaler_rect_write(struct class *cla,
 }
 #endif
 
-static ssize_t video_out_read(struct class *cla,struct class_attribute *attr,char *buf)
-{
-	if(ppmgr_device.video_out==1)
-		return snprintf(buf,80,"video stream out to video4linux\n");
-	else 
-		return snprintf(buf,80,"video stream out to vlayer\n");
-}
+extern int  vf_ppmgr_get_states(vframe_states_t *states);
 
-static ssize_t video_out_write(struct class *cla,
-					struct class_attribute *attr,
-					const char *buf, size_t count)
+static ssize_t ppmgr_vframe_states_show(struct class *cla, struct class_attribute* attr, char* buf)
 {
-	ssize_t ret = -EINVAL, size;
-	char *endp;
-    if(buf[0]!='0'&&buf[0]!='1') {
-		printk("device to whitch the video stream decoded\n");
-		printk("0: to video layer\n");
-		printk("1: to amlogic video4linux /dev/video10\n");
-		return 0;
-	}
-	ppmgr_device.video_out = simple_strtoul(buf, &endp, 0);
-	vf_ppmgr_reset();
-	size = endp - buf;
-	return count;
+    int ret = 0;
+    vframe_states_t states;
+
+    if (vf_ppmgr_get_states(&states) == 0) {
+        ret += sprintf(buf + ret, "vframe_pool_size=%d\n", states.vf_pool_size);
+        ret += sprintf(buf + ret, "vframe buf_free_num=%d\n", states.buf_free_num);
+        ret += sprintf(buf + ret, "vframe buf_recycle_num=%d\n", states.buf_recycle_num);
+        ret += sprintf(buf + ret, "vframe buf_avail_num=%d\n", states.buf_avail_num);
+
+    } else {
+        ret += sprintf(buf + ret, "vframe no states\n");
+    }
+
+    return ret;
 }
 
 static struct class_attribute ppmgr_class_attrs[] = {
@@ -396,11 +413,7 @@ static struct class_attribute ppmgr_class_attrs[] = {
            S_IRUGO | S_IWUSR,
            orientation_read,
            orientation_write),           
-    __ATTR(mirror,
-           S_IRUGO | S_IWUSR,
-           mirror_read,
-           mirror_write),           
-#ifdef CONFIG_MIX_FREE_SCALE
+#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
     __ATTR(ppscaler,
            S_IRUGO | S_IWUSR,
            ppscaler_read,
@@ -410,10 +423,7 @@ static struct class_attribute ppmgr_class_attrs[] = {
            ppscaler_rect_read,
            ppscaler_rect_write),   
 #endif
-       __ATTR(vtarget,
-           S_IRUGO | S_IWUSR,
-           video_out_read,
-           video_out_write), 
+    __ATTR_RO(ppmgr_vframe_states),
     __ATTR_NULL
 };
 
@@ -441,7 +451,7 @@ struct class* init_ppmgr_cls() {
 
 void set_ppmgr_buf_info(char* start,unsigned int size) {
     ppmgr_device.buffer_start=(char*)start;
-    ppmgr_device.buffer_size=(char*)size;
+    ppmgr_device.buffer_size=size;
 }
 
 void get_ppmgr_buf_info(char** start,unsigned int* size) {
@@ -455,19 +465,22 @@ static int ppmgr_open(struct inode *inode, struct file *file)
     return 0;
 }
 
-/*static int ppmgr_ioctl(struct inode *inode, struct file *filp,
+static int ppmgr_ioctl(struct inode *inode, struct file *filp,
                  unsigned int cmd, unsigned long args)
 {
-
-    ge2d_context_t *context=(ge2d_context_t *)filp->private_data;
     void  __user* argp =(void __user*)args;
+    int ret = 0;
+#if 0
+    ge2d_context_t *context=(ge2d_context_t *)filp->private_data;
     config_para_t     ge2d_config;	
     ge2d_para_t  para ;
-    int  ret=0,flag;    	
+    int flag;    	
     frame_info_t frame_info;
+#endif
 
     switch (cmd)
     {
+#if 0
         case PPMGR_IOC_2OSD0:
             break;
         case PPMGR_IOC_ENABLE_PP:
@@ -477,13 +490,19 @@ static int ppmgr_open(struct inode *inode, struct file *file)
         case PPMGR_IOC_CONFIG_FRAME:
             copy_from_user(&frame_info,argp,sizeof(frame_info_t));
             break;
+#endif
+        case PPMGR_IOC_GET_ANGLE:
+            *((unsigned int *)argp) = ppmgr_device.angle;
+            break;
+        case PPMGR_IOC_SET_ANGLE:
+            ret = _ppmgr_angle_write(args);
+            break;
         default :
             return -ENOIOCTLCMD;
 		
     }
     return ret;
 }
-*/
 
 static int ppmgr_release(struct inode *inode, struct file *file)
 {
@@ -511,7 +530,7 @@ static int ppmgr_release(struct inode *inode, struct file *file)
 static const struct file_operations ppmgr_fops = {
     .owner   = THIS_MODULE,
     .open    = ppmgr_open,  
-    //.ioctl = ppmgr_ioctl,
+    .ioctl   = ppmgr_ioctl,
     .release = ppmgr_release, 	
 };
 
@@ -532,7 +551,7 @@ int  init_ppmgr_device(void)
     ppmgr_device.angle=0;
     ppmgr_device.videoangle=0;
     ppmgr_device.orientation=0;
-#ifdef CONFIG_MIX_FREE_SCALE
+#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
     ppmgr_device.ppscaler_flag = 0;
     ppmgr_device.scale_h_start = 0;
     ppmgr_device.scale_h_end = 0;
@@ -540,7 +559,6 @@ int  init_ppmgr_device(void)
     ppmgr_device.scale_v_end = 0;
 #endif
 	ppmgr_device.video_out=0;
-    ppmgr_device.mirror_mode = 0;
     amlog_level(LOG_LEVEL_LOW,"ppmgr_dev major:%d\r\n",ret);
     
     if((ppmgr_device.cla = init_ppmgr_cls())==NULL) return -1;
@@ -549,6 +567,7 @@ int  init_ppmgr_device(void)
         amlog_level(LOG_LEVEL_HIGH,"create ppmgr device error\n");
         goto unregister_dev;
     }
+    buff_change = 0;
     ppmgr_register();    
     if(ppmgr_buffer_init()<0) goto unregister_dev;
     //if(start_vpp_task()<0) return -1;
@@ -562,7 +581,7 @@ unregister_dev:
 
 int uninit_ppmgr_device(void)
 {
-    stop_vpp_task();
+    stop_ppmgr_task();
     
     if(ppmgr_device.cla)
     {
@@ -598,9 +617,9 @@ static int ppmgr_driver_probe(struct platform_device *pdev)
         return -EFAULT;
     }
 
-    buf_start = mem->start;
+    buf_start = (char *)mem->start;
     buf_size = mem->end - mem->start + 1;
-    set_ppmgr_buf_info(mem->start,buf_size);
+    set_ppmgr_buf_info((char *)mem->start,buf_size);
     init_ppmgr_device();
     return 0;
 }

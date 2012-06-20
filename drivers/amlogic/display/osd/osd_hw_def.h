@@ -127,6 +127,7 @@ typedef  struct {
 	hw_list_t	 	reg[HW_OSD_COUNT][HW_REG_INDEX_MAX];
 	u32 			block_windows[HW_OSD_COUNT][HW_OSD_BLOCK_REG_COUNT];
 	u32 			block_mode[HW_OSD_COUNT];
+	u32			canvas_conf[HW_OSD_COUNT];
 	pandata_t 		free_scale_data[HW_OSD_COUNT];
 	u32 			enforce_progressive;
 }hw_para_t;
@@ -147,6 +148,7 @@ static  void  osd2_update_disp_geometry(void);
 static  void  osd2_update_disp_scale_enable(void);
 static  void  osd2_update_disp_3d_mode(void);
 static  void  osd2_update_enforce_progressive(void);
+static  void  osd2_update_canvas_conf(void);
 
 static  void  osd1_update_color_mode(void);
 static  void  osd1_update_enable(void);
@@ -158,6 +160,7 @@ static  void  osd1_update_disp_geometry(void);
 static  void  osd1_update_disp_scale_enable(void);
 static  void  osd1_update_disp_3d_mode(void);
 static  void  osd1_update_enforce_progressive(void);
+static  void  osd1_update_canvas_conf(void);
 
 /************************************************************************
 **
@@ -171,7 +174,7 @@ static unsigned long 	lock_flags;
 #ifdef FIQ_VSYNC
 static unsigned long	fiq_flag;
 #endif
-static vframe_t vf,vf_w;
+static vframe_t vf;
 static update_func_t     hw_func_array[HW_OSD_COUNT][HW_REG_INDEX_MAX]={
 	{
 		osd1_update_color_mode,
@@ -183,6 +186,7 @@ static update_func_t     hw_func_array[HW_OSD_COUNT][HW_REG_INDEX_MAX]={
 		osd1_update_disp_geometry,
 		osd1_update_disp_scale_enable,
 		osd1_update_enforce_progressive,
+		osd1_update_canvas_conf,
 	},
 	{
 		osd2_update_color_mode,
@@ -194,6 +198,7 @@ static update_func_t     hw_func_array[HW_OSD_COUNT][HW_REG_INDEX_MAX]={
 		osd2_update_disp_geometry,
 		osd2_update_disp_scale_enable,
 		osd2_update_enforce_progressive,
+		osd2_update_canvas_conf,
 	},
 };
 

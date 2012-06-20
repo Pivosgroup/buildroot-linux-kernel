@@ -27,6 +27,7 @@
 #include <linux/slab.h>
 #include <linux/dma-mapping.h>
 #include <linux/amports/vformat.h>
+#include <linux/clk.h>
 
 #ifdef CONFIG_PM
 #include <linux/pm.h>
@@ -276,9 +277,9 @@ static int vdec_is_paused(void)
     unsigned long wp, rp, level;
     static int  paused_time = 0;
 
-    wp = READ_MPEG_REG(VLD_MEM_VIFIFO_START_PTR + VLD_MEM_VIFIFO_WP);
-    rp = READ_MPEG_REG(VLD_MEM_VIFIFO_START_PTR + VLD_MEM_VIFIFO_RP);
-    level = READ_MPEG_REG(VLD_MEM_VIFIFO_START_PTR + VLD_MEM_VIFIFO_LEVEL);
+    wp = READ_MPEG_REG(VLD_MEM_VIFIFO_WP);
+    rp = READ_MPEG_REG(VLD_MEM_VIFIFO_RP);
+    level = READ_MPEG_REG(VLD_MEM_VIFIFO_LEVEL);
     if ((rp == old_rp && level > 1024) || /*have data,but output buffer is fulle*/
         (rp == old_rp && wp == old_wp && level == level)) { /*no write && not read*/
         paused_time++;
@@ -344,6 +345,12 @@ int __init amvdec_init(void)
     amvdevtimer.data = (ulong) & amvdevtimer;
     amvdevtimer.function = vdec_paused_check_timer;
 #endif
+    CLK_GATE_OFF(MDEC_CLK_PIC_DC);
+    CLK_GATE_OFF(MDEC_CLK_DBLK);
+    CLK_GATE_OFF(MC_CLK);
+    CLK_GATE_OFF(IQIDCT_CLK);
+    //CLK_GATE_OFF(VLD_CLK);
+    CLK_GATE_OFF(AMRISC);    
     return 0;
 }
 static void __exit amvdec_exit(void)

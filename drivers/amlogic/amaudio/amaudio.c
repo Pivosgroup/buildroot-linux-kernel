@@ -96,8 +96,6 @@ extern int aml_pcm_playback_enable;
 
 static unsigned int audio_in_int_cnt = 0;
 static unsigned int level2 = 0;
-static int last_out_status = 0;
-static int last_in_status = 0;
 static int amaudio_in_started = 0;
 static int amaudio_out_started = 0;
 
@@ -461,8 +459,7 @@ static irqreturn_t amaudio_in_callback(int irq, void*data)
 
  //   aprint("+ level = %d, count=%d\n", amaudio_inbuf.level, count/2);
     
-err: 
- int_in = 0;    
+    int_in = 0;    
 
     spin_unlock(&amaudio_clk_lock);
     return IRQ_HANDLED;
@@ -479,7 +476,7 @@ static irqreturn_t amaudio_out_callback(int irq, void* data)
     unsigned int hwptr = 0;
     unsigned int count = 0;
     unsigned int scount = 0;
-    unsigned int tmp, tmp1;
+    unsigned int tmp;
     int ret = 0;
 
     spin_lock(&amaudio_clk_lock);
@@ -1587,8 +1584,6 @@ static ssize_t show_enable_dump(struct class* class, struct class_attribute* att
 static ssize_t store_enable_dump(struct class* class, struct class_attribute* attr,
    const char* buf, size_t count )
 {
-  unsigned long flags;
-  
   unsigned int tmp = 0;
 
   if(buf[0] == '0'){

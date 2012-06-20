@@ -4,6 +4,7 @@
 menu "Amlogic Display Driver"
 
 source "drivers/amlogic/display/vout/Kconfig"
+source "drivers/amlogic/display/vout2/Kconfig"
 
 source "drivers/amlogic/display/osd/Kconfig"
 source "drivers/amlogic/display/backlight/Kconfig"

@@ -140,8 +140,8 @@ u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
             priv->out_len_after_last_valid_pts = 0;
             len = buffered_len + dsp_codec_get_bufer_data_len1(priv, wp);
             frame_nums = (len * 8 / (priv->frame_format.data_width * priv->frame_format.channel_num));
-	     delay_pts = div64_u64(frame_nums*90, priv->frame_format.sample_rate/1000);
-            //printk("cal delay pts == %x\n", delay_pts);
+            delay_pts = div64_u64(frame_nums*90, priv->frame_format.sample_rate/1000);
+			//printk("cal delay pts == %x\n", delay_pts);
             if (pts > delay_pts) {
                 pts -= delay_pts;
             } else {
@@ -149,7 +149,7 @@ u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
             }
             priv->last_valid_pts = pts;
 
-            //printk("len = %d, data_width = %d, channel_num = %d, frame_nums = %lld, sample_rate = %d, pts = %d\n",
+            //printk("len = %d, data_width = %d, channel_num = %d, frame_nums = %d, sample_rate = %d, pts = %d\n",
             //   len, priv->frame_format.data_width,priv->frame_format.channel_num, frame_nums, priv->frame_format.sample_rate, pts);
         }
 
@@ -157,9 +157,8 @@ u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
             pts = priv->last_valid_pts;
             len = priv->out_len_after_last_valid_pts;
             frame_nums = (len * 8 / (priv->frame_format.data_width * priv->frame_format.channel_num));
-	     pts += div64_u64(frame_nums*90, priv->frame_format.sample_rate/1000);
-
-            //printk("last_pts = %d, len = %d, data_width = %d, channel_num = %d, frame_nums = %lld, sample_rate = %d, pts = %d\n",
+			pts += div64_u64(frame_nums*90, priv->frame_format.sample_rate/1000);
+            //printk("last_pts = %d, len = %d, data_width = %d, channel_num = %d, frame_nums = %d, sample_rate = %d, pts = %d\n",
             //    priv->last_valid_pts, len, priv->frame_format.data_width,priv->frame_format.channel_num, frame_nums, priv->frame_format.sample_rate, pts);
         }
 

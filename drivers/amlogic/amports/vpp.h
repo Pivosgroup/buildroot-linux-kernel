@@ -116,19 +116,9 @@ extern void
 vpp_get_video_layer_position(s32 *x, s32 *y, s32 *w, s32 *h);
 
 extern void
-vpp_set_global_offset(s32 x, s32 y);
-
-extern void
-vpp_get_global_offset(s32 *x, s32 *y);
-
-extern void
 vpp_set_zoom_ratio(u32 r);
 
 extern u32
 vpp_get_zoom_ratio(void);
-extern void 
-vpp_set_osd_layer_preblend(u32*);
-extern 
-void vpp_set_osd_layer_position(s32*);
 
 #endif /* VPP_H */

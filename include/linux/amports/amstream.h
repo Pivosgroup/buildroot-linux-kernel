@@ -22,7 +22,7 @@
 #ifndef AMSTREAM_H
 #define AMSTREAM_H
 
-//#include <linux/interrupt.h>
+#include <linux/interrupt.h>
 #include "ve.h"
 
 #ifdef __KERNEL__
@@ -90,6 +90,11 @@
 #define AMSTREAM_IOC_SET_SYNC_ADISCON  _IOW(AMSTREAM_IOC_MAGIC, 0x45, unsigned long)
 #define AMSTREAM_IOC_GET_SYNC_VDISCON  _IOR(AMSTREAM_IOC_MAGIC, 0x46, unsigned long)
 #define AMSTREAM_IOC_SET_SYNC_VDISCON  _IOW(AMSTREAM_IOC_MAGIC, 0x47, unsigned long)
+#define AMSTREAM_IOC_GET_VIDEO_DISABLE  _IOR(AMSTREAM_IOC_MAGIC, 0x48, unsigned long)
+#define AMSTREAM_IOC_SET_VIDEO_DISABLE  _IOW(AMSTREAM_IOC_MAGIC, 0x49, unsigned long)
+#define AMSTREAM_IOC_SET_PCRSCR       _IOW(AMSTREAM_IOC_MAGIC, 0x4a, unsigned long)
+#define AMSTREAM_IOC_GET_VIDEO_AXIS   _IOR(AMSTREAM_IOC_MAGIC, 0x4b, unsigned long)
+#define AMSTREAM_IOC_SET_VIDEO_AXIS   _IOW(AMSTREAM_IOC_MAGIC, 0x4c, unsigned long)
 
 // VPP.VE IOCTL command list
 #define AMSTREAM_IOC_VE_BEXT   _IOW(AMSTREAM_IOC_MAGIC, 0x20, struct ve_bext_s  )
@@ -117,7 +122,7 @@
 #define AMSTREAM_IOC_APTS_LOOKUP    _IOR(AMSTREAM_IOC_MAGIC, 0x81, unsigned long)
 #define GET_FIRST_APTS_FLAG    _IOR(AMSTREAM_IOC_MAGIC, 0x82, long)
 
-#define AMSTREAM_IOC_SET_DEMUX    _IOW(AMSTREAM_IOC_MAGIC, 0x90, unsigned long)
+#define AMSTREAM_IOC_SET_DEMUX  _IOW(AMSTREAM_IOC_MAGIC, 0x90, unsigned long)
 
 #define TRICKMODE_NONE       0x00
 #define TRICKMODE_I          0x01
@@ -226,7 +231,7 @@ struct codec_profile_t
 #define SUPPORT_VDEC_NUM	(8)
 
 int vcodec_profile_register(const struct codec_profile_t *vdec_profile);
-ssize_t vcodec_profile_read(const char *buf,int size);
+ssize_t vcodec_profile_read(char *buf);
 
 #ifdef __KERNEL__
 #ifdef ENABLE_DEMUX_DRIVER

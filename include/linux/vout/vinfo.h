@@ -37,12 +37,13 @@ typedef enum {
     VMODE_720P  ,
     VMODE_1080I ,
     VMODE_1080P ,
-    VMODE_720P_50HZ,
-    VMODE_1080I_50HZ,
-    VMODE_1080P_50HZ,
+    VMODE_720P_50HZ ,
+    VMODE_1080I_50HZ ,
+    VMODE_1080P_50HZ ,
     VMODE_LCD	,
     VMODE_MAX,
     VMODE_INIT_NULL,
+    VMODE_MASK = 0xFF,
 } vmode_t;
 
 typedef struct {

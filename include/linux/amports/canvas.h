@@ -43,14 +43,10 @@ typedef struct {
 #define DISPLAY_CANVAS_BASE_INDEX   0x60
 #define DISPLAY_CANVAS_MAX_INDEX    0x65 
 
-/*here ppmgr share the same canvas with deinterlace*/
-#define PPMGR_CANVAS_INDEX 0x70
-#define PPMGR_DEINTERLACE_BUF_CANVAS 0x77   /*for progressive mjpeg use*/
+#define DISPLAY2_CANVAS_BASE_INDEX   0x66
+#define DISPLAY2_CANVAS_MAX_INDEX    0x6b 
 
-#define FREESCALE_CANVAS_INDEX 0x70   //for osd&video scale use
-#define MAX_FREESCALE_CANVAS_INDEX 0x7f
-
-#define DEINTERLACE_CANVAS_BASE_INDEX	0x70
+#define DEINTERLACE_CANVAS_BASE_INDEX	0x78
 #define DEINTERLACE_CANVAS_MAX_INDEX	0x7f
 
 extern void canvas_config(u32 index, ulong addr, u32 width,

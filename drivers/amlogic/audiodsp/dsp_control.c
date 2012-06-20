@@ -106,7 +106,6 @@ void halt_dsp( struct audiodsp_priv *priv)
 void reset_dsp( struct audiodsp_priv *priv)
 {
     halt_dsp(priv);
-
     //flush_and_inv_dcache_all();
     /* map DSP 0 address so that reset vector points to same vector table as ARC1 */
     CLEAR_MPEG_REG_MASK(AUD_ARC_CTL, (0xfff << 4));
@@ -310,12 +309,12 @@ exit:
 
 static  int __init decode_option_setup(char *s)
 {
-    int value = -1;
+    unsigned long value = 0xffffffffUL;
     if(strict_strtoul(s, 16, &value)){
       decopt = 0x0000ffff;
       return -1;
     }
-    decopt = value;
+    decopt = (int)value;
     return 0;
 }
 __setup("decopt=",decode_option_setup) ;

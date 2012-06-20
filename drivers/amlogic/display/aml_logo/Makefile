@@ -20,7 +20,6 @@ EXTRA_CFLAGS += -Iinclude/linux/logo/
 EXTRA_CFLAGS += -Idrivers/amlogic/display/ge2d
 EXTRA_CFLAGS += -Idrivers/amlogic/amports/
 else
-obj-y += amlogo.o
-amlogo-objs := ./loader/logo_empty_setup.o
+obj-y=./loader/logo_empty_setup.o
 EXTRA_CFLAGS += -Iinclude/linux/logo/
 endif

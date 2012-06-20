@@ -95,7 +95,10 @@ static vframe_t *vmpeg_vf_peek(void*);
 static vframe_t *vmpeg_vf_get(void*);
 static void vmpeg_vf_put(vframe_t *, void*);
 static int  vmpeg_vf_states(vframe_states_t *states, void*);
+static int vmpeg_event_cb(int type, void *data, void *private_data);
 
+static void vmpeg12_prot_init(void);
+static void vmpeg12_local_init(void);
 
 static const char vmpeg12_dec_id[] = "vmpeg12-dev";
 #define PROVIDER_NAME   "decoder.mpeg12"
@@ -104,6 +107,7 @@ static const struct vframe_operations_s vmpeg_vf_provider =
     .peek = vmpeg_vf_peek,
     .get  = vmpeg_vf_get,
     .put  = vmpeg_vf_put,
+    .event_cb = vmpeg_event_cb,
     .vf_states = vmpeg_vf_states,
 };
 static struct vframe_provider_s vmpeg_vf_prov;
@@ -133,7 +137,7 @@ static spinlock_t lock = SPIN_LOCK_UNLOCKED;
 
 /* for error handling */
 static s32 frame_force_skip_flag = 0;
-static s32 error_frame_skip_level = 0;
+static s32 error_frame_skip_level = 2;
 
 static inline u32 index2canvas(u32 index)
 {
@@ -324,7 +328,7 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
             } else {
                 vfq_push(&display_q, vf);
                 vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
-            }            
+            }
         }
 
         WRITE_MPEG_REG(MREG_BUFFEROUT, 0);
@@ -346,6 +350,26 @@ static vframe_t *vmpeg_vf_get(void* op_arg)
 static void vmpeg_vf_put(vframe_t *vf, void* op_arg)
 {
     vfq_push(&recycle_q, vf);
+}
+
+static int vmpeg_event_cb(int type, void *data, void *private_data)
+{
+    if(type & VFRAME_EVENT_RECEIVER_RESET){
+        unsigned long flags;
+        amvdec_stop();
+#ifndef CONFIG_POST_PROCESS_MANAGER
+        vf_light_unreg_provider(&vmpeg_vf_prov);
+#endif
+        spin_lock_irqsave(&lock, flags);
+        vmpeg12_local_init();
+        vmpeg12_prot_init();
+        spin_unlock_irqrestore(&lock, flags); 
+#ifndef CONFIG_POST_PROCESS_MANAGER
+        vf_reg_provider(&vmpeg_vf_prov);
+#endif              
+        amvdec_start();
+    }
+    return 0;        
 }
 
 static int  vmpeg_vf_states(vframe_states_t *states, void* op_arg)

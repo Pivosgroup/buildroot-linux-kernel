@@ -26,6 +26,7 @@ typedef  enum{
 	DISP_GEOMETRY,
 	DISP_SCALE_ENABLE,
 	OSD_ENFORCE_PROGRESSIVE,
+	DISP_CANVAS_CONFIG,
 	HW_REG_INDEX_MAX
 }hw_reg_index;
 
@@ -84,7 +85,8 @@ extern void osd_get_free_scale_axis_hw(u32 index, s32 *x0, s32 *y0, s32 *x1, s32
 extern void osd_set_free_scale_axis_hw(u32 index, s32 x0, s32 y0, s32 x1, s32 y1);
 extern void osd_get_scale_axis_hw(u32 index, s32 *x0, s32 *y0, s32 *x1, s32 *y1);
 extern void osd_set_scale_axis_hw(u32 index, s32 x0, s32 y0, s32 x1, s32 y1);
-extern void osd_get_osd_info_hw(u32 index, s32 (*posdval)[4], u32 (*posdreg)[5], s32 info_flag);
+extern void osd_get_osd_info_hw(u32 index, s32 (*posdval)[4], u32 (*posdreq)[5], s32 info_flag);
+extern void osd_set_canvas_conf_hw(u32 index, u32 canvas_config);
 extern void osd_get_block_windows_hw(u32 index, u32 *windows);
 extern void osd_set_block_windows_hw(u32 index, u32 *windows);
 extern void osd_get_block_mode_hw(u32 index, u32 *mode);

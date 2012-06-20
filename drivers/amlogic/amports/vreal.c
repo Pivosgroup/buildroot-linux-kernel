@@ -97,6 +97,10 @@ static vframe_t *vreal_vf_peek(void*);
 static vframe_t *vreal_vf_get(void*);
 static void vreal_vf_put(vframe_t *, void*);
 static int  vreal_vf_states(vframe_states_t *states, void*);
+static int vreal_event_cb(int type, void *data, void *private_data);
+
+static void vreal_prot_init(void);
+static void vreal_local_init(void);
 
 static const char vreal_dec_id[] = "vreal-dev";
 
@@ -105,6 +109,7 @@ static const struct vframe_operations_s vreal_vf_provider = {
     .peek = vreal_vf_peek,
     .get = vreal_vf_get,
     .put = vreal_vf_put,
+    .event_cb = vreal_event_cb,
     .vf_states = vreal_vf_states,
 };
 static struct vframe_provider_s vreal_vf_prov;
@@ -357,6 +362,27 @@ static void vreal_vf_put(vframe_t *vf, void* op_arg)
 {
     INCPTR(putting_ptr);
 }
+
+static int vreal_event_cb(int type, void *data, void *private_data)
+{
+    if(type & VFRAME_EVENT_RECEIVER_RESET){
+        unsigned long flags;
+        amvdec_stop();
+#ifndef CONFIG_POST_PROCESS_MANAGER
+        vf_light_unreg_provider(&vreal_vf_prov);
+#endif
+        spin_lock_irqsave(&lock, flags);
+        vreal_local_init();
+        vreal_prot_init();
+        spin_unlock_irqrestore(&lock, flags); 
+#ifndef CONFIG_POST_PROCESS_MANAGER
+        vf_reg_provider(&vreal_vf_prov);
+#endif              
+        amvdec_start();
+    }
+    return 0;        
+}
+
 static int  vreal_vf_states(vframe_states_t *states, void* op_arg)
 {
     unsigned long flags;

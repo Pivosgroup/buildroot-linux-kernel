@@ -58,7 +58,6 @@ source "drivers/amlogic/mali/Kconfig"
 source "drivers/amlogic/dvb/Kconfig"
 source "drivers/amlogic/ppmgr/Kconfig"
 source "drivers/amlogic/audiodsplog/Kconfig"
-source "drivers/amlogic/freescale/Kconfig"
 source "drivers/amlogic/deinterlace/Kconfig"
 
 #

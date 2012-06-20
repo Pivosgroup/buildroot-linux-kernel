@@ -9,11 +9,10 @@ config POST_PROCESS_MANAGER
     default n
 	help
 	  Select to enable AMLOGIC Post Process Manager driver.
-
-config MIX_FREE_SCALE
-    tristate "AMLOGIC mix free scale"
+config POST_PROCESS_MANAGER_PPSCALER
+    tristate "AMLOGIC Post Process Manager PPScaler mode"
     depends on  POST_PROCESS_MANAGER
     default n
 	help
-	  Select mix free scale mode in  ppmgr module.
+	  Select to include PPscaler function in AMLOGIC Post Process Manager driver.
 endmenu

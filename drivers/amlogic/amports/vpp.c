@@ -20,7 +20,6 @@
  */
 
 #include <linux/kernel.h>
-#include <linux/err.h>
 #include <linux/vout/vinfo.h>
 #include <linux/amports/vframe.h>
 #include "video.h"
@@ -126,10 +125,7 @@ static const u32 *filter_table[] = {
 static u32 vpp_wide_mode;
 static u32 vpp_zoom_ratio = 100;
 static s32 vpp_zoom_center_x, vpp_zoom_center_y;
-static u32 osd_layer_preblend=0;
 static s32 video_layer_top, video_layer_left, video_layer_width, video_layer_height;
-static s32 video_layer_global_offset_x, video_layer_global_offset_y;
-static s32 osd_layer_top,osd_layer_left,osd_layer_width,osd_layer_height;
 
 #define ZOOM_BITS       18
 #define PHASE_BITS      8
@@ -303,9 +299,6 @@ RESTART:
         aspect_factor = (width_in * height_out * aspect_factor << 3) /
                         ((width_out * height_in * aspect_ratio_out) >> 5);
     }
-    
-    if(osd_layer_preblend)
-    aspect_factor=0x100;
 
     height_after_ratio = (height_in * aspect_factor) >> 8;
 
@@ -314,39 +307,18 @@ RESTART:
      * it will override the input width_out/height_out for
      * ratio calculations, a.k.a we have a window for video content
      */
-    if(osd_layer_preblend){
-	 if ((osd_layer_width == 0) || (osd_layer_height == 0)) {
-             video_top = 0;
-             video_left = 0;
-             video_width = width_out;
-             video_height = height_out;
 
-    	 } else {
-             video_top = osd_layer_top;
-             video_left = osd_layer_left;
-             video_width = osd_layer_width;
-             video_height = osd_layer_height;
-         }	
+    if ((video_layer_width == 0) || (video_layer_height == 0)) {
+        video_top = 0;
+        video_left = 0;
+        video_width = width_out;
+        video_height = height_out;
+
     } else {
         video_top = video_layer_top;
         video_left = video_layer_left;
         video_width = video_layer_width;
         video_height = video_layer_height;
-
-        if ((video_top == 0) && (video_left == 0) && (video_width <= 1) && (video_height <= 1)) {
-            /* special case to do full screen display */
-            video_width = width_out;
-            video_height = height_out;
-        } else {
-        	  if ((video_layer_width < 16) && (video_layer_height < 16)) {
-                /* sanity check to move video out when the target size is too small */
-                video_width = width_out;
-                video_height = height_out;
-                video_left = width_out * 2;
-            }
-            video_top += video_layer_global_offset_y;
-            video_left+= video_layer_global_offset_x;
-        }
     }
 
     screen_width = video_width * vpp_zoom_ratio / 100;
@@ -617,25 +589,7 @@ vpp_set_filters(u32 wide_mode,
                      vpp_flags,
                      next_frame_par);
 }
-void vpp_set_osd_layer_preblend(u32 *enable)
-{
-	osd_layer_preblend=*enable;
-}
-//para[0] x para[1] y para[2] w para[3] h
-void vpp_set_osd_layer_position(s32  *para)
-{
-	if(IS_ERR_OR_NULL(&para[3]))
-	{
-		printk("para[3] is null\n");
-		return ;
-	}	
-	if(para[2] < 2 || para[3] < 2) return ;
 
-	osd_layer_left=para[0];
-	osd_layer_top=para[1];
-	osd_layer_width=para[2];
-	osd_layer_height=para[3];
-}
 void vpp_set_video_layer_position(s32 x, s32 y, s32 w, s32 h)
 {
     if ((w < 0) || (h < 0)) {
@@ -654,18 +608,6 @@ void vpp_get_video_layer_position(s32 *x, s32 *y, s32 *w, s32 *h)
     *y = video_layer_top;
     *w = video_layer_width;
     *h = video_layer_height;
-}
-
-void vpp_set_global_offset(s32 x, s32 y)
-{
-    video_layer_global_offset_x = x;
-    video_layer_global_offset_y = y;
-}
-
-void vpp_get_global_offset(s32 *x, s32 *y)
-{
-    *x = video_layer_global_offset_x;
-    *y = video_layer_global_offset_y;
 }
 
 void vpp_set_zoom_ratio(u32 r)

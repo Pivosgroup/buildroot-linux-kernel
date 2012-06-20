@@ -9,8 +9,8 @@ extern int uninit_ppmgr_device(void);
 extern struct class* init_ppmgr_cls(void);
 
 /* for thread of ppmgr. */
-extern int start_vpp_task(void);
-extern void stop_vpp_task(void);
+extern int start_ppmgr_task(void);
+extern void stop_ppmgr_task(void);
 
 /* for ppmgr private member. */
 extern void set_ppmgr_buf_info(char* start,unsigned int size);

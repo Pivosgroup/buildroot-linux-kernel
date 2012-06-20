@@ -2316,6 +2316,8 @@ void di_pre_process(void)
             nr_hfilt_en,                                                        // nr_hfilt_en
             nr_hfilt_mb_en,                                                     // nr_hfilt_mb_en
             1,                                                                  // mtn_modify_en,
+#elif defined(CONFIG_ARCH_MESON3)
+            1,                                                                  // hist check_en
 #endif
             (prev_struct == 1) ? 1 : 0,                                         // field num for chan2. 1 bottom, 0 top.
             0,                                                                  // pre viu link.

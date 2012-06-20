@@ -175,20 +175,10 @@ typedef  struct {
 #define  FBIOGET_OSD_FREE_SCALE_AXIS 0x450f
 #define  FBIOPUT_OSD_FREE_SCALE_AXIS 0x4510
 #define  FBIOPUT_OSD_ENFORCE_PROGRESSIVE 0x4511
+#define  FBIOPUT_OSD_CANVAS_CONF		 0x4512
 
 
 
-#ifdef CONFIG_FB_MULTI_OUTPUT_MODE
-typedef  struct {
-	char *name;	
-	__u32   xres;
-	__u32   yres;
-	__u32   xres_virtual;
-	__u32   yres_virtual;
-}para_info_outputmode_osd_t;
-#define outputmode_num 7
-extern char outputmode[];
-#endif
 
 
 

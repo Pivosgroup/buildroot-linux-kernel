@@ -5,8 +5,8 @@
 menu "AMLOGIC Deinterlace driver"
 
 config DEINTERLACE
-    tristate "DEINTERLACE driver"
-    default y
+	tristate "DEINTERLACE driver"
+	default n
 	help
 	  Select to enable AMLOGIC DEINTERLACE driver.
 endmenu

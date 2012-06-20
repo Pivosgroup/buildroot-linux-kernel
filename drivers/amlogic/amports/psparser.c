@@ -323,10 +323,6 @@ static u32 parser_process(s32 type, s32 packet_len)
                     }
                     ptsmgr_vpts_checkin(pts);
                 }
-            } else if ((pts_dts_flag & 1) == 1) {
-               ptsmgr_vpts_checkin(dts);
-            } else if ((pts_dts_flag & 2) == 2) {
-               ptsmgr_vpts_checkin(pts);
             }
 #else
             if (!ptsmgr_first_vpts_ready()) {
@@ -861,8 +857,7 @@ s32 psparser_init(u32 vid, u32 aid, u32 sid)
 
     WRITE_MPEG_REG(PARSER_SUB_START_PTR, parser_sub_start_ptr);
     WRITE_MPEG_REG(PARSER_SUB_END_PTR, parser_sub_end_ptr);
-    WRITE_MPEG_REG(PARSER_SUB_RP, parser_sub_start_ptr);
-    WRITE_MPEG_REG(PARSER_SUB_WP, parser_sub_start_ptr);
+    WRITE_MPEG_REG(PARSER_SUB_RP, parser_sub_rp);
     SET_MPEG_REG_MASK(PARSER_ES_CONTROL, (7 << ES_SUB_WR_ENDIAN_BIT) | ES_SUB_MAN_RD_PTR);
 
     WRITE_MPEG_REG(PFIFO_RD_PTR, 0);

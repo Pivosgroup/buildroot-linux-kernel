@@ -1513,23 +1513,6 @@ static struct platform_device ppmgr_device = {
     .resource      = ppmgr_resources,
 };
 #endif
-#ifdef CONFIG_FREE_SCALE
-static struct resource freescale_resources[] = {
-    [0] = {
-        .start = FREESCALE_ADDR_START,
-        .end   = FREESCALE_ADDR_END,
-        .flags = IORESOURCE_MEM,
-    },
-};
-
-static struct platform_device freescale_device =
-{
-    .name           = "freescale",
-    .id             = 0,
-    .num_resources  = ARRAY_SIZE(freescale_resources),
-    .resource       = freescale_resources,
-};
-#endif
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AM_UART_WITH_S_CORE)
         &aml_uart_device,
@@ -1622,9 +1605,6 @@ static struct platform_device __initdata *platform_devs[] = {
     #ifdef CONFIG_POST_PROCESS_MANAGER
         &ppmgr_device,
     #endif
-    #ifdef CONFIG_FREE_SCALE
-        &freescale_device,
-    #endif        
 
     #ifdef CONFIG_EFUSE
     &aml_efuse_device,

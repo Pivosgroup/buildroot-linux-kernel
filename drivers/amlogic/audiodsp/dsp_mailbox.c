@@ -22,7 +22,7 @@
 extern set_pcminfo_data(void * pcm_encoded_info);
 static void audiodsp_mailbox_work_queue(struct work_struct*);
 static struct audiodsp_work_t{
-char buf[81];
+char* buf;
 struct work_struct audiodsp_workqueue;
 }audiodsp_work;
 
@@ -118,8 +118,7 @@ static irqreturn_t audiodsp_mailbox_irq(int irq, void *data)
 		SYS_CLEAR_IRQ(M1B_IRQ0_PRINT);
 	//	inv_dcache_range((unsigned  long )msg.data,(unsigned long)msg.data+msg.len);
 	
-	    strncpy(audiodsp_work.buf, msg.data, 80);
-        audiodsp_work.buf[80] = '\0';
+	    audiodsp_work.buf = msg.data;
         schedule_work(&audiodsp_work.audiodsp_workqueue);		
 		}
 	if(status&(1<<M1B_IRQ1_BUF_OVERFLOW))

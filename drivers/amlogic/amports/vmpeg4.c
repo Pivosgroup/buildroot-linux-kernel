@@ -108,6 +108,10 @@ static vframe_t *vmpeg_vf_peek(void*);
 static vframe_t *vmpeg_vf_get(void*);
 static void vmpeg_vf_put(vframe_t *, void*);
 static int  vmpeg_vf_states(vframe_states_t *states, void*);
+static int vmpeg_event_cb(int type, void *data, void *private_data);
+
+static void vmpeg4_prot_init(void);
+static void vmpeg4_local_init(void);
 
 static const char vmpeg4_dec_id[] = "vmpeg4-dev";
 
@@ -116,6 +120,7 @@ static const struct vframe_operations_s vmpeg_vf_provider = {
     .peek = vmpeg_vf_peek,
     .get = vmpeg_vf_get,
     .put = vmpeg_vf_put,
+    .event_cb = vmpeg_event_cb,
     .vf_states = vmpeg_vf_states,
 };
 static struct vframe_provider_s vmpeg_vf_prov;
@@ -180,7 +185,7 @@ static inline void ptr_atomic_wrap_inc(u32 *ptr)
 
 static void set_aspect_ratio(vframe_t *vf, unsigned pixel_ratio)
 {
-    unsigned int ar = 0;
+    int ar = 0;
     unsigned int num = 0;
     unsigned int den = 0;
 
@@ -482,6 +487,27 @@ static void vmpeg_vf_put(vframe_t *vf, void* op_arg)
 {
     INCPTR(putting_ptr);
 }
+
+static int vmpeg_event_cb(int type, void *data, void *private_data)
+{
+    if(type & VFRAME_EVENT_RECEIVER_RESET){
+        unsigned long flags;
+        amvdec_stop();
+#ifndef CONFIG_POST_PROCESS_MANAGER
+        vf_light_unreg_provider(&vmpeg_vf_prov);
+#endif
+        spin_lock_irqsave(&lock, flags);
+        vmpeg4_local_init();
+        vmpeg4_prot_init();
+        spin_unlock_irqrestore(&lock, flags); 
+#ifndef CONFIG_POST_PROCESS_MANAGER
+        vf_reg_provider(&vmpeg_vf_prov);
+#endif              
+        amvdec_start();
+    }
+    return 0;        
+}
+
 static int  vmpeg_vf_states(vframe_states_t *states, void* op_arg)
 {
     unsigned long flags;
