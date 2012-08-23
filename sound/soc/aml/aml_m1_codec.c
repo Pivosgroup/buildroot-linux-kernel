@@ -270,7 +270,7 @@ static int aml_m1_codec_mute(struct snd_soc_dai *dai, int mute)
 #define AML_RATES SNDRV_PCM_RATE_8000_96000
 
 #define AML_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | \
-	SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE)
+	SNDRV_PCM_FMTBIT_S32_LE)
 
 
 static struct snd_soc_dai_ops aml_m1_codec_dai_ops = {
