@@ -235,18 +235,19 @@ t_void
 wlan_clean_txrx(pmlan_private priv)
 {
     mlan_adapter *pmadapter = priv->adapter;
+    t_u8 i = 0;
 
     ENTER();
 
     if (GET_BSS_ROLE(priv) == MLAN_BSS_ROLE_STA) {
         wlan_cleanup_bypass_txq(pmadapter);
     }
+    wlan_11n_cleanup_reorder_tbl(priv);
 
     pmadapter->callbacks.moal_spin_lock(pmadapter->pmoal_handle,
                                         priv->wmm.ra_list_spinlock);
 
     wlan_wmm_cleanup_queues(priv);
-    wlan_11n_cleanup_reorder_tbl(priv);
     wlan_11n_deleteall_txbastream_tbl(priv);
 #ifdef SDIO_MULTI_PORT_TX_AGGR
     MP_TX_AGGR_BUF_RESET(priv->adapter);
@@ -256,6 +257,9 @@ wlan_clean_txrx(pmlan_private priv)
 #endif
     wlan_wmm_delete_all_ralist(priv);
     memcpy(pmadapter, tos_to_tid, ac_to_tid, sizeof(tos_to_tid));
+    for (i = 0; i < MAX_NUM_TID; i++) {
+        tos_to_tid_inv[tos_to_tid[i]] = (t_u8) i;
+    }
     pmadapter->callbacks.moal_spin_unlock(pmadapter->pmoal_handle,
                                           priv->wmm.ra_list_spinlock);
 
@@ -405,7 +409,7 @@ wlan_wmm_setup_queue_priorities(pmlan_private priv,
         priv->wmm.queue_priority[ac_idx] = ac_idx;
         tmp[ac_idx] = avg_back_off;
 
-        PRINTM(MINFO, "WMM: CWmax=%d CWmin=%d Avg Back-off=%d\n",
+        PRINTM(MCMND, "WMM: CWmax=%d CWmin=%d Avg Back-off=%d\n",
                (1 << pwmm_ie->ac_params[num_ac].ecw.ecw_max) - 1,
                cw_min, avg_back_off);
         PRINTM_AC(&pwmm_ie->ac_params[num_ac]);
@@ -435,8 +439,8 @@ wlan_wmm_setup_queue_priorities(pmlan_private priv,
     wlan_wmm_queue_priorities_tid(priv, priv->wmm.queue_priority);
 
     HEXDUMP("WMM: avg_back_off, sort", (t_u8 *) tmp, sizeof(tmp));
-    HEXDUMP("WMM: queue_priority, sort", priv->wmm.queue_priority,
-            sizeof(priv->wmm.queue_priority));
+    DBG_HEXDUMP(MCMD_D, "WMM: queue_priority, sort", priv->wmm.queue_priority,
+                sizeof(priv->wmm.queue_priority));
     LEAVE();
 }
 
@@ -570,7 +574,12 @@ wlan_wmm_downgrade_tid(pmlan_private priv, t_u32 tid)
      * Send the index to tid array, picking from the array will be
      * taken care by dequeuing function
      */
-    return ac_to_tid[ac_down][tid % 2];
+    if (tid == 1 || tid == 2)
+        return ac_to_tid[ac_down][(tid + 1) % 2];
+    else if (tid >= MAX_NUM_TID)
+        return ac_to_tid[ac_down][0];
+    else
+        return ac_to_tid[ac_down][tid % 2];
 }
 
 /********************************************************
@@ -594,22 +603,26 @@ wlan_wmm_init(pmlan_adapter pmadapter)
     for (j = 0; j < MLAN_MAX_BSS_NUM; ++j) {
         if ((priv = pmadapter->priv[j])) {
             for (i = 0; i < MAX_NUM_TID; ++i) {
-                priv->aggr_prio_tbl[i].amsdu = tos_to_tid_inv[i];
+                priv->aggr_prio_tbl[i].amsdu = BA_STREAM_NOT_ALLOWED;
                 priv->aggr_prio_tbl[i].ampdu_ap =
                     priv->aggr_prio_tbl[i].ampdu_user = tos_to_tid_inv[i];
-
+                priv->wmm.pkts_queued[i] = 0;
+                priv->wmm.packets_out[i] = 0;
+                priv->wmm.packets_in[i] = 0;
                 priv->wmm.tid_tbl_ptr[i].ra_list_curr = MNULL;
             }
 
-            priv->aggr_prio_tbl[6].amsdu = priv->aggr_prio_tbl[6].ampdu_ap
+            priv->aggr_prio_tbl[6].ampdu_ap
                 = priv->aggr_prio_tbl[6].ampdu_user = BA_STREAM_NOT_ALLOWED;
 
-            priv->aggr_prio_tbl[7].amsdu = priv->aggr_prio_tbl[7].ampdu_ap
+            priv->aggr_prio_tbl[7].ampdu_ap
                 = priv->aggr_prio_tbl[7].ampdu_user = BA_STREAM_NOT_ALLOWED;
 
             priv->add_ba_param.timeout = MLAN_DEFAULT_BLOCK_ACK_TIMEOUT;
             priv->add_ba_param.tx_win_size = MLAN_AMPDU_DEF_TXWINSIZE;
             priv->add_ba_param.rx_win_size = MLAN_AMPDU_DEF_RXWINSIZE;
+            memset(priv->adapter, priv->rx_seq, 0xff, sizeof(priv->rx_seq));
+            wlan_wmm_default_queue_priorities(priv);
         }
     }
 
@@ -759,6 +772,7 @@ wlan_wmm_cleanup_queues(pmlan_private priv)
 
     for (i = 0; i < MAX_NUM_TID; i++) {
         wlan_wmm_del_pkts_in_ralist(priv, &priv->wmm.tid_tbl_ptr[i].ra_list);
+        priv->wmm.pkts_queued[i] = 0;
     }
     util_scalar_write(priv->adapter->pmoal_handle, &priv->wmm.tx_pkts_queued, 0,
                       MNULL, MNULL);
@@ -953,7 +967,8 @@ wlan_wmm_add_buf_txqueue(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
 
     ra_list->total_pkts_size += pmbuf->data_len;
     ra_list->packet_count++;
-
+    priv->wmm.pkts_queued[tid_down]++;
+    priv->wmm.packets_in[tid_down]++;
     // PRINTM(MERROR, "[+%d->%u] ", pmbuf->data_len, ra_list->total_pkts_size);
 
     util_scalar_increment(pmadapter->pmoal_handle, &priv->wmm.tx_pkts_queued,
@@ -1319,12 +1334,11 @@ wlan_wmm_get_highest_priolist_ptr(pmlan_adapter pmadapter,
 
         if (pmadapter->bssprio_tbl[j].bssprio_cur == (mlan_bssprio_node *)
             & pmadapter->bssprio_tbl[j].bssprio_head) {
-
-            bssprio_head = bssprio_node =
+            pmadapter->bssprio_tbl[j].bssprio_cur =
                 pmadapter->bssprio_tbl[j].bssprio_cur->pnext;
-        } else {
-            bssprio_head = bssprio_node = pmadapter->bssprio_tbl[j].bssprio_cur;
         }
+
+        bssprio_head = bssprio_node = pmadapter->bssprio_tbl[j].bssprio_cur;
 
         do {
             priv_tmp = bssprio_node->priv;
@@ -1453,6 +1467,7 @@ wlan_send_single_packet(pmlan_private priv, raListTbl * ptr, int ptrindex)
                                                   &ptr->buf_head,
                                                   MNULL, MNULL))) {
         PRINTM(MINFO, "Dequeuing the packet %p %p\n", ptr, pmbuf);
+        priv->wmm.pkts_queued[ptrindex]--;
         util_scalar_decrement(pmadapter->pmoal_handle,
                               &priv->wmm.tx_pkts_queued, MNULL, MNULL);
         ptr->total_pkts_size -= pmbuf->data_len;
@@ -1480,6 +1495,7 @@ wlan_send_single_packet(pmlan_private priv, raListTbl * ptr, int ptrindex)
                 LEAVE();
                 return;
             }
+            priv->wmm.pkts_queued[ptrindex]++;
             util_scalar_increment(pmadapter->pmoal_handle,
                                   &priv->wmm.tx_pkts_queued, MNULL, MNULL);
             util_enqueue_list_head(pmadapter->pmoal_handle, &ptr->buf_head,
@@ -1603,6 +1619,7 @@ wlan_send_processed_packet(pmlan_private priv, raListTbl * ptr, int ptrindex)
             }
             pmadapter->bssprio_tbl[priv->bss_priority].bssprio_cur =
                 pmadapter->bssprio_tbl[priv->bss_priority].bssprio_cur->pnext;
+            priv->wmm.pkts_queued[ptrindex]--;
             util_scalar_decrement(pmadapter->pmoal_handle,
                                   &priv->wmm.tx_pkts_queued, MNULL, MNULL);
             pmadapter->callbacks.moal_spin_unlock(pmadapter->pmoal_handle,
@@ -1656,6 +1673,8 @@ wlan_dequeue_tx_packet(pmlan_adapter pmadapter)
        Otherwise there would be a lock up. */
 
     tid = wlan_get_tid(priv->adapter, ptr);
+    if (tid >= MAX_NUM_TID)
+        tid = wlan_wmm_downgrade_tid(priv, tid);
 
     for (i = 1; i < pmadapter->mp_end_port; i++) {
         if ((pmadapter->mp_wr_bitmap >> i) & 1)
@@ -1744,6 +1763,30 @@ wlan_wmm_process_tx(pmlan_adapter pmadapter)
 
     LEAVE();
     return;
+}
+
+/** 
+ *  @brief select wmm queue
+ *
+ *  @param pmpriv       A pointer to mlan_private structure
+ *  @param tid          TID 0-7
+ *
+ *  @return             wmm_queue priority (0-3)
+ */
+t_u8
+wlan_wmm_select_queue(mlan_private * pmpriv, t_u8 tid)
+{
+    pmlan_adapter pmadapter = pmpriv->adapter;
+    t_u8 i;
+    mlan_wmm_ac_e ac_down =
+        pmpriv->wmm.
+        ac_down_graded_vals[wlan_wmm_convert_tos_to_ac(pmadapter, tid)];
+
+    for (i = 0; i < 4; i++) {
+        if (pmpriv->wmm.queue_priority[i] == ac_down)
+            return i;
+    }
+    return 0;
 }
 
 #ifdef STA_SUPPORT

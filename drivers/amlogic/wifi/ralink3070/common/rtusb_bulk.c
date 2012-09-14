@@ -5,34 +5,46 @@
  * Hsinchu County 302,
  * Taiwan, R.O.C.
  *
- * (c) Copyright 2002-2010, Ralink Technology, Inc.
+ * (c) Copyright 2002-2007, Ralink Technology, Inc.
  *
- * This program is free software; you can redistribute it and/or modify  *
- * it under the terms of the GNU General Public License as published by  *
- * the Free Software Foundation; either version 2 of the License, or     *
- * (at your option) any later version.                                   *
- *                                                                       *
- * This program is distributed in the hope that it will be useful,       *
- * but WITHOUT ANY WARRANTY; without even the implied warranty of        *
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
- * GNU General Public License for more details.                          *
- *                                                                       *
- * You should have received a copy of the GNU General Public License     *
- * along with this program; if not, write to the                         *
- * Free Software Foundation, Inc.,                                       *
- * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
- *                                                                       *
- *************************************************************************/
+ * This program is free software; you can redistribute it and/or modify  * 
+ * it under the terms of the GNU General Public License as published by  * 
+ * the Free Software Foundation; either version 2 of the License, or     * 
+ * (at your option) any later version.                                   * 
+ *                                                                       * 
+ * This program is distributed in the hope that it will be useful,       * 
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of        * 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         * 
+ * GNU General Public License for more details.                          * 
+ *                                                                       * 
+ * You should have received a copy of the GNU General Public License     * 
+ * along with this program; if not, write to the                         * 
+ * Free Software Foundation, Inc.,                                       * 
+ * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             * 
+ *                                                                       * 
+ *************************************************************************
 
+	Module Name:
+	rtusb_bulk.c
+
+	Abstract:
+
+	Revision History:
+	Who			When		What
+	--------	----------	----------------------------------------------
+	Name		Date		Modification logs
+	Paul Lin	06-25-2004	created
+	
+*/
 
 #ifdef RTMP_MAC_USB
 
 
 #include	"rt_config.h"
-/* Match total 6 bulkout endpoint to corresponding queue.*/
+// Match total 6 bulkout endpoint to corresponding queue.
 UCHAR	EpToQueue[6]={FIFO_EDCA, FIFO_EDCA, FIFO_EDCA, FIFO_EDCA, FIFO_EDCA, FIFO_MGMT};
 
-/*static BOOLEAN SingleBulkOut = FALSE;*/
+//static BOOLEAN SingleBulkOut = FALSE;
 
 
 VOID	RTUSBInitTxDesc(
@@ -48,37 +60,27 @@ VOID	RTUSBInitTxDesc(
 	pUrb = pTxContext->pUrb;
 	ASSERT(pUrb);
 
-	/* Store BulkOut PipeId*/
+	// Store BulkOut PipeId
 	pTxContext->BulkOutPipeId = BulkOutPipeId;
 
 	if (pTxContext->bAggregatible)
 	{
 		pSrc = &pTxContext->TransferBuffer->Aggregation[2];
-
-		/*Initialize a tx bulk urb*/
-		RTUSB_FILL_TX_BULK_URB(pUrb,
-						pObj->pUsb_Dev,
-						pAd->BulkOutEpAddr[BulkOutPipeId],
-						pSrc,
-						pTxContext->BulkOutSize,
-						Func,
-						pTxContext,
-						(pTxContext->data_dma + TX_BUFFER_NORMSIZE + 2));
 	}
 	else
 	{
 		pSrc = (PUCHAR) pTxContext->TransferBuffer->field.WirelessPacket;
-
-		/*Initialize a tx bulk urb*/
-		RTUSB_FILL_TX_BULK_URB(pUrb,
-						pObj->pUsb_Dev,
-						pAd->BulkOutEpAddr[BulkOutPipeId],
-						pSrc,
-						pTxContext->BulkOutSize,
-						Func,
-						pTxContext,
-						pTxContext->data_dma);
 	}
+
+	
+	//Initialize a tx bulk urb
+	RTUSB_FILL_TX_BULK_URB(pUrb,
+			       pObj->pUsb_Dev,
+			       pAd->BulkOutEpAddr[BulkOutPipeId],
+			       pSrc,
+			       pTxContext->BulkOutSize,
+			       Func,
+			       pTxContext);
 }
 
 VOID	RTUSBInitHTTxDesc(
@@ -95,20 +97,19 @@ VOID	RTUSBInitHTTxDesc(
 	pUrb = pTxContext->pUrb;
 	ASSERT(pUrb);
 
-	/* Store BulkOut PipeId*/
+	// Store BulkOut PipeId
 	pTxContext->BulkOutPipeId = BulkOutPipeId;
 
 	pSrc = &pTxContext->TransferBuffer->field.WirelessPacket[pTxContext->NextBulkOutPosition];
 
-	/*Initialize a tx bulk urb*/
+	//Initialize a tx bulk urb
 	RTUSB_FILL_HTTX_BULK_URB(pUrb,
-						pObj->pUsb_Dev,
-						pAd->BulkOutEpAddr[BulkOutPipeId],
-						pSrc,
-						BulkOutSize,
-						Func,
-						pTxContext,
-						(pTxContext->data_dma + pTxContext->NextBulkOutPosition));
+				 pObj->pUsb_Dev,
+				 pAd->BulkOutEpAddr[BulkOutPipeId],
+				 pSrc,
+				 BulkOutSize,
+				 Func,
+				 pTxContext);
 }
 
 VOID	RTUSBInitRxDesc(
@@ -129,15 +130,14 @@ VOID	RTUSBInitRxDesc(
 		RX_bulk_size = MAX_RXBULK_SIZE;
 		
 
-	/*Initialize a rx bulk urb*/
+	//Initialize a rx bulk urb
 	RTUSB_FILL_RX_BULK_URB(pUrb,
-					pObj->pUsb_Dev,
-					pAd->BulkInEpAddr,
-					&(pRxContext->TransferBuffer[pAd->NextRxBulkInPosition]),
-					RX_bulk_size - (pAd->NextRxBulkInPosition),
-					RtmpUsbBulkRxComplete,
-					(void *)pRxContext,
-					(pRxContext->data_dma + pAd->NextRxBulkInPosition));
+			       pObj->pUsb_Dev,
+			       pAd->BulkInEpAddr,
+			       &(pRxContext->TransferBuffer[pAd->NextRxBulkInPosition]),
+			       RX_bulk_size - (pAd->NextRxBulkInPosition),
+			       RTUSBBulkRxComplete,
+			       (void *)pRxContext);
 }
 
 /*
@@ -177,15 +177,8 @@ VOID	RTUSBBulkOutDataPacket(
 	ULONG			TmpBulkEndPos, ThisBulkSize;
 	unsigned long	IrqFlags = 0, IrqFlags2 = 0;
 	PUCHAR			pWirelessPkt, pAppendant;
-
-#ifdef USB_BULK_BUF_ALIGMENT
-	BOOLEAN			bLasAlignmentsectiontRound = FALSE;
-#else
 	BOOLEAN			bTxQLastRound = FALSE;
 	UCHAR			allzero[4]= {0x0,0x0,0x0,0x0};
-#endif /* USB_BULK_BUF_ALIGMENT */
-
-
 
 	BULK_OUT_LOCK(&pAd->BulkOutLock[BulkOutPipeId], IrqFlags);
 	if ((pAd->BulkOutPending[BulkOutPipeId] == TRUE) || RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_NEED_STOP_TX))
@@ -195,8 +188,7 @@ VOID	RTUSBBulkOutDataPacket(
 	}
 	pAd->BulkOutPending[BulkOutPipeId] = TRUE;
 	
-	if (((!OPSTATUS_TEST_FLAG(pAd, fOP_AP_STATUS_MEDIA_STATE_CONNECTED)) &&
-		( !OPSTATUS_TEST_FLAG(pAd, fOP_STATUS_MEDIA_STATE_CONNECTED)))
+	if (!OPSTATUS_TEST_FLAG(pAd, fOP_STATUS_MEDIA_STATE_CONNECTED)
 		)
 	{
 		pAd->BulkOutPending[BulkOutPipeId] = FALSE;
@@ -210,19 +202,14 @@ VOID	RTUSBBulkOutDataPacket(
 
 	BULK_OUT_LOCK(&pAd->TxContextQueueLock[BulkOutPipeId], IrqFlags2);
 	if ((pHTTXContext->ENextBulkOutPosition == pHTTXContext->CurWritePosition)
-#ifdef USB_BULK_BUF_ALIGMENT
-		|| ((pHTTXContext->CurWriteRealPos > pHTTXContext->CurWritePosition) &&(pHTTXContext->NextBulkIdx == pHTTXContext->CurWriteIdx) )
-#else
-		|| ((pHTTXContext->ENextBulkOutPosition-8) == pHTTXContext->CurWritePosition)
-#endif /* USB_BULK_BUF_ALIGMENT */
-		)  /* druing writing. */
+		|| ((pHTTXContext->ENextBulkOutPosition-8) == pHTTXContext->CurWritePosition))
 	{
 		BULK_OUT_UNLOCK(&pAd->TxContextQueueLock[BulkOutPipeId], IrqFlags2);
 		
 		BULK_OUT_LOCK(&pAd->BulkOutLock[BulkOutPipeId], IrqFlags);
 		pAd->BulkOutPending[BulkOutPipeId] = FALSE;
 		
-		/* Clear Data flag*/
+		// Clear Data flag
 		RTUSB_CLEAR_BULK_FLAG(pAd, (fRTUSB_BULK_OUT_DATA_FRAG << BulkOutPipeId));
 		RTUSB_CLEAR_BULK_FLAG(pAd, (fRTUSB_BULK_OUT_DATA_NORMAL << BulkOutPipeId));
 		
@@ -230,19 +217,18 @@ VOID	RTUSBBulkOutDataPacket(
 		return;
 	}
 
-	/* Clear Data flag*/
+	// Clear Data flag
 	RTUSB_CLEAR_BULK_FLAG(pAd, (fRTUSB_BULK_OUT_DATA_FRAG << BulkOutPipeId));
 	RTUSB_CLEAR_BULK_FLAG(pAd, (fRTUSB_BULK_OUT_DATA_NORMAL << BulkOutPipeId));
 
-	/*DBGPRINT(RT_DEBUG_TRACE,("BulkOut-B:I=0x%lx, CWPos=%ld, CWRPos=%ld, NBPos=%ld, ENBPos=%ld, bCopy=%d!\n", in_interrupt(), */
-	/*							pHTTXContext->CurWritePosition, pHTTXContext->CurWriteRealPos, pHTTXContext->NextBulkOutPosition, */
-	/*							pHTTXContext->ENextBulkOutPosition, pHTTXContext->bCopySavePad));*/
+	//DBGPRINT(RT_DEBUG_TRACE,("BulkOut-B:I=0x%lx, CWPos=%ld, CWRPos=%ld, NBPos=%ld, ENBPos=%ld, bCopy=%d!\n", in_interrupt(), 
+	//							pHTTXContext->CurWritePosition, pHTTXContext->CurWriteRealPos, pHTTXContext->NextBulkOutPosition, 
+	//							pHTTXContext->ENextBulkOutPosition, pHTTXContext->bCopySavePad));
 	pHTTXContext->NextBulkOutPosition = pHTTXContext->ENextBulkOutPosition;	
 	ThisBulkSize = 0;
 	TmpBulkEndPos = pHTTXContext->NextBulkOutPosition;
 	pWirelessPkt = &pHTTXContext->TransferBuffer->field.WirelessPacket[0];
-
-#ifndef USB_BULK_BUF_ALIGMENT	
+	
 	if ((pHTTXContext->bCopySavePad == TRUE))
 	{
 		if (RTMPEqualMemory(pHTTXContext->SavedPad, allzero,4))
@@ -256,7 +242,6 @@ VOID	RTUSBBulkOutDataPacket(
 		if (pAd->bForcePrintTX == TRUE)
 			DBGPRINT(RT_DEBUG_TRACE,("RTUSBBulkOutDataPacket --> COPY PAD. CurWrite = %ld, NextBulk = %ld.   ENextBulk = %ld.\n",   pHTTXContext->CurWritePosition, pHTTXContext->NextBulkOutPosition, pHTTXContext->ENextBulkOutPosition));
 	}
-#endif /* USB_BULK_BUF_ALIGMENT */
 
 
 	do
@@ -267,8 +252,8 @@ VOID	RTUSBBulkOutDataPacket(
 		if (pAd->bForcePrintTX == TRUE)
 			DBGPRINT(RT_DEBUG_TRACE, ("RTUSBBulkOutDataPacket AMPDU = %d.\n",   pTxWI->AMPDU));
 		
-		/* add by Iverson, limit BulkOut size to 4k to pass WMM b mode 2T1R test items*/
-		/*if ((ThisBulkSize != 0)  && (pTxWI->AMPDU == 0))*/
+		// add by Iverson, limit BulkOut size to 4k to pass WMM b mode 2T1R test items
+		//if ((ThisBulkSize != 0)  && (pTxWI->AMPDU == 0))
 		if ((ThisBulkSize != 0) && (pTxWI->PHYMODE == MODE_CCK))
 		{
 #ifdef INF_AMAZON_SE
@@ -283,8 +268,8 @@ VOID	RTUSBBulkOutDataPacket(
                 }    
 				else if (((ThisBulkSize&0xffff8000) != 0) || ((ThisBulkSize&pAd->BulkOutDataSizeLimit[BulkOutPipeId]) == pAd->BulkOutDataSizeLimit[BulkOutPipeId]))
 				{	
-			/*printk("===Bulkout size limit :%d ===\n",MaxBulkOutSize);*/
-			/*DBGPRINT(RT_DEBUG_TRACE,("b mode BulkOutPipeId %d  pAd->BulkOutDataSizeLimit[BulkOutPipeId] %d  \n",BulkOutPipeId,pAd->BulkOutDataSizeLimit[BulkOutPipeId]));*/
+			//printk("===Bulkout size limit :%d ===\n",MaxBulkOutSize);
+			//DBGPRINT(RT_DEBUG_TRACE,("b mode BulkOutPipeId %d  pAd->BulkOutDataSizeLimit[BulkOutPipeId] %d  \n",BulkOutPipeId,pAd->BulkOutDataSizeLimit[BulkOutPipeId]));
 					pHTTXContext->ENextBulkOutPosition = TmpBulkEndPos;
 					break;
 				}
@@ -296,104 +281,48 @@ VOID	RTUSBBulkOutDataPacket(
 				pHTTXContext->ENextBulkOutPosition = TmpBulkEndPos;
 				break;
 			}
-#endif /* INF_AMAZON_SE */
+#endif // INF_AMAZON_SE //
 #ifndef INF_AMAZON_SE
-#ifndef USB_BULK_BUF_ALIGMENT
 			if (((ThisBulkSize&0xffff8000) != 0) || ((ThisBulkSize&0x1000) == 0x1000))
 			{
-				/* Limit BulkOut size to about 4k bytes.*/
+				// Limit BulkOut size to about 4k bytes.
 				pHTTXContext->ENextBulkOutPosition = TmpBulkEndPos;
 				break;
 			}
-#else
-			if (((ThisBulkSize&0xffff8000) != 0) || ((ThisBulkSize&0x6000) == 0x6000))
-			{
-				/* Limit BulkOut size to about 24k bytes.*/
-				pHTTXContext->ENextBulkOutPosition = TmpBulkEndPos;
+#endif // INF_AMAZON_SE //
 
-				/*
-					when bulk size is > 6000, it mean that this is the lasttround at this alignmnet section.
-				*/
-				bLasAlignmentsectiontRound = TRUE;				
-				break;
-			}
-
-#endif /* USB_BULK_BUF_ALIGMENT */
-#endif /* INF_AMAZON_SE */
-#ifndef USB_BULK_BUF_ALIGMENT
 			else if (((pAd->BulkOutMaxPacketSize < 512) && ((ThisBulkSize&0xfffff800) != 0) ) /*|| ( (ThisBulkSize != 0)  && (pTxWI->AMPDU == 0))*/)
 			{
-				/* For USB 1.1 or peer which didn't support AMPDU, limit the BulkOut size. */
-				/* For performence in b/g mode, now just check for USB 1.1 and didn't care about the APMDU or not! 2008/06/04.*/
+				// For USB 1.1 or peer which didn't support AMPDU, limit the BulkOut size. 
+				// For performence in b/g mode, now just check for USB 1.1 and didn't care about the APMDU or not! 2008/06/04.
 				pHTTXContext->ENextBulkOutPosition = TmpBulkEndPos;
 				break;
 			}
-#else
-			else if (((pAd->BulkOutMaxPacketSize < 512) && (((ThisBulkSize&0xffff8000) != 0) || ((ThisBulkSize&0x6000) == 0x6000)) ))
-			{
-				/* Limit BulkOut size to about 24k bytes.*/
-				pHTTXContext->ENextBulkOutPosition = TmpBulkEndPos;
-
-				/*
-					when bulk size is > 6000, it mean that this is the lasttround at this alignmnet section.
-				*/
-				bLasAlignmentsectiontRound = TRUE;				
-				break;
-			}
-
-#endif /* USB_BULK_BUF_ALIGMENT */
-
 		}
-		/* end Iverson*/
+		// end Iverson
 		else
 		{
 
 
 		if (((ThisBulkSize&0xffff8000) != 0) || ((ThisBulkSize&0x6000) == 0x6000))
-		{	/* Limit BulkOut size to about 24k bytes.*/
+		{	// Limit BulkOut size to about 24k bytes.
 			pHTTXContext->ENextBulkOutPosition = TmpBulkEndPos;
-#ifdef USB_BULK_BUF_ALIGMENT
-				/*
-					when bulk size is > 0x6000, it mean that this is the lasttround at this alignmnet section.
-				*/
-				bLasAlignmentsectiontRound = TRUE;
-/*				printk("data bulk out bLasAlignmentsectiontRound \n");*/
-#endif /* USB_BULK_BUF_ALIGMENT */
-
 			break;
 		}
 #ifdef INF_AMAZON_SE
 		else if (((ThisBulkSize&0xffff8000) != 0) || ((ThisBulkSize&pAd->BulkOutDataSizeLimit[BulkOutPipeId]) == pAd->BulkOutDataSizeLimit[BulkOutPipeId]))
 		{	
-			/*printk("===Bulkout size limit :%d ===\n",ThisBulkSize);*/
+			//printk("===Bulkout size limit :%d ===\n",ThisBulkSize);
 			pHTTXContext->ENextBulkOutPosition = TmpBulkEndPos;
 			break;
 		}
-#endif /* INF_AMAZON_SE */
-#ifndef USB_BULK_BUF_ALIGMENT
+#endif // INF_AMAZON_SE //
 		else if (((pAd->BulkOutMaxPacketSize < 512) && ((ThisBulkSize&0xfffff800) != 0) ) /*|| ( (ThisBulkSize != 0)  && (pTxWI->AMPDU == 0))*/)
-		{	/* For USB 1.1 or peer which didn't support AMPDU, limit the BulkOut size. */
-			/* For performence in b/g mode, now just check for USB 1.1 and didn't care about the APMDU or not! 2008/06/04.*/
+		{	// For USB 1.1 or peer which didn't support AMPDU, limit the BulkOut size. 
+			// For performence in b/g mode, now just check for USB 1.1 and didn't care about the APMDU or not! 2008/06/04.
 			pHTTXContext->ENextBulkOutPosition = TmpBulkEndPos;
 			break;
 		}
-#else
-			else if (((pAd->BulkOutMaxPacketSize < 512) && (((ThisBulkSize&0xffff8000) != 0) || ((ThisBulkSize&0x6000) == 0x6000)) ))
-			{
-				/* Limit BulkOut size to about 24k bytes.*/
-				pHTTXContext->ENextBulkOutPosition = TmpBulkEndPos;
-
-				/*
-					when bulk size is > 6000, it mean that this is the lasttround at this alignmnet section.
-				*/
-				bLasAlignmentsectiontRound = TRUE;				
-				break;
-			}
-
-#endif /* USB_BULK_BUF_ALIGMENT */
-
-
-
 		}
 		
 		if (TmpBulkEndPos == pHTTXContext->CurWritePosition)
@@ -426,35 +355,24 @@ VOID	RTUSBBulkOutDataPacket(
 			BULK_OUT_LOCK(&pAd->BulkOutLock[BulkOutPipeId], IrqFlags);
 			pAd->BulkOutPending[BulkOutPipeId] = FALSE;
 			BULK_OUT_UNLOCK(&pAd->BulkOutLock[BulkOutPipeId], IrqFlags);
-			/*DBGPRINT(RT_DEBUG_LOUD,("Out:pTxInfo->USBDMATxPktLen=%d!\n", pTxInfo->USBDMATxPktLen));*/
+			//DBGPRINT(RT_DEBUG_LOUD,("Out:pTxInfo->USBDMATxPktLen=%d!\n", pTxInfo->USBDMATxPktLen));
 			return;
 		}
 
-			/* Increase Total transmit byte counter*/
+			// Increase Total transmit byte counter
 		pAd->RalinkCounters.OneSecTransmittedByteCount +=  pTxWI->MPDUtotalByteCount;
 		pAd->RalinkCounters.TransmittedByteCount +=  pTxWI->MPDUtotalByteCount;
 	
 		pLastTxInfo = pTxInfo;
 		
-		/* Make sure we use EDCA QUEUE.  */
+		// Make sure we use EDCA QUEUE.  
 		pTxInfo->QSEL = FIFO_EDCA;
 		ThisBulkSize += (pTxInfo->USBDMATxPktLen+4);
 		TmpBulkEndPos += (pTxInfo->USBDMATxPktLen+4);
 		
 		if (TmpBulkEndPos != pHTTXContext->CurWritePosition)
 			pTxInfo->USBDMANextVLD = 1;
-
-#ifdef USB_BULK_BUF_ALIGMENT		
-/*
-		this is for frag packet , because it will finish this section 
-		when ((((pHTTXContext->CurWritePosition + 3906)& 0x00007fff) & 0xffff6000) == 0x00006000)	
-*/
-		if (pTxInfo->bFragLasAlignmentsectiontRound == 1)
-		{
-			bLasAlignmentsectiontRound = TRUE;
-			break;
-		}
-#else		
+		
 		if (pTxInfo->SwUseLastRound == 1)
 		{
 			if (pHTTXContext->CurWritePosition == 8)
@@ -467,28 +385,28 @@ VOID	RTUSBBulkOutDataPacket(
 	#ifdef RT_BIG_ENDIAN
 			RTMPDescriptorEndianChange((PUCHAR)pTxInfo, TYPE_TXINFO);
 			RTMPWIEndianChange((PUCHAR)pTxWI, TYPE_TXWI);
-	#endif /* RT_BIG_ENDIAN */
+	#endif // RT_BIG_ENDIAN //
 	
 			break;
 		}
-#endif /* USB_BULK_BUF_ALIGMENT */	
+	
 #ifdef RT_BIG_ENDIAN
 		RTMPDescriptorEndianChange((PUCHAR)pTxInfo, TYPE_TXINFO);
 		RTMPWIEndianChange((PUCHAR)pTxWI, TYPE_TXWI);
-#endif /* RT_BIG_ENDIAN */
+#endif // RT_BIG_ENDIAN //
 
 	}while (TRUE);
 
-	/* adjust the pTxInfo->USBDMANextVLD value of last pTxInfo.*/
+	// adjust the pTxInfo->USBDMANextVLD value of last pTxInfo.
 	if (pLastTxInfo)
 	{
 #ifdef RT_BIG_ENDIAN
 		RTMPDescriptorEndianChange((PUCHAR)pLastTxInfo, TYPE_TXINFO);
-#endif /* RT_BIG_ENDIAN */
+#endif // RT_BIG_ENDIAN //
 		pLastTxInfo->USBDMANextVLD = 0;
 #ifdef RT_BIG_ENDIAN
 		RTMPDescriptorEndianChange((PUCHAR)pLastTxInfo, TYPE_TXINFO);
-#endif /* RT_BIG_ENDIAN */
+#endif // RT_BIG_ENDIAN //
 	}
 
 	/* 
@@ -502,7 +420,6 @@ VOID	RTUSBBulkOutDataPacket(
 				(2). The EndPosition of the bulk out is not reach to the Current Write Position.
 					=>(ENextBulkOutPosition != CurWritePosition)
 	*/
-#ifndef USB_BULK_BUF_ALIGMENT
 	if ((bTxQLastRound == FALSE) &&
 		 (((pHTTXContext->ENextBulkOutPosition == pHTTXContext->CurWritePosition) && (pHTTXContext->CurWriteRealPos > pHTTXContext->CurWritePosition)) ||
 		  (pHTTXContext->ENextBulkOutPosition != pHTTXContext->CurWritePosition))
@@ -520,45 +437,29 @@ VOID	RTUSBBulkOutDataPacket(
 			pBuf = &pWirelessPkt[pHTTXContext->CurWritePosition];
 			DBGPRINT_RAW(RT_DEBUG_ERROR,("\tCWPos=%02x%02x%02x%02x%02x%02x%02x%02x\n", pBuf[0], pBuf[1], pBuf[2],pBuf[3],pBuf[4], pBuf[5], pBuf[6],pBuf[7]));
 		}
-		/*DBGPRINT(RT_DEBUG_LOUD,("ENPos==CWPos=%ld, CWRPos=%ld, bCSPad=%d!\n", pHTTXContext->CurWritePosition, pHTTXContext->CurWriteRealPos, pHTTXContext->bCopySavePad));*/
+		//DBGPRINT(RT_DEBUG_LOUD,("ENPos==CWPos=%ld, CWRPos=%ld, bCSPad=%d!\n", pHTTXContext->CurWritePosition, pHTTXContext->CurWriteRealPos, pHTTXContext->bCopySavePad));
 	}
-#endif /* USB_BULK_BUF_ALIGMENT */
-
+				
 	if (pAd->bForcePrintTX == TRUE)
 		DBGPRINT(RT_DEBUG_TRACE,("BulkOut-A:Size=%ld, CWPos=%ld, NBPos=%ld, ENBPos=%ld, bCopy=%d!\n", ThisBulkSize, pHTTXContext->CurWritePosition, pHTTXContext->NextBulkOutPosition, pHTTXContext->ENextBulkOutPosition, pHTTXContext->bCopySavePad));
-	/*DBGPRINT(RT_DEBUG_LOUD,("BulkOut-A:Size=%ld, CWPos=%ld, CWRPos=%ld, NBPos=%ld, ENBPos=%ld, bCopy=%d, bLRound=%d!\n", ThisBulkSize, pHTTXContext->CurWritePosition, pHTTXContext->CurWriteRealPos, pHTTXContext->NextBulkOutPosition, pHTTXContext->ENextBulkOutPosition, pHTTXContext->bCopySavePad, bTxQLastRound));*/
+	//DBGPRINT(RT_DEBUG_LOUD,("BulkOut-A:Size=%ld, CWPos=%ld, CWRPos=%ld, NBPos=%ld, ENBPos=%ld, bCopy=%d, bLRound=%d!\n", ThisBulkSize, pHTTXContext->CurWritePosition, pHTTXContext->CurWriteRealPos, pHTTXContext->NextBulkOutPosition, pHTTXContext->ENextBulkOutPosition, pHTTXContext->bCopySavePad, bTxQLastRound));
 	
-		/* USB DMA engine requires to pad extra 4 bytes. This pad doesn't count into real bulkoutsize.*/
+		// USB DMA engine requires to pad extra 4 bytes. This pad doesn't count into real bulkoutsize.
 	pAppendant = &pWirelessPkt[TmpBulkEndPos];
 	NdisZeroMemory(pAppendant, 8);
 		ThisBulkSize += 4;
 		pHTTXContext->LastOne = TRUE;
 
+// WY , it cause Tx hang on Amazon_SE , Max said the padding is useless
+//		if ((ThisBulkSize % pAd->BulkOutMaxPacketSize) == 0)
+//			ThisBulkSize += 4;
 	pHTTXContext->BulkOutSize = ThisBulkSize;
-#ifdef USB_BULK_BUF_ALIGMENT
-	/*
-		if it is the last alignment section round,that we just need to add nextbulkindex, 
-		otherwise we both need to add  nextbulkindex and CurWriteIdx
-		(because when alignment section round happened, the CurWriteIdx is added at function writing resource.)
-	*/	
-	if(bLasAlignmentsectiontRound == TRUE)
-	{
-			pHTTXContext->ENextBulkOutPosition = ((CUR_WRITE_IDX_INC(pHTTXContext->NextBulkIdx, BUF_ALIGMENT_RINGSIZE)) * 0x8000);
-	}
-	else
-	{	
-			pHTTXContext->ENextBulkOutPosition = ((CUR_WRITE_IDX_INC(pHTTXContext->NextBulkIdx, BUF_ALIGMENT_RINGSIZE)) * 0x8000);
-			pHTTXContext->CurWritePosition = ((CUR_WRITE_IDX_INC(pHTTXContext->CurWriteIdx, BUF_ALIGMENT_RINGSIZE)) * 0x8000);
-	 }
-
-#endif /* USB_BULK_BUF_ALIGMENT */
-
 	
 	pAd->watchDogTxPendingCnt[BulkOutPipeId] = 1;
 	BULK_OUT_UNLOCK(&pAd->TxContextQueueLock[BulkOutPipeId], IrqFlags2);
 	
-	/* Init Tx context descriptor*/
-	RTUSBInitHTTxDesc(pAd, pHTTXContext, BulkOutPipeId, ThisBulkSize, (usb_complete_t)RtmpUsbBulkOutDataPacketComplete);
+	// Init Tx context descriptor
+	RTUSBInitHTTxDesc(pAd, pHTTXContext, BulkOutPipeId, ThisBulkSize, (usb_complete_t)RTUSBBulkOutDataPacketComplete);
 	
 	pUrb = pHTTXContext->pUrb;
 	if((ret = RTUSB_SUBMIT_URB(pUrb))!=0)
@@ -580,7 +481,6 @@ VOID	RTUSBBulkOutDataPacket(
 
 }
 
-
 USBHST_STATUS RTUSBBulkOutDataPacketComplete(URBCompleteStatus Status, purbb_t pURB, pregs *pt_regs)
 {
 	PHT_TX_CONTEXT	pHTTXContext;
@@ -589,48 +489,35 @@ USBHST_STATUS RTUSBBulkOutDataPacketComplete(URBCompleteStatus Status, purbb_t p
 	UCHAR			BulkOutPipeId;
 	
 
-	pHTTXContext	= (PHT_TX_CONTEXT)RTMP_OS_USB_CONTEXT_GET(pURB);
+	pHTTXContext	= (PHT_TX_CONTEXT)pURB->rtusb_urb_context;
 	pAd 			= pHTTXContext->pAd;
 	pObj 			= (POS_COOKIE) pAd->OS_Cookie;
 
-	/* Store BulkOut PipeId*/
+	// Store BulkOut PipeId
 	BulkOutPipeId	= pHTTXContext->BulkOutPipeId;
 	pAd->BulkOutDataOneSecCount++;
 
 	switch (BulkOutPipeId)
 	{
-		case EDCA_AC0_PIPE:
-#ifdef RALINK_ATE
-				if (!ATE_ON(pAd))
-				{
-#endif /* RALINK_ATE */
-					RTMP_NET_TASK_DATA_ASSIGN(&pObj->ac0_dma_done_task, (unsigned long)pURB);
-					RTMP_OS_TASKLET_SCHE(&pObj->ac0_dma_done_task);
-#ifdef RALINK_ATE
-				}
-				else
-				{
-					RTMP_NET_TASK_DATA_ASSIGN(&pObj->ate_ac0_dma_done_task, (unsigned long)pURB);
-					RTMP_OS_TASKLET_SCHE(&pObj->ate_ac0_dma_done_task);
-				}
-#endif /* RALINK_ATE */
-				
+		case 0:
+				pObj->ac0_dma_done_task.data = (unsigned long)pURB;
+				tasklet_hi_schedule(&pObj->ac0_dma_done_task);
 				break;
-		case EDCA_AC1_PIPE:
-				RTMP_NET_TASK_DATA_ASSIGN(&pObj->ac1_dma_done_task, (unsigned long)pURB);
-				RTMP_OS_TASKLET_SCHE(&pObj->ac1_dma_done_task);
+		case 1:
+				pObj->ac1_dma_done_task.data = (unsigned long)pURB;
+				tasklet_hi_schedule(&pObj->ac1_dma_done_task);
 				break;
-		case EDCA_AC2_PIPE:
-				RTMP_NET_TASK_DATA_ASSIGN(&pObj->ac2_dma_done_task, (unsigned long)pURB);
-				RTMP_OS_TASKLET_SCHE(&pObj->ac2_dma_done_task);
+		case 2:
+				pObj->ac2_dma_done_task.data = (unsigned long)pURB;
+				tasklet_hi_schedule(&pObj->ac2_dma_done_task);
 				break;
-		case EDCA_AC3_PIPE:
-				RTMP_NET_TASK_DATA_ASSIGN(&pObj->ac3_dma_done_task, (unsigned long)pURB);
-				RTMP_OS_TASKLET_SCHE(&pObj->ac3_dma_done_task);
+		case 3:
+				pObj->ac3_dma_done_task.data = (unsigned long)pURB;
+				tasklet_hi_schedule(&pObj->ac3_dma_done_task);
 				break;
-		case HCCA_PIPE:
-				RTMP_NET_TASK_DATA_ASSIGN(&pObj->hcca_dma_done_task, (unsigned long)pURB);
-				RTMP_OS_TASKLET_SCHE(&pObj->hcca_dma_done_task);
+		case 4:
+				pObj->hcca_dma_done_task.data = (unsigned long)pURB;
+				tasklet_hi_schedule(&pObj->hcca_dma_done_task);
 				break;
 	}
 
@@ -670,19 +557,19 @@ VOID	RTUSBBulkOutNullFrame(
 	pNullContext->IRPPending = TRUE;
 	RTMP_IRQ_UNLOCK(&pAd->BulkOutLock[0], IrqFlags);
 
-	/* Increase Total transmit byte counter*/
+	// Increase Total transmit byte counter
 	pAd->RalinkCounters.TransmittedByteCount +=  pNullContext->BulkOutSize;
 
 	
-	/* Clear Null frame bulk flag*/
+	// Clear Null frame bulk flag
 	RTUSB_CLEAR_BULK_FLAG(pAd, fRTUSB_BULK_OUT_DATA_NULL);
 
 #ifdef RT_BIG_ENDIAN
 	RTMPDescriptorEndianChange((PUCHAR)pNullContext->TransferBuffer, TYPE_TXINFO);
-#endif /* RT_BIG_ENDIAN */
+#endif // RT_BIG_ENDIAN //
 
-	/* Init Tx context descriptor*/
-	RTUSBInitTxDesc(pAd, pNullContext, 0, (usb_complete_t)RtmpUsbBulkOutNullFrameComplete);
+	// Init Tx context descriptor
+	RTUSBInitTxDesc(pAd, pNullContext, 0, (usb_complete_t)RTUSBBulkOutNullFrameComplete);
 
 	pUrb = pNullContext->pUrb;
 	if((ret = RTUSB_SUBMIT_URB(pUrb))!=0)
@@ -699,7 +586,7 @@ VOID	RTUSBBulkOutNullFrame(
 	
 }
 
-/* NULL frame use BulkOutPipeId = 0*/
+// NULL frame use BulkOutPipeId = 0
 USBHST_STATUS RTUSBBulkOutNullFrameComplete(URBCompleteStatus Status, purbb_t pURB, pregs *pt_regs)
 {
 	PRTMP_ADAPTER		pAd;
@@ -708,13 +595,13 @@ USBHST_STATUS RTUSBBulkOutNullFrameComplete(URBCompleteStatus Status, purbb_t pU
 	POS_COOKIE			pObj;
 
 	
-	pNullContext	= (PTX_CONTEXT)RTMP_OS_USB_CONTEXT_GET(pURB);
+	pNullContext	= (PTX_CONTEXT)pURB->rtusb_urb_context;
 	pAd 			= pNullContext->pAd;
-	Status 			= RTMP_OS_USB_STATUS_GET(pURB); /*->rtusb_urb_status;*/
+	Status 		= pURB->rtusb_urb_status;
 
 	pObj = (POS_COOKIE) pAd->OS_Cookie;
-	RTMP_NET_TASK_DATA_ASSIGN(&pObj->null_frame_complete_task, (unsigned long)pURB);
-	RTMP_OS_TASKLET_SCHE(&pObj->null_frame_complete_task);
+	pObj->null_frame_complete_task.data = (unsigned long)pURB;
+	tasklet_hi_schedule(&pObj->null_frame_complete_task);
 
 }
 
@@ -750,7 +637,7 @@ VOID	RTUSBBulkOutMLMEPacket(
 	{
 		
 		
-		/* Clear MLME bulk flag*/
+		// Clear MLME bulk flag
 		RTUSB_CLEAR_BULK_FLAG(pAd, fRTUSB_BULK_OUT_MLME);
 		
 		return;
@@ -770,18 +657,18 @@ VOID	RTUSBBulkOutMLMEPacket(
 	pMLMEContext->bWaitingBulkOut = FALSE;
 	RTMP_IRQ_UNLOCK(&pAd->BulkOutLock[MGMTPIPEIDX], IrqFlags);
 	
-	/* Increase Total transmit byte counter*/
+	// Increase Total transmit byte counter
 	pAd->RalinkCounters.TransmittedByteCount +=  pMLMEContext->BulkOutSize;
 
-	/* Clear MLME bulk flag*/
+	// Clear MLME bulk flag
 	RTUSB_CLEAR_BULK_FLAG(pAd, fRTUSB_BULK_OUT_MLME);
 
 #ifdef RT_BIG_ENDIAN
 	RTMPDescriptorEndianChange((PUCHAR)pMLMEContext->TransferBuffer, TYPE_TXINFO);
-#endif /* RT_BIG_ENDIAN */
+#endif // RT_BIG_ENDIAN //
 
-	/* Init Tx context descriptor*/
-	RTUSBInitTxDesc(pAd, pMLMEContext, MGMTPIPEIDX, (usb_complete_t)RtmpUsbBulkOutMLMEPacketComplete);
+	// Init Tx context descriptor
+	RTUSBInitTxDesc(pAd, pMLMEContext, MGMTPIPEIDX, (usb_complete_t)RTUSBBulkOutMLMEPacketComplete);
 
 	RTUSB_URB_DMA_MAPPING(pUrb);
 
@@ -798,6 +685,9 @@ VOID	RTUSBBulkOutMLMEPacket(
 		
 		return;
 	}
+
+	//DBGPRINT_RAW(RT_DEBUG_INFO, ("<---RTUSBBulkOutMLMEPacket \n"));
+//	printk("<---RTUSBBulkOutMLMEPacket,Cpu=%d!, Dma=%d, SwIdx=%d!\n", pAd->MgmtRing.TxCpuIdx, pAd->MgmtRing.TxDmaIdx, pAd->MgmtRing.TxSwFreeIdx);
 }
 
 
@@ -809,14 +699,15 @@ USBHST_STATUS RTUSBBulkOutMLMEPacketComplete(URBCompleteStatus Status, purbb_t p
 	POS_COOKIE 			pObj;
 	int					index;
 	
-	pMLMEContext	= (PTX_CONTEXT)RTMP_OS_USB_CONTEXT_GET(pURB); 
+	//DBGPRINT_RAW(RT_DEBUG_INFO, ("--->RTUSBBulkOutMLMEPacketComplete\n"));
+	pMLMEContext	= (PTX_CONTEXT)pURB->rtusb_urb_context;
 	pAd 			= pMLMEContext->pAd;
 	pObj 			= (POS_COOKIE)pAd->OS_Cookie;
-	Status			= RTMP_OS_USB_STATUS_GET(pURB);
+	Status			= pURB->rtusb_urb_status;
 	index 			= pMLMEContext->SelfIdx;
 
-	RTMP_NET_TASK_DATA_ASSIGN(&pObj->mgmt_dma_done_task, (unsigned long)pURB);
-	RTMP_OS_TASKLET_SCHE(&pObj->mgmt_dma_done_task);
+	pObj->mgmt_dma_done_task.data = (unsigned long)pURB;
+	tasklet_hi_schedule(&pObj->mgmt_dma_done_task);
 }
 
 
@@ -853,15 +744,15 @@ VOID	RTUSBBulkOutPsPoll(
 	RTMP_IRQ_UNLOCK(&pAd->BulkOutLock[0], IrqFlags);
 
 	
-	/* Clear PS-Poll bulk flag*/
+	// Clear PS-Poll bulk flag
 	RTUSB_CLEAR_BULK_FLAG(pAd, fRTUSB_BULK_OUT_PSPOLL);
 
 #ifdef RT_BIG_ENDIAN
 	RTMPDescriptorEndianChange((PUCHAR)pPsPollContext->TransferBuffer, TYPE_TXINFO);
-#endif /* RT_BIG_ENDIAN */
+#endif // RT_BIG_ENDIAN //
 
-	/* Init Tx context descriptor*/
-	RTUSBInitTxDesc(pAd, pPsPollContext, MGMTPIPEIDX, (usb_complete_t)RtmpUsbBulkOutPsPollComplete);
+	// Init Tx context descriptor
+	RTUSBInitTxDesc(pAd, pPsPollContext, MGMTPIPEIDX, (usb_complete_t)RTUSBBulkOutPsPollComplete);
 	
 	pUrb = pPsPollContext->pUrb;
 	if((ret = RTUSB_SUBMIT_URB(pUrb))!=0)
@@ -878,7 +769,7 @@ VOID	RTUSBBulkOutPsPoll(
 		
 }
 
-/* PS-Poll frame use BulkOutPipeId = 0*/
+// PS-Poll frame use BulkOutPipeId = 0
 USBHST_STATUS RTUSBBulkOutPsPollComplete(URBCompleteStatus Status, purbb_t pURB, pregs *pt_regs)
 {
 	PRTMP_ADAPTER		pAd;
@@ -887,13 +778,13 @@ USBHST_STATUS RTUSBBulkOutPsPollComplete(URBCompleteStatus Status, purbb_t pURB,
 	POS_COOKIE			pObj;
 	
 	
-	pPsPollContext= (PTX_CONTEXT)RTMP_OS_USB_CONTEXT_GET(pURB);
+	pPsPollContext= (PTX_CONTEXT)pURB->rtusb_urb_context;
 	pAd = pPsPollContext->pAd;
-	Status = RTMP_OS_USB_STATUS_GET(pURB);
+	Status = pURB->rtusb_urb_status;
 
 	pObj = (POS_COOKIE) pAd->OS_Cookie;
-	RTMP_NET_TASK_DATA_ASSIGN(&pObj->pspoll_frame_complete_task, (unsigned long)pURB);
-	RTMP_OS_TASKLET_SCHE(&pObj->pspoll_frame_complete_task);
+	pObj->pspoll_frame_complete_task.data = (unsigned long)pURB;
+	tasklet_hi_schedule(&pObj->pspoll_frame_complete_task);
 
 }
 
@@ -918,13 +809,13 @@ VOID DoBulkIn(IN RTMP_ADAPTER *pAd)
 	pAd->BulkInReq++;
 	RTMP_IRQ_UNLOCK(&pAd->BulkInLock, IrqFlags);
 
-	/* Init Rx context descriptor*/
+	// Init Rx context descriptor
 	NdisZeroMemory(pRxContext->TransferBuffer, pRxContext->BulkInOffset);
 	RTUSBInitRxDesc(pAd, pRxContext);
 
 	pUrb = pRxContext->pUrb;
 	if ((ret = RTUSB_SUBMIT_URB(pUrb))!=0)
-	{	/* fail*/
+	{	// fail
 	
 		RTMP_IRQ_LOCK(&pAd->BulkInLock, IrqFlags);
 		pRxContext->InUse = FALSE;
@@ -935,8 +826,9 @@ VOID DoBulkIn(IN RTMP_ADAPTER *pAd)
 		DBGPRINT(RT_DEBUG_ERROR, ("RTUSBBulkReceive: Submit Rx URB failed %d\n", ret));
 	}
 	else
-	{	/* success*/
+	{	// success
 		ASSERT((pRxContext->InUse == pRxContext->IRPPending));
+		//printk("BIDone, Pend=%d,BIIdx=%d,BIRIdx=%d!\n", pAd->PendingRx, pAd->NextRxBulkInIndex, pAd->NextRxBulkInReadIndex);
 	}
 }
 
@@ -992,13 +884,13 @@ VOID	RTUSBBulkReceive(
 			pRxContext->bRxHandling = TRUE;
 			RTMP_IRQ_UNLOCK(&pAd->BulkInLock, IrqFlags);
 
-			/* read RxContext, Since not */
+			// read RxContext, Since not 
 #ifdef CONFIG_STA_SUPPORT
 			IF_DEV_CONFIG_OPMODE_ON_STA(pAd)
 				STARxDoneInterruptHandle(pAd, TRUE);
-#endif /* CONFIG_STA_SUPPORT */
+#endif // CONFIG_STA_SUPPORT //
 
-			/* Finish to handle this bulkIn buffer.*/
+			// Finish to handle this bulkIn buffer.
 			RTMP_IRQ_LOCK(&pAd->BulkInLock, IrqFlags);
 			pRxContext->BulkInOffset = 0;
 			pRxContext->Readable = FALSE;
@@ -1017,14 +909,7 @@ VOID	RTUSBBulkReceive(
 	}
 
 	if (!(RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_NEED_STOP_RX))) 
-	{
-#ifdef CONFIG_STA_SUPPORT
-		if(RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_IDLE_RADIO_OFF))
-			return;
-#endif /* CONFIG_STA_SUPPORT */
-
 		DoBulkIn(pAd);
-	}
 	
 }
 
@@ -1054,19 +939,19 @@ VOID	RTUSBBulkReceive(
 */
 USBHST_STATUS RTUSBBulkRxComplete(URBCompleteStatus Status, purbb_t pURB, pregs *pt_regs)
 {
-	/* use a receive tasklet to handle received packets;*/
-	/* or sometimes hardware IRQ will be disabled here, so we can not*/
-	/* use spin_lock_bh()/spin_unlock_bh() after IRQ is disabled. :<*/
+	// use a receive tasklet to handle received packets;
+	// or sometimes hardware IRQ will be disabled here, so we can not
+	// use spin_lock_bh()/spin_unlock_bh() after IRQ is disabled. :<
 	PRX_CONTEXT		pRxContext;
 	PRTMP_ADAPTER	pAd;
 	POS_COOKIE 		pObj;
 
-	pRxContext	= (PRX_CONTEXT)RTMP_OS_USB_CONTEXT_GET(pURB);
+	pRxContext	= (PRX_CONTEXT)pURB->rtusb_urb_context;
 	pAd 		= pRxContext->pAd;
 	pObj 		= (POS_COOKIE) pAd->OS_Cookie;
 
-	RTMP_NET_TASK_DATA_ASSIGN(&pObj->rx_done_task, (unsigned long)pURB);
-	RTMP_OS_TASKLET_SCHE(&pObj->rx_done_task);
+	pObj->rx_done_task.data = (unsigned long)pURB;
+	tasklet_hi_schedule(&pObj->rx_done_task);
 	
 }
 
@@ -1087,35 +972,35 @@ USBHST_STATUS RTUSBBulkRxComplete(URBCompleteStatus Status, purbb_t pURB, pregs 
 VOID	RTUSBKickBulkOut(
 	IN	PRTMP_ADAPTER pAd)
 {
-	/* BulkIn Reset will reset whole USB PHY. So we need to make sure fRTMP_ADAPTER_BULKIN_RESET not flaged.*/
+	// BulkIn Reset will reset whole USB PHY. So we need to make sure fRTMP_ADAPTER_BULKIN_RESET not flaged.
 	if (!RTMP_TEST_FLAG(pAd ,fRTMP_ADAPTER_NEED_STOP_TX)
 #ifdef RALINK_ATE			
 		&& !(ATE_ON(pAd))
-#endif /* RALINK_ATE */
+#endif // RALINK_ATE //
 		)
 	{
 
-		/* 2. PS-Poll frame is next*/
+		// 2. PS-Poll frame is next
 		if (RTUSB_TEST_BULK_FLAG(pAd, fRTUSB_BULK_OUT_PSPOLL))
 		{
 			RTUSBBulkOutPsPoll(pAd);
 		}
 
-		/* 5. Mlme frame is next*/
+		// 5. Mlme frame is next
 		else if ((RTUSB_TEST_BULK_FLAG(pAd, fRTUSB_BULK_OUT_MLME)) ||
 				 (pAd->MgmtRing.TxSwFreeIdx < MGMT_RING_SIZE))
 		{
 			RTUSBBulkOutMLMEPacket(pAd, pAd->MgmtRing.TxDmaIdx);
 		}
 
-		/* 6. Data frame normal is next*/
+		// 6. Data frame normal is next
 		if (RTUSB_TEST_BULK_FLAG(pAd, fRTUSB_BULK_OUT_DATA_NORMAL))
 		{
 			if (((!RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_BSS_SCAN_IN_PROGRESS)) || 
 				(!OPSTATUS_TEST_FLAG(pAd, fOP_STATUS_MEDIA_STATE_CONNECTED))
 				))
 			{
-				RTUSBBulkOutDataPacket(pAd, EDCA_AC0_PIPE, pAd->NextBulkOutIndex[EDCA_AC0_PIPE]);
+				RTUSBBulkOutDataPacket(pAd, 0, pAd->NextBulkOutIndex[0]);
 			}
 		}
 		if (RTUSB_TEST_BULK_FLAG(pAd, fRTUSB_BULK_OUT_DATA_NORMAL_2))
@@ -1124,7 +1009,7 @@ VOID	RTUSBKickBulkOut(
 				(!OPSTATUS_TEST_FLAG(pAd, fOP_STATUS_MEDIA_STATE_CONNECTED))
 				))
 			{
-				RTUSBBulkOutDataPacket(pAd, EDCA_AC1_PIPE, pAd->NextBulkOutIndex[EDCA_AC1_PIPE]);
+				RTUSBBulkOutDataPacket(pAd, 1, pAd->NextBulkOutIndex[1]);
 			}
 		}
 		if (RTUSB_TEST_BULK_FLAG(pAd, fRTUSB_BULK_OUT_DATA_NORMAL_3))
@@ -1133,7 +1018,7 @@ VOID	RTUSBKickBulkOut(
 				(!OPSTATUS_TEST_FLAG(pAd, fOP_STATUS_MEDIA_STATE_CONNECTED))
 				))
 			{
-				RTUSBBulkOutDataPacket(pAd, EDCA_AC2_PIPE, pAd->NextBulkOutIndex[EDCA_AC2_PIPE]);
+				RTUSBBulkOutDataPacket(pAd, 2, pAd->NextBulkOutIndex[2]);
 			}
 		}
 		if (RTUSB_TEST_BULK_FLAG(pAd, fRTUSB_BULK_OUT_DATA_NORMAL_4))
@@ -1142,11 +1027,11 @@ VOID	RTUSBKickBulkOut(
 				(!OPSTATUS_TEST_FLAG(pAd, fOP_STATUS_MEDIA_STATE_CONNECTED))
 				))
 			{
-				RTUSBBulkOutDataPacket(pAd, EDCA_AC3_PIPE, pAd->NextBulkOutIndex[EDCA_AC3_PIPE]);
+				RTUSBBulkOutDataPacket(pAd, 3, pAd->NextBulkOutIndex[3]);
 			}
 		}
 
-		/* 7. Null frame is the last*/
+		// 7. Null frame is the last
 		else if (RTUSB_TEST_BULK_FLAG(pAd, fRTUSB_BULK_OUT_DATA_NULL))
 		{
 			if (!RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_BSS_SCAN_IN_PROGRESS))
@@ -1155,7 +1040,7 @@ VOID	RTUSBKickBulkOut(
 			}
 		}
 
-		/* 8. No data avaliable*/
+		// 8. No data avaliable
 		else
 		{
 			
@@ -1167,10 +1052,10 @@ VOID	RTUSBKickBulkOut(
 	{
 		if (RTUSB_TEST_BULK_FLAG(pAd, fRTUSB_BULK_OUT_DATA_ATE))
 		{
-			ATE_RTUSBBulkOutDataPacket(pAd, EDCA_AC0_PIPE);
+			ATE_RTUSBBulkOutDataPacket(pAd, 0);
 		}
 	}	
-#endif /* RALINK_ATE */
+#endif // RALINK_ATE //
 
 }
 
@@ -1281,8 +1166,8 @@ VOID	RTUSBCancelPendingBulkInIRP(
 			RTUSB_UNLINK_URB(pRxContext->pUrb);
 			pRxContext->IRPPending = FALSE;
 			pRxContext->InUse = FALSE;
-			/*NdisInterlockedDecrement(&pAd->PendingRx);*/
-			/*pAd->PendingRx--;*/
+			//NdisInterlockedDecrement(&pAd->PendingRx);
+			//pAd->PendingRx--;
 		}
 	}
 	DBGPRINT_RAW(RT_DEBUG_TRACE, ("<---RTUSBCancelPendingBulkInIRP\n"));
@@ -1307,16 +1192,18 @@ VOID	RTUSBCancelPendingBulkOutIRP(
 {
 	PHT_TX_CONTEXT		pHTTXContext;
 	PTX_CONTEXT			pMLMEContext;
+	PTX_CONTEXT			pBeaconContext;
 	PTX_CONTEXT			pNullContext;
 	PTX_CONTEXT			pPsPollContext;
+	PTX_CONTEXT			pRTSContext;
 	UINT				i, Idx;
-/*	unsigned int 		IrqFlags;*/
-/*	NDIS_SPIN_LOCK		*pLock;*/
-/*	BOOLEAN				*pPending;*/
+//	unsigned int 		IrqFlags;
+//	NDIS_SPIN_LOCK		*pLock;
+//	BOOLEAN				*pPending;
 	
 
-/*	pLock = &pAd->BulkOutLock[MGMTPIPEIDX];*/
-/*	pPending = &pAd->BulkOutPending[MGMTPIPEIDX];*/
+//	pLock = &pAd->BulkOutLock[MGMTPIPEIDX];
+//	pPending = &pAd->BulkOutPending[MGMTPIPEIDX];
 
 	for (Idx = 0; Idx < 4; Idx++)
 	{
@@ -1325,14 +1212,14 @@ VOID	RTUSBCancelPendingBulkOutIRP(
 		if (pHTTXContext->IRPPending == TRUE)
 		{
 
-			/* Get the USB_CONTEXT and cancel it's IRP; the completion routine will itself*/
-			/* remove it from the HeadPendingSendList and NULL out HeadPendingSendList*/
-			/*	when the last IRP on the list has been	cancelled; that's how we exit this loop*/
-			
+			// Get the USB_CONTEXT and cancel it's IRP; the completion routine will itself
+			// remove it from the HeadPendingSendList and NULL out HeadPendingSendList
+			//	when the last IRP on the list has been	cancelled; that's how we exit this loop
+			//
 
 			RTUSB_UNLINK_URB(pHTTXContext->pUrb);
 
-			/* Sleep 200 microseconds to give cancellation time to work*/
+			// Sleep 200 microseconds to give cancellation time to work
 			RTMPusecDelay(200);
 		}
 
@@ -1343,36 +1230,60 @@ VOID	RTUSBCancelPendingBulkOutIRP(
 		pHTTXContext->bCurWriting = FALSE;
 		pHTTXContext->NextBulkOutPosition = 0;
 		pHTTXContext->ENextBulkOutPosition = 0;
-#endif /* RALINK_ATE */
+#endif // RALINK_ATE //
 		pAd->BulkOutPending[Idx] = FALSE;
 	}
 
-	/*RTMP_IRQ_LOCK(pLock, IrqFlags);*/
+	//RTMP_IRQ_LOCK(pLock, IrqFlags);
 	for (i = 0; i < MGMT_RING_SIZE; i++)
 	{
 		pMLMEContext = (PTX_CONTEXT)pAd->MgmtRing.Cell[i].AllocVa;
 		if(pMLMEContext && (pMLMEContext->IRPPending == TRUE))
 		{
 
-			/* Get the USB_CONTEXT and cancel it's IRP; the completion routine will itself*/
-			/* remove it from the HeadPendingSendList and NULL out HeadPendingSendList*/
-			/*	when the last IRP on the list has been	cancelled; that's how we exit this loop*/
-			
+			// Get the USB_CONTEXT and cancel it's IRP; the completion routine will itself
+			// remove it from the HeadPendingSendList and NULL out HeadPendingSendList
+			//	when the last IRP on the list has been	cancelled; that's how we exit this loop
+			//
 
 			RTUSB_UNLINK_URB(pMLMEContext->pUrb);
 			pMLMEContext->IRPPending = FALSE;
 			
-			/* Sleep 200 microsecs to give cancellation time to work*/
+			// Sleep 200 microsecs to give cancellation time to work
 			RTMPusecDelay(200);
 		}
 	}
 	pAd->BulkOutPending[MGMTPIPEIDX] = FALSE;
-	/*RTMP_IRQ_UNLOCK(pLock, IrqFlags);*/
+	//RTMP_IRQ_UNLOCK(pLock, IrqFlags);
+
+
+	for (i = 0; i < BEACON_RING_SIZE; i++)
+	{
+		pBeaconContext = &(pAd->BeaconContext[i]);
+
+		if(pBeaconContext->IRPPending == TRUE)
+		{
+
+			// Get the USB_CONTEXT and cancel it's IRP; the completion routine will itself
+			// remove it from the HeadPendingSendList and NULL out HeadPendingSendList
+			//	when the last IRP on the list has been	cancelled; that's how we exit this loop
+			//
+
+			RTUSB_UNLINK_URB(pBeaconContext->pUrb);
+
+			// Sleep 200 microsecs to give cancellation time to work
+			RTMPusecDelay(200);
+		}
+	}
 
 	pNullContext = &(pAd->NullContext);
 	if (pNullContext->IRPPending == TRUE)
 		RTUSB_UNLINK_URB(pNullContext->pUrb);
 
+	pRTSContext = &(pAd->RTSContext);
+	if (pRTSContext->IRPPending == TRUE)
+		RTUSB_UNLINK_URB(pRTSContext->pUrb);
+		
 	pPsPollContext = &(pAd->PsPollContext);
 	if (pPsPollContext->IRPPending == TRUE)
 		RTUSB_UNLINK_URB(pPsPollContext->pUrb);
@@ -1385,4 +1296,4 @@ VOID	RTUSBCancelPendingBulkOutIRP(
 	}
 }
 
-#endif /* RTMP_MAC_USB */
+#endif // RTMP_MAC_USB //

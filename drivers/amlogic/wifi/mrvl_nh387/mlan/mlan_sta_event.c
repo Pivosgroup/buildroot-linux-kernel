@@ -262,6 +262,9 @@ mlan_process_sta_event(IN t_void * priv)
         PRINTM(MINFO, "EVENT: SLEEP\n");
         PRINTM(MEVENT, "_");
 
+        /* Handle unexpected PS SLEEP event */
+        if (pmadapter->ps_state == PS_STATE_SLEEP_CFM)
+            break;
         pmadapter->ps_state = PS_STATE_PRE_SLEEP;
 
         wlan_check_ps_cond(pmadapter);
@@ -275,6 +278,9 @@ mlan_process_sta_event(IN t_void * priv)
             pmadapter->pps_uapsd_mode = MTRUE;
             PRINTM(MEVENT, "PPS/UAPSD mode activated\n");
         }
+        /* Handle unexpected PS AWAKE event */
+        if (pmadapter->ps_state == PS_STATE_SLEEP_CFM)
+            break;
         pmadapter->tx_lock_flag = MFALSE;
         if (pmadapter->pps_uapsd_mode && pmadapter->gen_null_pkt) {
             if (MTRUE == wlan_check_last_packet_indication(pmpriv)) {
@@ -292,16 +298,6 @@ mlan_process_sta_event(IN t_void * priv)
         pmadapter->ps_state = PS_STATE_AWAKE;
         pmadapter->pm_wakeup_card_req = MFALSE;
         pmadapter->pm_wakeup_fw_try = MFALSE;
-
-        break;
-
-    case EVENT_DEEP_SLEEP_AWAKE:
-        wlan_pm_reset_card(pmadapter);
-        PRINTM(MEVENT, "EVENT: DS_AWAKE\n");
-        if (pmadapter->is_deep_sleep == MTRUE) {
-            pmadapter->is_deep_sleep = MFALSE;
-        }
-        wlan_recv_event(pmpriv, MLAN_EVENT_ID_FW_DS_AWAKE, MNULL);
         break;
 
     case EVENT_HS_ACT_REQ:
@@ -454,7 +450,7 @@ mlan_process_sta_event(IN t_void * priv)
         PRINTM(MEVENT, "EVENT: DELBA Request\n");
         wlan_11n_delete_bastream(pmpriv, pmadapter->event_body);
         break;
-    case EVENT_BA_STREAM_TIEMOUT:
+    case EVENT_BA_STREAM_TIMEOUT:
         PRINTM(MEVENT, "EVENT:  BA Stream timeout\n");
         wlan_11n_ba_stream_timeout(pmpriv,
                                    (HostCmd_DS_11N_BATIMEOUT *) pmadapter->
@@ -490,16 +486,6 @@ mlan_process_sta_event(IN t_void * priv)
         wlan_recv_event(pmpriv, MLAN_EVENT_ID_FW_BW_CHANGED, pevent);
         break;
 
-    case EVENT_HOSTWAKE_STAIE:
-        PRINTM(MEVENT, "EVENT: HOSTWAKE_STAIE %d\n", eventcause);
-        pevent->bss_num = pmpriv->bss_num;
-        pevent->event_id = MLAN_EVENT_ID_FW_HOSTWAKE_STAIE;
-        pevent->event_len = sizeof(t_u32);
-        memcpy(pmadapter, (t_u8 *) pevent->event_buf, pmadapter->event_body,
-               pevent->event_len);
-
-        wlan_recv_event(pmpriv, MLAN_EVENT_ID_FW_HOSTWAKE_STAIE, pevent);
-        break;
     default:
         PRINTM(MEVENT, "EVENT: unknown event id: %#x\n", eventcause);
         wlan_recv_event(pmpriv, MLAN_EVENT_ID_FW_UNKNOWN, MNULL);

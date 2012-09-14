@@ -110,7 +110,8 @@ void wlan_wmm_setup_queue_priorities(pmlan_private priv,
 
 /** Downgrade WMM priority queue */
 void wlan_wmm_setup_ac_downgrade(pmlan_private priv);
-
+/** select WMM queue */
+t_u8 wlan_wmm_select_queue(mlan_private * pmpriv, t_u8 tid);
 #ifdef STA_SUPPORT
 /* 
  *  Functions used in the cmd handling routine

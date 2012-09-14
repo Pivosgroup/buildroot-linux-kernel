@@ -5,25 +5,36 @@
  * Hsinchu County 302,
  * Taiwan, R.O.C.
  *
- * (c) Copyright 2002-2010, Ralink Technology, Inc.
+ * (c) Copyright 2002-2007, Ralink Technology, Inc.
  *
- * This program is free software; you can redistribute it and/or modify  *
- * it under the terms of the GNU General Public License as published by  *
- * the Free Software Foundation; either version 2 of the License, or     *
- * (at your option) any later version.                                   *
- *                                                                       *
- * This program is distributed in the hope that it will be useful,       *
- * but WITHOUT ANY WARRANTY; without even the implied warranty of        *
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
- * GNU General Public License for more details.                          *
- *                                                                       *
- * You should have received a copy of the GNU General Public License     *
- * along with this program; if not, write to the                         *
- * Free Software Foundation, Inc.,                                       *
- * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
- *                                                                       *
- *************************************************************************/
+ * This program is free software; you can redistribute it and/or modify  * 
+ * it under the terms of the GNU General Public License as published by  * 
+ * the Free Software Foundation; either version 2 of the License, or     * 
+ * (at your option) any later version.                                   * 
+ *                                                                       * 
+ * This program is distributed in the hope that it will be useful,       * 
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of        * 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         * 
+ * GNU General Public License for more details.                          * 
+ *                                                                       * 
+ * You should have received a copy of the GNU General Public License     * 
+ * along with this program; if not, write to the                         * 
+ * Free Software Foundation, Inc.,                                       * 
+ * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             * 
+ *                                                                       * 
+ *************************************************************************
+ 
+ 	Module Name:
+	rtusb_io.c
 
+	Abstract:
+
+	Revision History:
+	Who			When	    What
+	--------	----------  ----------------------------------------------
+	Name		Date	    Modification logs
+	Paul Lin    06-25-2004  created
+*/
 
 #ifdef RTMP_MAC_USB
 
@@ -71,42 +82,6 @@ static NTSTATUS	RTUSBFirmwareRun(
 /*
 	========================================================================
 	
-	Routine Description: Get current firmware operation mode (Return Value)
-
-	Arguments:
-
-	Return Value: 
-		0 or 1 = Downloaded by host driver
-		others = Driver doesn't download firmware
-
-	IRQL = 
-	
-	Note:
-	
-	========================================================================
-*/
-NTSTATUS	RTUSBFirmwareOpmode(
-	IN	PRTMP_ADAPTER	pAd,
-	OUT	PULONG			pValue)
-{
-	NTSTATUS	Status;
-
-	Status = RTUSB_VendorRequest(
-		pAd,
-		(USBD_TRANSFER_DIRECTION_IN | USBD_SHORT_TRANSFER_OK),
-		DEVICE_VENDOR_REQUEST_IN,
-		0x1,
-		0x11,
-		0,
-		pValue,
-		4);
-	return Status;
-}
-
-
-/*
-	========================================================================
-	
 	Routine Description: Write Firmware to NIC.
 
 	Arguments:
@@ -126,22 +101,17 @@ NTSTATUS RTUSBFirmwareWrite(
 {
 	UINT32		MacReg;
 	NTSTATUS 	Status;
-/*	ULONG 		i;*/
+//	ULONG 		i;
 	USHORT		writeLen;
-	/*ULONG		FMode = 0;*/
-
-
+	
 	Status = RTUSBReadMACRegister(pAd, MAC_CSR0, &MacReg);
 
 
-	/* write firmware */
 	writeLen = FwLen;
 	RTUSBMultiWrite(pAd, FIRMWARE_IMAGE_BASE, pFwImage, writeLen);
-
+	
 	Status = RTUSBWriteMACRegister(pAd, 0x7014, 0xffffffff);
 	Status = RTUSBWriteMACRegister(pAd, 0x701c, 0xffffffff);
-
-	/* change 8051 from ROM to RAM */
 	Status = RTUSBFirmwareRun(pAd);
 
 	
@@ -203,63 +173,6 @@ NTSTATUS	RTUSBMultiRead(
 	return Status;
 }
 
-
-/*
-	========================================================================
-	
-	Routine Description: Write various length data to RT USB Wifi device, the maxima length should not large than 65535 bytes.
-
-	Arguments:
-
-	Return Value:
-
-	IRQL = 
-	
-	Note:
-		Use this funciton carefully cause it may not stable in some special USB host controllers.
-	
-	========================================================================
-*/
-NTSTATUS RTUSBMultiWrite_nBytes(
-	IN	PRTMP_ADAPTER	pAd,
-	IN	USHORT			Offset,
-	IN	PUCHAR			pData,
-	IN	USHORT			length,
-	IN	USHORT			batchLen)
-{
-	NTSTATUS Status = STATUS_SUCCESS;
-	USHORT index = Offset, actLen = batchLen, leftLen = length;
-	PUCHAR pSrc = pData;
-
-
-	do
-	{
-		actLen = (actLen > batchLen ? batchLen : actLen);
-		Status = RTUSB_VendorRequest(
-			pAd,
-			USBD_TRANSFER_DIRECTION_OUT,
-			DEVICE_VENDOR_REQUEST_OUT,
-			0x6,
-			0,
-			index,
-			pSrc,
-			actLen);
-
-		if (Status != STATUS_SUCCESS)
-		{
-			DBGPRINT(RT_DEBUG_ERROR, ("VendrCmdMultiWrite_nBytes failed!\n"));
-			break;
-		}
-		
-		index += actLen;
-		leftLen -= actLen;
-		pSrc = pSrc + actLen;
-	}while(leftLen > 0);
-	
-	return Status;
-}
-
-
 /*
 	========================================================================
 	
@@ -282,7 +195,7 @@ NTSTATUS	RTUSBMultiWrite_OneByte(
 {
 	NTSTATUS	Status;
 
-	/* TODO: In 2870, use this funciton carefully cause it's not stable.*/
+	// TODO: In 2870, use this funciton carefully cause it's not stable.
 	Status = RTUSB_VendorRequest(
 		pAd,
 		USBD_TRANSFER_DIRECTION_OUT,
@@ -445,11 +358,8 @@ NTSTATUS	RTUSBReadBBPRegister(
 	BBP_CSR_CFG_STRUC	BbpCsr;
 	UINT			i = 0;
 	NTSTATUS		status;
-	int				RET = 0;
-
-	RTMP_SEM_EVENT_WAIT(&(pAd->UsbVendorReq_semaphore2), RET);
 	
-	/* Verify the busy condition*/
+	// Verify the busy condition
 	do
 	{
 		status = RTUSBReadMACRegister(pAd, BBP_CSR_CFG, &BbpCsr.word);
@@ -464,18 +374,16 @@ NTSTATUS	RTUSBReadBBPRegister(
 	
 	if ((i == RETRY_LIMIT) || (RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_NIC_NOT_EXIST)))
 	{
-		
-		/* Read failed then Return Default value.*/
-		
+		//
+		// Read failed then Return Default value.
+		//
 		*pValue = pAd->BbpWriteLatch[Id];
 	
 		DBGPRINT_RAW(RT_DEBUG_ERROR, ("Retry count exhausted or device removed!!!\n"));
-		RTMP_SEM_EVENT_UP(&(pAd->UsbVendorReq_semaphore2));
-		
 		return STATUS_UNSUCCESSFUL;
 	}
 
-	/* Prepare for write material*/
+	// Prepare for write material
 	BbpCsr.word 				= 0;
 	BbpCsr.field.fRead			= 1;
 	BbpCsr.field.Busy			= 1;
@@ -483,7 +391,7 @@ NTSTATUS	RTUSBReadBBPRegister(
 	RTUSBWriteMACRegister(pAd, BBP_CSR_CFG, BbpCsr.word);
 
 	i = 0;	
-	/* Verify the busy condition*/
+	// Verify the busy condition
 	do
 	{
 		status = RTUSBReadMACRegister(pAd, BBP_CSR_CFG, &BbpCsr.word);
@@ -501,16 +409,14 @@ NTSTATUS	RTUSBReadBBPRegister(
 	
 	if ((i == RETRY_LIMIT) || (RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_NIC_NOT_EXIST)))
 	{
-		
-		/* Read failed then Return Default value.*/
-		
+		//
+		// Read failed then Return Default value.
+		//
 		*pValue = pAd->BbpWriteLatch[Id];
 
 		DBGPRINT_RAW(RT_DEBUG_ERROR, ("Retry count exhausted or device removed!!!\n"));
-		RTMP_SEM_EVENT_UP(&(pAd->UsbVendorReq_semaphore2));
 		return STATUS_UNSUCCESSFUL;
 	}
-	RTMP_SEM_EVENT_UP(&(pAd->UsbVendorReq_semaphore2));
 	
 	return STATUS_SUCCESS;
 }
@@ -539,11 +445,7 @@ NTSTATUS	RTUSBWriteBBPRegister(
 	BBP_CSR_CFG_STRUC	BbpCsr;
 	UINT			i = 0;
 	NTSTATUS		status;
-	int				RET = 0;
-
-	RTMP_SEM_EVENT_WAIT(&(pAd->UsbVendorReq_semaphore2), RET);
-	
-	/* Verify the busy condition*/
+	// Verify the busy condition
 	do
 	{
 		status = RTUSBReadMACRegister(pAd, BBP_CSR_CFG, &BbpCsr.word);
@@ -560,11 +462,10 @@ NTSTATUS	RTUSBWriteBBPRegister(
 	if ((i == RETRY_LIMIT) || (RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_NIC_NOT_EXIST)))
 	{
 		DBGPRINT_RAW(RT_DEBUG_ERROR, ("Retry count exhausted or device removed!!!\n"));
-		RTMP_SEM_EVENT_UP(&(pAd->UsbVendorReq_semaphore2));
 		return STATUS_UNSUCCESSFUL;
 	}
 
-	/* Prepare for write material*/
+	// Prepare for write material
 	BbpCsr.word 				= 0;
 	BbpCsr.field.fRead			= 0;
 	BbpCsr.field.Value			= Value;
@@ -573,7 +474,6 @@ NTSTATUS	RTUSBWriteBBPRegister(
 	RTUSBWriteMACRegister(pAd, BBP_CSR_CFG, BbpCsr.word);
 	
 	pAd->BbpWriteLatch[Id] = Value;
-	RTMP_SEM_EVENT_UP(&(pAd->UsbVendorReq_semaphore2));
 
 	return STATUS_SUCCESS;
 }
@@ -746,11 +646,11 @@ VOID RTUSBPutToSleep(
 {
 	UINT32		value;
 	
-	/* Timeout 0x40 x 50us*/
+	// Timeout 0x40 x 50us
 	value = (SLEEPCID<<16)+(OWNERMCU<<24)+ (0x40<<8)+1;
 	RTUSBWriteMACRegister(pAd, 0x7010, value);
 	RTUSBWriteMACRegister(pAd, 0x404, 0x30);
-	/*RTMP_SET_FLAG(pAd, fRTMP_ADAPTER_HALT_IN_PROGRESS);			*/
+	//RTMP_SET_FLAG(pAd, fRTMP_ADAPTER_HALT_IN_PROGRESS);			
 	DBGPRINT_RAW(RT_DEBUG_ERROR, ("Sleep Mailbox testvalue %x\n", value));
 	
 }
@@ -813,11 +713,14 @@ NDIS_STATUS	RTUSBEnqueueCmdFromNdis(
 	NDIS_STATUS	status;
 	PCmdQElmt	cmdqelmt = NULL;
 	RTMP_OS_TASK	*pTask = &pAd->cmdQTask;
-
-
-	RTMP_OS_TASK_LEGALITY(pTask)
+	
+#ifdef KTHREAD_SUPPORT
+	if (pTask->kthread_task == NULL)
+#else
+	CHECK_PID_LEGALITY(pTask->taskPID) 
 		;
 	else
+#endif
 		return (NDIS_STATUS_RESOURCES);
 
 	status = os_alloc_mem(pAd, (PUCHAR *)(&cmdqelmt), sizeof(CmdQElmt));
@@ -830,8 +733,7 @@ NDIS_STATUS	RTUSBEnqueueCmdFromNdis(
 			status = os_alloc_mem(pAd, (PUCHAR *)&cmdqelmt->buffer, InformationBufferLength);
 			if ((status != NDIS_STATUS_SUCCESS) || (cmdqelmt->buffer == NULL))
 			{       
-/*				kfree(cmdqelmt);*/
-				os_free_mem(NULL, cmdqelmt);
+				kfree(cmdqelmt);
 				return (NDIS_STATUS_RESOURCES);
 			}
 			else
@@ -869,7 +771,7 @@ NDIS_STATUS	RTUSBEnqueueCmdFromNdis(
 		os_free_mem(pAd, cmdqelmt);
 	}
 	else
-	RTCMDUp(&pAd->cmdQTask);
+	RTCMDUp(pAd);
 
 
     return(NDIS_STATUS_SUCCESS);
@@ -929,35 +831,20 @@ NTSTATUS    RTUSB_VendorRequest(
 		return NDIS_STATUS_FAILURE;
 	}
 
-#ifdef CONFIG_STA_SUPPORT	
-#ifdef CONFIG_PM
-#ifdef USB_SUPPORT_SELECTIVE_SUSPEND
-	if(RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_SUSPEND))
-	{
-		return NDIS_STATUS_FAILURE;
-	}
-#endif /* USB_SUPPORT_SELECTIVE_SUSPEND */
-#endif /* CONFIG_PM */
-#endif /* CONFIG_STA_SUPPORT */
 	
 	if (RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_NIC_NOT_EXIST))
 	{
-		/*DBGPRINT(RT_DEBUG_ERROR, ("WIFI device has been disconnected\n"));*/
+		DBGPRINT(RT_DEBUG_ERROR, ("WIFI device has been disconnected\n"));
 		return NDIS_STATUS_FAILURE;
 	}
 	else
 	{
 
-		int RetryCount = 0; /* RTUSB_CONTROL_MSG retry counts*/
+		int RetryCount = 0; // RTUSB_CONTROL_MSG retry counts
 		ASSERT(TransferBufferLength <MAX_PARAM_BUFFER_SIZE);
 		
 		RTMP_SEM_EVENT_WAIT(&(pAd->UsbVendorReq_semaphore), RET);
-		if (RET != 0)
-		{
-			DBGPRINT(RT_DEBUG_ERROR, ("UsbVendorReq_semaphore get failed\n"));
-			return NDIS_STATUS_FAILURE;
-		}
-		
+		   
 		if ((TransferBufferLength > 0) && (RequestType == DEVICE_VENDOR_REQUEST_OUT))
 				NdisMoveMemory(pAd->UsbVendorReqBuf, TransferBuffer, TransferBufferLength);
 
@@ -966,13 +853,8 @@ NTSTATUS    RTUSB_VendorRequest(
 			
 			if (RET < 0) {
 				DBGPRINT(RT_DEBUG_OFF, ("#\n"));
-				if (RET == RTMP_USB_CONTROL_MSG_ENODEV)
-				{					
-					RTMP_SET_FLAG(pAd, fRTMP_ADAPTER_NIC_NOT_EXIST);					
-					break;				
-				}
 				RetryCount++;
-				RTMPusecDelay(5000); /* wait for 5ms*/
+				RTMPusecDelay(5000); // wait for 5ms
 			}
 		} while((RET < 0) && (RetryCount < MAX_VENDOR_REQ_RETRY_COUNT));
 		
@@ -982,15 +864,15 @@ NTSTATUS    RTUSB_VendorRequest(
 	  	RTMP_SEM_EVENT_UP(&(pAd->UsbVendorReq_semaphore));
 
         	if (RET < 0) {
-			DBGPRINT(RT_DEBUG_ERROR, ("RTUSB_VendorRequest failed(%d),TxFlags=0x%x, ReqType=%s, Req=0x%x, Idx=0x%x,pAd->Flags=0x%lx\n",
-						RET, TransferFlags, (RequestType == DEVICE_VENDOR_REQUEST_OUT ? "OUT" : "IN"), Request, Index, pAd->Flags));
+			DBGPRINT(RT_DEBUG_ERROR, ("RTUSB_VendorRequest failed(%d),TxFlags=0x%x, ReqType=%s, Req=0x%x, Index=0x%x\n",
+						RET, TransferFlags, (RequestType == DEVICE_VENDOR_REQUEST_OUT ? "OUT" : "IN"), Request, Index));
 			if (Request == 0x2)
 				DBGPRINT(RT_DEBUG_ERROR, ("\tRequest Value=0x%04x!\n", Value));
 			
 			if ((!TransferBuffer) && (TransferBufferLength > 0))
 				hex_dump("Failed TransferBuffer value", TransferBuffer, TransferBufferLength);
 
-			if (RET == RTMP_USB_CONTROL_MSG_ENODEV)
+			if (RET == -ENODEV)
 					RTMP_SET_FLAG(pAd, fRTMP_ADAPTER_NIC_NOT_EXIST);
 			
 		}
@@ -1027,7 +909,7 @@ NTSTATUS RTUSB_ResetDevice(
 	NTSTATUS		Status = TRUE;
 
 	DBGPRINT_RAW(RT_DEBUG_TRACE, ("--->USB_ResetDevice\n"));
-	/*RTMP_SET_FLAG(pAd, fRTMP_ADAPTER_RESET_IN_PROGRESS);*/
+	//RTMP_SET_FLAG(pAd, fRTMP_ADAPTER_RESET_IN_PROGRESS);
 	return Status;
 }
 
@@ -1036,19 +918,19 @@ NTSTATUS CheckGPIOHdlr(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 {
 
 #ifdef RALINK_ATE			
-		if (ATE_ON(pAd))
-		{
-			DBGPRINT(RT_DEBUG_TRACE, ("The driver is in ATE mode now\n"));
-			return NDIS_STATUS_SUCCESS;
-		}	
-#endif /* RALINK_ATE */
+       if (ATE_ON(pAd))
+	{
+		ATEDBGPRINT(RT_DEBUG_TRACE, ("The driver is in ATE mode now\n"));
+		return NDIS_STATUS_SUCCESS;
+	}	
+#endif // RALINK_ATE //
 
 #ifdef CONFIG_STA_SUPPORT
 
 		IF_DEV_CONFIG_OPMODE_ON_STA(pAd)
 		{
 			UINT32 data;
-			/* Read GPIO pin2 as Hardware controlled radio state*/
+			// Read GPIO pin2 as Hardware controlled radio state
 
 			RTUSBReadMACRegister( pAd, GPIO_CTRL_CFG, &data);
 
@@ -1069,7 +951,7 @@ NTSTATUS CheckGPIOHdlr(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 					DBGPRINT_RAW(RT_DEBUG_ERROR, ("!!! Radio On !!!\n"));  
 	                                                                                                                            
 					MlmeRadioOn(pAd);                                                                                                                       
-					/* Update extra information                                                                                                             */
+					// Update extra information                                                                                                             
 					pAd->ExtraInfo = EXTRA_INFO_CLEAR;                                                                                                      
 				}                                                                                                                                           
 				else                                                                                                                                        
@@ -1077,13 +959,13 @@ NTSTATUS CheckGPIOHdlr(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 					DBGPRINT_RAW(RT_DEBUG_ERROR, ("!!! Radio Off !!!\n"));
 	                                                                                                                                    
 					MlmeRadioOff(pAd);                                                                                                                      
-					/* Update extra information                                                                                                             */
+					// Update extra information                                                                                                             
 					pAd->ExtraInfo = HW_RADIO_OFF;                                                                                                          
 				}                                                                                                                                           
 			}
-		} /* end IF_DEV_CONFIG_OPMODE_ON_STA*/
+		} // end IF_DEV_CONFIG_OPMODE_ON_STA
 	
-#endif /* CONFIG_STA_SUPPORT */
+#endif // CONFIG_STA_SUPPORT //
 
 	return NDIS_STATUS_SUCCESS;
 }
@@ -1096,19 +978,16 @@ static NTSTATUS ResetBulkOutHdlr(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 	UCHAR Index = 0;
 	int ret=0;
 	PHT_TX_CONTEXT	pHTTXContext;
-/*	RTMP_TX_RING *pTxRing;*/
+//	RTMP_TX_RING *pTxRing;
 	unsigned long IrqFlags;
 						
 	DBGPRINT(RT_DEBUG_TRACE, ("CMDTHREAD_RESET_BULK_OUT(ResetPipeid=0x%0x)===>\n", pAd->bulkResetPipeid));
 	
-	/* All transfers must be aborted or cancelled before attempting to reset the pipe.						*/
-	/*RTUSBCancelPendingBulkOutIRP(pAd);*/
-	/* Wait 10ms to let previous packet that are already in HW FIFO to clear. by MAXLEE 12-25-2007*/
+	// All transfers must be aborted or cancelled before attempting to reset the pipe.						
+	//RTUSBCancelPendingBulkOutIRP(pAd);
+	// Wait 10ms to let previous packet that are already in HW FIFO to clear. by MAXLEE 12-25-2007
 	do 
 	{
-		if(RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_NIC_NOT_EXIST))								
-			break;
-		
 		RTUSBReadMACRegister(pAd, TXRXQ_PCNT, &MACValue);
 		if ((MACValue & 0xf00000/*0x800000*/) == 0)
 			break;
@@ -1119,26 +998,26 @@ static NTSTATUS ResetBulkOutHdlr(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 	
 	RTUSBReadMACRegister(pAd, USB_DMA_CFG, &MACValue);
 	
-	/* 2nd, to prevent Read Register error, we check the validity.*/
+	// 2nd, to prevent Read Register error, we check the validity.
 	if ((MACValue & 0xc00000) == 0)
 		RTUSBReadMACRegister(pAd, USB_DMA_CFG, &MACValue);
 	
-	/* 3rd, to prevent Read Register error, we check the validity.*/
+	// 3rd, to prevent Read Register error, we check the validity.
 	if ((MACValue & 0xc00000) == 0)
 		RTUSBReadMACRegister(pAd, USB_DMA_CFG, &MACValue);
 	
 	MACValue |= 0x80000;
 	RTUSBWriteMACRegister(pAd, USB_DMA_CFG, MACValue);
 
-	/* Wait 1ms to prevent next URB to bulkout before HW reset. by MAXLEE 12-25-2007*/
+	// Wait 1ms to prevent next URB to bulkout before HW reset. by MAXLEE 12-25-2007
 	RTMPusecDelay(1000);
 
 	MACValue &= (~0x80000);
 	RTUSBWriteMACRegister(pAd, USB_DMA_CFG, MACValue);
 	DBGPRINT(RT_DEBUG_TRACE, ("\tSet 0x2a0 bit19. Clear USB DMA TX path\n"));
 						
-	/* Wait 5ms to prevent next URB to bulkout before HW reset. by MAXLEE 12-25-2007*/
-	/*RTMPusecDelay(5000);*/
+	// Wait 5ms to prevent next URB to bulkout before HW reset. by MAXLEE 12-25-2007
+	//RTMPusecDelay(5000);
 
 	if ((pAd->bulkResetPipeid & BULKOUT_MGMT_RESET_FLAG) == BULKOUT_MGMT_RESET_FLAG)
 	{
@@ -1154,7 +1033,7 @@ static NTSTATUS ResetBulkOutHdlr(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 	{
 		pHTTXContext = &(pAd->TxContext[pAd->bulkResetPipeid]);
 		
-		/*NdisAcquireSpinLock(&pAd->BulkOutLock[pAd->bulkResetPipeid]);*/
+		//NdisAcquireSpinLock(&pAd->BulkOutLock[pAd->bulkResetPipeid]);
 		RTMP_INT_LOCK(&pAd->BulkOutLock[pAd->bulkResetPipeid], IrqFlags);
 		if ( pAd->BulkOutPending[pAd->bulkResetPipeid] == FALSE)
 		{
@@ -1162,21 +1041,21 @@ static NTSTATUS ResetBulkOutHdlr(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 			pHTTXContext->IRPPending = TRUE;
 			pAd->watchDogTxPendingCnt[pAd->bulkResetPipeid] = 1;
 								
-			/* no matter what, clean the flag*/
+			// no matter what, clean the flag
 			RTMP_CLEAR_FLAG(pAd, fRTMP_ADAPTER_BULKOUT_RESET);
 								
-			/*NdisReleaseSpinLock(&pAd->BulkOutLock[pAd->bulkResetPipeid]);*/
+			//NdisReleaseSpinLock(&pAd->BulkOutLock[pAd->bulkResetPipeid]);
 			RTMP_INT_UNLOCK(&pAd->BulkOutLock[pAd->bulkResetPipeid], IrqFlags);
 			
 #ifdef RALINK_ATE
 			if (ATE_ON(pAd))				
 				ret = ATEResetBulkOut(pAd);
 			else
-#endif /* RALINK_ATE */
+#endif // RALINK_ATE //
 			{
 				RTUSBInitHTTxDesc(pAd, pHTTXContext, pAd->bulkResetPipeid, 
 													pHTTXContext->BulkOutSize, 
-													RtmpUsbBulkOutDataPacketComplete);
+													(usb_complete_t)RTUSBBulkOutDataPacketComplete);
 				
 				if ((ret = RTUSB_SUBMIT_URB(pHTTXContext->pUrb))!=0)
 				{
@@ -1203,14 +1082,14 @@ static NTSTATUS ResetBulkOutHdlr(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 						
 						DBGPRINT(RT_DEBUG_TRACE, ("\tCMDTHREAD_RESET_BULK_OUT: Submit Tx DATA URB for failed BulkReq(0x%lx) Done, status=%d!\n", 
 											pAd->bulkResetReq[pAd->bulkResetPipeid], 
-											RTMP_USB_URB_STATUS_GET(pHTTXContext->pUrb)));
+											pHTTXContext->pUrb->rtusb_urb_status));
 				}
 			}
 		}
 		else
 		{
-			/*NdisReleaseSpinLock(&pAd->BulkOutLock[pAd->bulkResetPipeid]);*/
-			/*RTMP_INT_UNLOCK(&pAd->BulkOutLock[pAd->bulkResetPipeid], IrqFlags);*/
+			//NdisReleaseSpinLock(&pAd->BulkOutLock[pAd->bulkResetPipeid]);
+			//RTMP_INT_UNLOCK(&pAd->BulkOutLock[pAd->bulkResetPipeid], IrqFlags);
 								
 			DBGPRINT(RT_DEBUG_ERROR, ("CmdThread : TX DATA RECOVER FAIL for BulkReq(0x%lx) because BulkOutPending[%d] is TRUE!\n", 
 								pAd->bulkResetReq[pAd->bulkResetPipeid], pAd->bulkResetPipeid));
@@ -1237,7 +1116,7 @@ static NTSTATUS ResetBulkOutHdlr(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 				DBGPRINT(RT_DEBUG_ERROR, ("\tTX Occupied by %d!\n", pendingContext));
 			}
 
-			/* no matter what, clean the flag*/
+			// no matter what, clean the flag
 			RTMP_CLEAR_FLAG(pAd, fRTMP_ADAPTER_BULKOUT_RESET);
 
 			RTMP_INT_UNLOCK(&pAd->BulkOutLock[pAd->bulkResetPipeid], IrqFlags);
@@ -1246,8 +1125,41 @@ static NTSTATUS ResetBulkOutHdlr(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 		}
 
 		RTMPDeQueuePacket(pAd, FALSE, NUM_OF_TX_RING, MAX_TX_PROCESS);
-		/*RTUSBKickBulkOut(pAd);*/
+		//RTUSBKickBulkOut(pAd);
 	}
+/*
+
+	// Don't cancel BULKIN.	
+	while ((atomic_read(&pAd->PendingRx) > 0) && (!RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_NIC_NOT_EXIST))) 
+	{
+		if (atomic_read(&pAd->PendingRx) > 0)
+		{
+			DBGPRINT_RAW(RT_DEBUG_ERROR, ("BulkIn IRP Pending!!cancel it!\n"));
+			RTUSBCancelPendingBulkInIRP(pAd);
+		}
+			RTMPusecDelay(100000);
+	}
+						
+	if ((atomic_read(&pAd->PendingRx) == 0) && (!RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_HALT_IN_PROGRESS)))
+	{
+		UCHAR	i;
+		RTUSBRxPacket(pAd);
+		pAd->NextRxBulkInReadIndex = 0;	// Next Rx Read index
+		pAd->NextRxBulkInIndex		= 0;	// Rx Bulk pointer
+		for (i = 0; i < (RX_RING_SIZE); i++)
+		{
+			PRX_CONTEXT  pRxContext = &(pAd->RxContext[i]);
+
+			pRxContext->pAd	= pAd;
+			pRxContext->InUse		= FALSE;
+			pRxContext->IRPPending	= FALSE;
+			pRxContext->Readable	= FALSE;
+			pRxContext->ReorderInUse = FALSE;
+							
+		}
+			RTUSBBulkReceive(pAd);
+			DBGPRINT_RAW(RT_DEBUG_ERROR, ("RTUSBBulkReceive\n"));
+	}*/
 	
 	DBGPRINT_RAW(RT_DEBUG_TRACE, ("CmdThread : CMDTHREAD_RESET_BULK_OUT<===\n"));
 	return NDIS_STATUS_SUCCESS;
@@ -1256,29 +1168,21 @@ static NTSTATUS ResetBulkOutHdlr(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 }
 
 
-/* All transfers must be aborted or cancelled before attempting to reset the pipe.*/
+// All transfers must be aborted or cancelled before attempting to reset the pipe.
 static NTSTATUS ResetBulkInHdlr(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 {
 	UINT32 MACValue;
 	NTSTATUS ntStatus;
 	
 	DBGPRINT_RAW(RT_DEBUG_TRACE, ("CmdThread : CMDTHREAD_RESET_BULK_IN === >\n"));
-
-#ifdef CONFIG_STA_SUPPORT
-	if(RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_IDLE_RADIO_OFF))
-	{
-		RTMP_CLEAR_FLAG(pAd, fRTMP_ADAPTER_BULKIN_RESET);
-		return NDIS_STATUS_SUCCESS;
-	}
-#endif /* CONFIG_STA_SUPPORT */
 	
 #ifdef RALINK_ATE
 	if (ATE_ON(pAd))
 		ATEResetBulkIn(pAd);
 	else
-#endif /* RALINK_ATE */
+#endif // RALINK_ATE //
 	{
-		/*while ((atomic_read(&pAd->PendingRx) > 0) && (!RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_NIC_NOT_EXIST))) */
+		//while ((atomic_read(&pAd->PendingRx) > 0) && (!RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_NIC_NOT_EXIST))) 
 		if((pAd->PendingRx > 0) && (!RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_NIC_NOT_EXIST)))
 		{
 			DBGPRINT_RAW(RT_DEBUG_ERROR, ("BulkIn IRP Pending!!!\n"));
@@ -1288,7 +1192,7 @@ static NTSTATUS ResetBulkInHdlr(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 		}
 	}						
 						
-	/* Wait 10ms before reading register.*/
+	// Wait 10ms before reading register.
 	RTMPusecDelay(10000);
 	ntStatus = RTUSBReadMACRegister(pAd, MAC_CSR0, &MACValue);
 
@@ -1313,11 +1217,27 @@ static NTSTATUS ResetBulkInHdlr(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 							, i, pAd->RxContext[i].IRPPending, pAd->RxContext[i].InUse, pAd->RxContext[i].Readable));
 		}
 		
+ 		/*
+			DBGPRINT_RAW(RT_DEBUG_ERROR, ("==========================================\n"));
+
+			pAd->NextRxBulkInReadIndex = 0;	// Next Rx Read index
+			pAd->NextRxBulkInIndex		= 0;	// Rx Bulk pointer
+			for (i = 0; i < (RX_RING_SIZE); i++)
+			{
+				PRX_CONTEXT  pRxContext = &(pAd->RxContext[i]);
+
+				pRxContext->pAd	= pAd;
+				pRxContext->InUse		= FALSE;
+				pRxContext->IRPPending	= FALSE;
+				pRxContext->Readable	= FALSE;
+				pRxContext->ReorderInUse = FALSE;
+									
+			}*/
 		RTMP_CLEAR_FLAG(pAd, fRTMP_ADAPTER_BULKIN_RESET);
 		
 		for (i = 0; i < pAd->CommonCfg.NumOfBulkInIRP; i++)
 		{
-			/*RTUSBBulkReceive(pAd);*/
+			//RTUSBBulkReceive(pAd);
 			PRX_CONTEXT		pRxContext;
 			PURB			pUrb;
 			int				ret = 0;
@@ -1338,24 +1258,24 @@ static NTSTATUS ResetBulkInHdlr(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 			pAd->BulkInReq++;
 			RTMP_IRQ_UNLOCK(&pAd->BulkInLock, IrqFlags);
 
-			/* Init Rx context descriptor*/
+			// Init Rx context descriptor
 			RTUSBInitRxDesc(pAd, pRxContext);
 			pUrb = pRxContext->pUrb;
 			if ((ret = RTUSB_SUBMIT_URB(pUrb))!=0)
-			{	/* fail*/
+			{	// fail
 				RTMP_IRQ_LOCK(&pAd->BulkInLock, IrqFlags);
 				pRxContext->InUse = FALSE;
 				pRxContext->IRPPending = FALSE;
 				pAd->PendingRx--;
 				pAd->BulkInReq--;
 				RTMP_IRQ_UNLOCK(&pAd->BulkInLock, IrqFlags);
-				DBGPRINT(RT_DEBUG_ERROR, ("CMDTHREAD_RESET_BULK_IN: Submit Rx URB failed(%d), status=%d\n", ret, RTMP_USB_URB_STATUS_GET(pUrb)));
+				DBGPRINT(RT_DEBUG_ERROR, ("CMDTHREAD_RESET_BULK_IN: Submit Rx URB failed(%d), status=%d\n", ret, pUrb->rtusb_urb_status));
 			}
 			else
-			{	/* success*/
-				/*DBGPRINT(RT_DEBUG_TRACE, ("BIDone, Pend=%d,BIIdx=%d,BIRIdx=%d!\n", */
-				/*							pAd->PendingRx, pAd->NextRxBulkInIndex, pAd->NextRxBulkInReadIndex));*/
-				DBGPRINT_RAW(RT_DEBUG_TRACE, ("CMDTHREAD_RESET_BULK_IN: Submit Rx URB Done, status=%d!\n", RTMP_USB_URB_STATUS_GET(pUrb)));
+			{	// success
+				//DBGPRINT(RT_DEBUG_TRACE, ("BIDone, Pend=%d,BIIdx=%d,BIRIdx=%d!\n", 
+				//							pAd->PendingRx, pAd->NextRxBulkInIndex, pAd->NextRxBulkInReadIndex));
+				DBGPRINT_RAW(RT_DEBUG_TRACE, ("CMDTHREAD_RESET_BULK_IN: Submit Rx URB Done, status=%d!\n", pUrb->rtusb_urb_status));
 				ASSERT((pRxContext->InUse == pRxContext->IRPPending));
 			}
 		}					
@@ -1363,7 +1283,7 @@ static NTSTATUS ResetBulkInHdlr(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 	}
 	else
 	{
-		/* Card must be removed*/
+		// Card must be removed
 		if (NT_SUCCESS(ntStatus) != TRUE)
 		{
 			RTMP_SET_FLAG(pAd, fRTMP_ADAPTER_NIC_NOT_EXIST);
@@ -1397,7 +1317,7 @@ static NTSTATUS SetAsicWcidHdlr(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 
 	DBGPRINT_RAW(RT_DEBUG_TRACE, ("1-MACValue= %x,\n", MACValue));
 	RTUSBWriteMACRegister(pAd, offset, MACValue);
-	/* Read bitmask*/
+	// Read bitmask
 	RTUSBReadMACRegister(pAd, offset+4, &MACRValue);
 	if ( SetAsicWcid.DeleteTid != 0xffffffff)
 		MACRValue &= (~SetAsicWcid.DeleteTid);
@@ -1491,7 +1411,7 @@ static NTSTATUS SetPortSecuredHdlr(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 	STA_PORT_SECURED(pAd);
 	return NDIS_STATUS_SUCCESS;
 }
-#endif /* CONFIG_STA_SUPPORT */
+#endif // CONFIG_STA_SUPPORT //
 
 
 static NTSTATUS RemovePairwiseKeyHdlr(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
@@ -1513,7 +1433,7 @@ static NTSTATUS SetClientMACEntryHdlr(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelm
 }
 
 
-/* add by johnli, fix "in_interrupt" error when call "MacTableDeleteEntry" in Rx tasklet*/
+// add by johnli, fix "in_interrupt" error when call "MacTableDeleteEntry" in Rx tasklet
 static NTSTATUS UpdateProtectHdlr(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 {	
 	AsicUpdateProtect(pAd, 0, (ALLN_SETPROTECT), TRUE, 0);
@@ -1521,7 +1441,7 @@ static NTSTATUS UpdateProtectHdlr(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 }
 
 
-/* end johnli*/
+// end johnli
 
 
 
@@ -1563,7 +1483,7 @@ static NTSTATUS ForceSleepAutoWakeupHdlr(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQ
 
 	RTMP_SET_PSM_BIT(pAd, PWR_SAVE);
 
-	/* if WMM-APSD is failed, try to disable following line*/
+	// if WMM-APSD is failed, try to disable following line
 	AsicSleepThenAutoWakeup(pAd, TbttNumToNextWakeUp);
 
 	return NDIS_STATUS_SUCCESS;
@@ -1575,24 +1495,10 @@ NTSTATUS QkeriodicExecutHdlr(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 	StaQuickResponeForRateUpExec(NULL, pAd, NULL, NULL);
 	return NDIS_STATUS_SUCCESS;
 }
-#endif /* CONFIG_STA_SUPPORT*/
+#endif // CONFIG_STA_SUPPORT
 
 
 
-
-#ifdef LED_CONTROL_SUPPORT
-static NTSTATUS SetLEDStatusHdlr(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
-{
-	UCHAR LEDStatus = *((PUCHAR)(CMDQelmt->buffer));
-
-	RTMPSetLEDStatus(pAd, LEDStatus);
-						
-	DBGPRINT(RT_DEBUG_TRACE, ("%s: CMDTHREAD_SET_LED_STATUS (LEDStatus = %d)\n", 
-								__FUNCTION__, LEDStatus));	 
-	
-	return NDIS_STATUS_SUCCESS;
-}
-#endif /* LED_CONTROL_SUPPORT */
 
 
 
@@ -1602,55 +1508,55 @@ static NTSTATUS SetLEDStatusHdlr(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 #ifdef RT_CFG80211_SUPPORT
 static NTSTATUS RegHintHdlr (IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 {
-	RT_CFG80211_CRDA_REG_HINT(pAd, CMDQelmt->buffer, CMDQelmt->bufferlength);
+	CFG80211_RegHint(pAd, CMDQelmt->buffer, CMDQelmt->bufferlength);
 	return NDIS_STATUS_SUCCESS;
 }
 
 static NTSTATUS RegHint11DHdlr(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 {
-	RT_CFG80211_CRDA_REG_HINT11D(pAd, CMDQelmt->buffer, CMDQelmt->bufferlength);
+	CFG80211_RegHint11D(pAd, CMDQelmt->buffer, CMDQelmt->bufferlength);
 	return NDIS_STATUS_SUCCESS;
 }
 
 static NTSTATUS RT_Mac80211_ScanEnd(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 {
-	RT_CFG80211_SCAN_END(pAd, FALSE);
+	CFG80211_ScanEnd(pAd, FALSE);
 	return NDIS_STATUS_SUCCESS;
 }
 
 static NTSTATUS RT_Mac80211_ConnResultInfom(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 {
-	RT_CFG80211_CONN_RESULT_INFORM(pAd,
+	CFG80211_ConnectResultInform(pAd,
 								pAd->MlmeAux.Bssid,
 								CMDQelmt->buffer, CMDQelmt->bufferlength,
 								CMDQelmt->buffer, CMDQelmt->bufferlength,
 								1);
 	return NDIS_STATUS_SUCCESS;
 }
-#endif /* RT_CFG80211_SUPPORT */
-#endif /* LINUX */
+#endif // RT_CFG80211_SUPPORT //
+#endif // LINUX //
 
 
 typedef NTSTATUS (*CMDHdlr)(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt);
 
 static CMDHdlr CMDHdlrTable[] = {
-	ResetBulkOutHdlr,				/* CMDTHREAD_RESET_BULK_OUT*/
-	ResetBulkInHdlr,					/* CMDTHREAD_RESET_BULK_IN*/
-	CheckGPIOHdlr,					/* CMDTHREAD_CHECK_GPIO	*/
-	SetAsicWcidHdlr,					/* CMDTHREAD_SET_ASIC_WCID*/
-	SetClientMACEntryHdlr,			/* CMDTHREAD_SET_CLIENT_MAC_ENTRY*/
+	ResetBulkOutHdlr,				// CMDTHREAD_RESET_BULK_OUT
+	ResetBulkInHdlr,					// CMDTHREAD_RESET_BULK_IN
+	CheckGPIOHdlr,					// CMDTHREAD_CHECK_GPIO	
+	SetAsicWcidHdlr,					// CMDTHREAD_SET_ASIC_WCID
+	SetClientMACEntryHdlr,			// CMDTHREAD_SET_CLIENT_MAC_ENTRY
 	
 #ifdef CONFIG_STA_SUPPORT
-	SetPSMBitHdlr,					/* CMDTHREAD_SET_PSM_BIT*/
-	ForceWakeUpHdlr,				/* CMDTHREAD_FORCE_WAKE_UP*/
-	ForceSleepAutoWakeupHdlr,		/* CMDTHREAD_FORCE_SLEEP_AUTO_WAKEUP*/
-	QkeriodicExecutHdlr,				/* CMDTHREAD_QKERIODIC_EXECUT*/
+	SetPSMBitHdlr,					// CMDTHREAD_SET_PSM_BIT
+	ForceWakeUpHdlr,				// CMDTHREAD_FORCE_WAKE_UP
+	ForceSleepAutoWakeupHdlr,		// CMDTHREAD_FORCE_SLEEP_AUTO_WAKEUP
+	QkeriodicExecutHdlr,				// CMDTHREAD_QKERIODIC_EXECUT
 #else
 	NULL, 
 	NULL, 
 	NULL,
 	NULL,
-#endif /* CONFIG_STA_SUPPORT */
+#endif // CONFIG_STA_SUPPORT //
 
 	NULL,
 	NULL,
@@ -1659,31 +1565,26 @@ static CMDHdlr CMDHdlrTable[] = {
 	NULL,
 	NULL,
 
-#ifdef LED_CONTROL_SUPPORT
-	SetLEDStatusHdlr,			/* CMDTHREAD_SET_LED_STATUS*/
-#else
-    NULL,
-#endif /* LED_CONTROL_SUPPORT */
-
+	NULL,
 	NULL,
 
 	/* Security related */
-	SetWcidSecInfoHdlr,				/* CMDTHREAD_SET_WCID_SEC_INFO*/
-	SetAsicWcidIVEIVHdlr,			/* CMDTHREAD_SET_ASIC_WCID_IVEIV*/
-	SetAsicWcidAttrHdlr,				/* CMDTHREAD_SET_ASIC_WCID_ATTR*/
-	SETAsicSharedKeyHdlr,			/* CMDTHREAD_SET_ASIC_SHARED_KEY*/
-	SetAsicPairwiseKeyHdlr,			/* CMDTHREAD_SET_ASIC_PAIRWISE_KEY*/
-	RemovePairwiseKeyHdlr,			/* CMDTHREAD_REMOVE_PAIRWISE_KEY*/
+	SetWcidSecInfoHdlr,				// CMDTHREAD_SET_WCID_SEC_INFO
+	SetAsicWcidIVEIVHdlr,			// CMDTHREAD_SET_ASIC_WCID_IVEIV
+	SetAsicWcidAttrHdlr,				// CMDTHREAD_SET_ASIC_WCID_ATTR
+	SETAsicSharedKeyHdlr,			// CMDTHREAD_SET_ASIC_SHARED_KEY
+	SetAsicPairwiseKeyHdlr,			// CMDTHREAD_SET_ASIC_PAIRWISE_KEY
+	RemovePairwiseKeyHdlr,			// CMDTHREAD_REMOVE_PAIRWISE_KEY
 
 #ifdef CONFIG_STA_SUPPORT
-	SetPortSecuredHdlr,				/* CMDTHREAD_SET_PORT_SECURED*/
+	SetPortSecuredHdlr,				// CMDTHREAD_SET_PORT_SECURED
 #else
 	NULL,
-#endif /* CONFIG_STA_SUPPORT */
+#endif // CONFIG_STA_SUPPORT //
 
 	NULL,
 
-	UpdateProtectHdlr,				/* CMDTHREAD_UPDATE_PROTECT*/
+	UpdateProtectHdlr,				// CMDTHREAD_UPDATE_PROTECT
 	
 
 #ifdef LINUX
@@ -1697,25 +1598,26 @@ static CMDHdlr CMDHdlrTable[] = {
 	NULL,
 	NULL,
 	NULL,
-#endif /* RT_CFG80211_SUPPORT */
+#endif // RT_CFG80211_SUPPORT //
 
 #else
 	NULL, 
 	NULL,
 	NULL,
 	NULL,
-#endif /* LINUX */
+#endif // LINUX //
 
-
+	NULL, 
 };
 
 
 static inline BOOLEAN ValidCMD(IN PCmdQElmt CMDQelmt)
 {
-	SHORT CMDIndex = CMDQelmt->command - CMDTHREAD_FIRST_CMD_ID;
+	USHORT CMDIndex = CMDQelmt->command - CMDTHREAD_FIRST_CMD_ID;
 	USHORT CMDHdlrTableLength= sizeof(CMDHdlrTable) / sizeof(CMDHdlr);
 	
-	if ( (CMDIndex >= 0) && (CMDIndex < CMDHdlrTableLength))
+//	if ( (CMDIndex >= 0) && (CMDIndex < CMDHdlrTableLength))
+	if (CMDIndex < CMDHdlrTableLength) /* CMDIndex is unsigned, always >= 0 */
 	{
 		if (CMDHdlrTable[CMDIndex] > 0)
 			return TRUE;
@@ -1739,7 +1641,7 @@ VOID CMDHandler(
 	PCmdQElmt		cmdqelmt;                                                                                                                                                                                                                                                                              
 	NDIS_STATUS		NdisStatus = NDIS_STATUS_SUCCESS;                                                                                                               
 	NTSTATUS		ntStatus;
-/*	unsigned long	IrqFlags;*/
+//	unsigned long	IrqFlags;
 	
 	while (pAd && pAd->CmdQ.size > 0)	
 	{                                                                                                                                                           
@@ -1784,13 +1686,6 @@ VOID RTUSBWatchDog(IN RTMP_ADAPTER *pAd)
 	BOOLEAN				needDumpSeq = FALSE;
 	UINT32          	MACValue;
 
-	if(RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_NIC_NOT_EXIST))		
-		return;
-
-#ifdef CONFIG_STA_SUPPORT
-	if(RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_IDLE_RADIO_OFF))
-		return;
-#endif /* CONFIG_STA_SUPPORT */
 
 	idx = 0;
 	RTMP_IO_READ32(pAd, TXRXQ_PCNT, &MACValue);
@@ -1842,8 +1737,7 @@ VOID RTUSBWatchDog(IN RTMP_ADAPTER *pAd)
 		pUrb = NULL;
 		
 		RTMP_IRQ_LOCK(&pAd->BulkOutLock[idx], irqFlags);
-/*		if ((pAd->BulkOutPending[idx] == TRUE) && pAd->watchDogTxPendingCnt)*/
-		if (pAd->BulkOutPending[idx] == TRUE)
+		if ((pAd->BulkOutPending[idx] == TRUE) && pAd->watchDogTxPendingCnt)
 		{
 			pAd->watchDogTxPendingCnt[idx]++;
 
@@ -1851,17 +1745,17 @@ VOID RTUSBWatchDog(IN RTMP_ADAPTER *pAd)
 				 (!RTMP_TEST_FLAG(pAd, (fRTMP_ADAPTER_RESET_IN_PROGRESS | fRTMP_ADAPTER_HALT_IN_PROGRESS | fRTMP_ADAPTER_NIC_NOT_EXIST | fRTMP_ADAPTER_BULKOUT_RESET)))
 				)
 			{
-				/* FIXME: Following code just support single bulk out. If you wanna support multiple bulk out. Modify it!*/
+				// FIXME: Following code just support single bulk out. If you wanna support multiple bulk out. Modify it!
 				pHTTXContext = (PHT_TX_CONTEXT)(&pAd->TxContext[idx]);
 				if (pHTTXContext->IRPPending)
-				{	/* Check TxContext.*/
+				{	// Check TxContext.
 					pUrb = pHTTXContext->pUrb;
 				}
 				else if (idx == MGMTPIPEIDX)
 				{
 					PTX_CONTEXT pMLMEContext, pNULLContext, pPsPollContext;
 					
-					/*Check MgmtContext.*/
+					//Check MgmtContext.
 					pMLMEContext = (PTX_CONTEXT)(pAd->MgmtRing.Cell[pAd->MgmtRing.TxDmaIdx].AllocVa);
 					pPsPollContext = (PTX_CONTEXT)(&pAd->PsPollContext);
 					pNULLContext = (PTX_CONTEXT)(&pAd->NullContext);
@@ -1889,9 +1783,9 @@ VOID RTUSBWatchDog(IN RTMP_ADAPTER *pAd)
 				if (pUrb)
 				{
 					DBGPRINT(RT_DEBUG_TRACE, ("Unlink the pending URB!\n"));
-					/* unlink it now*/
+					// unlink it now
 					RTUSB_UNLINK_URB(pUrb);
-					/* Sleep 200 microseconds to give cancellation time to work*/
+					// Sleep 200 microseconds to give cancellation time to work
 					RTMPusecDelay(200);
 					needDumpSeq = TRUE;
 				}
@@ -1912,7 +1806,7 @@ VOID RTUSBWatchDog(IN RTMP_ADAPTER *pAd)
 	}
 
 #ifdef DOT11_N_SUPPORT
-	/* For Sigma debug, dump the ba_reordering sequence.*/
+	// For Sigma debug, dump the ba_reordering sequence.
 	if((needDumpSeq == TRUE) && (pAd->CommonCfg.bDisableReordering == 0))
 	{
 		USHORT				Idx;
@@ -1939,7 +1833,7 @@ VOID RTUSBWatchDog(IN RTMP_ADAPTER *pAd)
 			NdisReleaseSpinLock(&pBAEntry->RxReRingLock);
 		}
 	}
-#endif /* DOT11_N_SUPPORT */
+#endif // DOT11_N_SUPPORT //
 }
 
-#endif /* RTMP_MAC_USB */
+#endif // RTMP_MAC_USB //

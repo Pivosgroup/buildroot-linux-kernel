@@ -74,7 +74,9 @@ woal_sdio_interrupt(struct sdio_func *func)
     handle = card->handle;
 
     PRINTM(MINFO, "*** IN SDIO IRQ ***\n");
+	sdio_release_host(func);
     woal_interrupt(handle);
+	sdio_claim_host(func);
 
     LEAVE();
 }
@@ -91,20 +93,17 @@ woal_sdio_probe(struct sdio_func *func, const struct sdio_device_id *id)
     int ret = MLAN_STATUS_SUCCESS;
     struct sdio_mmc_card *card = NULL;
     moal_handle *handle;
-
+    printk("[woal] : woal_sdio_probe enter\n");
     ENTER();
 
     PRINTM(MINFO, "vendor=0x%4.04X device=0x%4.04X class=%d function=%d\n",
            func->vendor, func->device, func->class, func->num);
 
-    printk( "vendor=0x%4.04X device=0x%4.04X class=%d function=%d\n",
-           func->vendor, func->device, func->class, func->num);
-
-
     card = kzalloc(sizeof(struct sdio_mmc_card), GFP_KERNEL);
     if (!card) {
         PRINTM(MFATAL, "Failed to allocate memory in probe function!\n");
         LEAVE();
+		printk("[woal] : woal_sdio_probe failed to allocate memory\n");
         return -ENOMEM;
     }
 
@@ -128,6 +127,7 @@ woal_sdio_probe(struct sdio_func *func, const struct sdio_device_id *id)
         kfree(card);
         PRINTM(MFATAL, "sdio_enable_func() failed: ret=%d\n", ret);
         LEAVE();
+		printk("[woal] : woal_sdio_probe failed to sdio_enable_func\n");
         return -EIO;
     }
     sdio_release_host(func);
@@ -141,6 +141,7 @@ woal_sdio_probe(struct sdio_func *func, const struct sdio_device_id *id)
     }
 
     LEAVE();
+    printk("[woal] : woal_sdio_probe exit with %d\n", ret);
     return ret;
 }
 
@@ -153,6 +154,7 @@ static void
 woal_sdio_remove(struct sdio_func *func)
 {
     struct sdio_mmc_card *card;
+    printk("[woal] : woal_sdio_remove enter\n");
 
     ENTER();
 
@@ -165,7 +167,9 @@ woal_sdio_remove(struct sdio_func *func)
             kfree(card);
         }
     }
-
+//woal_bus_unregister();
+//woal_bus_register();
+    printk("[woal] : woal_sdio_remove exit\n");
     LEAVE();
 }
 
@@ -180,7 +184,10 @@ woal_sdio_remove(struct sdio_func *func)
 void
 woal_wlan_is_suspended(moal_handle * handle)
 {
-    sdio_func_suspended(((struct sdio_mmc_card *) handle->card)->func);
+    if (handle->suspend_notify_req == MTRUE) {
+        handle->is_suspended = MTRUE;
+        sdio_func_suspended(((struct sdio_mmc_card *) handle->card)->func);
+    }
 }
 #endif
 
@@ -199,9 +206,10 @@ woal_sdio_suspend(struct device *dev)
     int i;
     int ret = MLAN_STATUS_SUCCESS;
     int hs_actived = 0;
+    mlan_ds_ps_info pm_info;
 
     ENTER();
-
+    PRINTM(MCMND, "<--- Enter woal_sdio_suspend --->\n");
     if (func) {
         pm_flags = sdio_get_host_pm_caps(func);
         PRINTM(MCMND, "%s: suspend: PM flags = 0x%x\n", sdio_func_id(func),
@@ -225,12 +233,28 @@ woal_sdio_suspend(struct device *dev)
     }
 
     handle = cardp->handle;
+    handle->suspend_fail = MFALSE;
+    memset(&pm_info, 0, sizeof(pm_info));
+    if (MLAN_STATUS_SUCCESS ==
+        woal_get_pm_info(woal_get_priv(handle, MLAN_BSS_ROLE_ANY), &pm_info)) {
+        if (pm_info.is_suspend_allowed == MFALSE) {
+            PRINTM(MCMND, "suspend not allowed!");
+            ret = -EBUSY;
+            goto done;
+        }
+    }
     for (i = 0; i < handle->priv_num; i++)
-        netif_carrier_off(handle->priv[i]->netdev);
+        netif_device_detach(handle->priv[i]->netdev);
 
     if (pm_keep_power) {
         /* Enable the Host Sleep */
+#ifdef MMC_PM_FUNC_SUSPENDED
+        handle->suspend_notify_req = MTRUE;
+#endif
         hs_actived = woal_enable_hs(woal_get_priv(handle, MLAN_BSS_ROLE_ANY));
+#ifdef MMC_PM_FUNC_SUSPENDED
+        handle->suspend_notify_req = MFALSE;
+#endif
         if (hs_actived) {
 #ifdef MMC_PM_SKIP_RESUME_PROBE
             PRINTM(MCMND, "suspend with MMC_PM_KEEP_POWER and "
@@ -241,12 +265,17 @@ woal_sdio_suspend(struct device *dev)
             PRINTM(MCMND, "suspend with MMC_PM_KEEP_POWER\n");
             ret = sdio_set_host_pm_flags(func, MMC_PM_KEEP_POWER);
 #endif
+        } else {
+            PRINTM(MCMND, "HS not actived, suspend fail!");
+            ret = -EBUSY;
+            goto done;
         }
     }
 
     /* Indicate device suspended */
     handle->is_suspended = MTRUE;
-
+  done:
+    PRINTM(MCMND, "<--- Leave woal_sdio_suspend --->\n");
     LEAVE();
     return ret;
 }
@@ -266,7 +295,7 @@ woal_sdio_resume(struct device *dev)
     int i;
 
     ENTER();
-
+    PRINTM(MCMND, "<--- Enter woal_sdio_resume --->\n");
     if (func) {
         pm_flags = sdio_get_host_pm_caps(func);
         PRINTM(MCMND, "%s: resume: PM flags = 0x%x\n", sdio_func_id(func),
@@ -289,15 +318,13 @@ woal_sdio_resume(struct device *dev)
         LEAVE();
         return MLAN_STATUS_SUCCESS;
     }
-
     handle->is_suspended = MFALSE;
     for (i = 0; i < handle->priv_num; i++)
-        if (handle->priv[i]->media_connected == MTRUE)
-            netif_carrier_on(handle->priv[i]->netdev);
+        netif_device_attach(handle->priv[i]->netdev);
 
     /* Disable Host Sleep */
-    woal_cancel_hs(woal_get_priv(handle, MLAN_BSS_ROLE_ANY), MOAL_CMD_WAIT);
-
+    woal_cancel_hs(woal_get_priv(handle, MLAN_BSS_ROLE_ANY), MOAL_NO_WAIT);
+    PRINTM(MCMND, "<--- Leave woal_sdio_resume --->\n");
     LEAVE();
     return MLAN_STATUS_SUCCESS;
 }
@@ -328,11 +355,22 @@ static struct sdio_driver wlan_sdio = {
     .id_table = wlan_ids,
     .probe = woal_sdio_probe,
     .remove = woal_sdio_remove,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,29)
+    .drv = {
+            .owner = THIS_MODULE,
+#ifdef SDIO_SUSPEND_RESUME
+#ifdef MMC_PM_KEEP_POWER
+            .pm = &wlan_sdio_pm_ops,
+#endif
+#endif
+            }
+#else
 #ifdef SDIO_SUSPEND_RESUME
 #ifdef MMC_PM_KEEP_POWER
     .drv = {
             .pm = &wlan_sdio_pm_ops,
             }
+#endif
 #endif
 #endif
 };
@@ -354,8 +392,10 @@ mlan_status
 woal_write_reg(moal_handle * handle, t_u32 reg, t_u32 data)
 {
     mlan_status ret = MLAN_STATUS_FAILURE;
+	sdio_claim_host(((struct sdio_mmc_card *) handle->card)->func);
     sdio_writeb(((struct sdio_mmc_card *) handle->card)->func, (t_u8) data, reg,
                 (int *) &ret);
+	sdio_release_host(((struct sdio_mmc_card *) handle->card)->func);
     return ret;
 }
 
@@ -374,9 +414,11 @@ woal_read_reg(moal_handle * handle, t_u32 reg, t_u32 * data)
     mlan_status ret = MLAN_STATUS_FAILURE;
     t_u8 val;
 
+	sdio_claim_host(((struct sdio_mmc_card *) handle->card)->func);
     val =
         sdio_readb(((struct sdio_mmc_card *) handle->card)->func, reg,
                    (int *) &ret);
+	sdio_release_host(((struct sdio_mmc_card *) handle->card)->func);
     *data = val;
 
     return ret;
@@ -406,10 +448,12 @@ woal_write_data_sync(moal_handle * handle, mlan_buffer * pmbuf, t_u32 port,
                         MLAN_SDIO_BLOCK_SIZE) : pmbuf->data_len;
     t_u32 ioport = (port & MLAN_SDIO_IO_PORT_MASK);
 
+	sdio_claim_host(((struct sdio_mmc_card *) handle->card)->func);
     if (!sdio_writesb
         (((struct sdio_mmc_card *) handle->card)->func, ioport, buffer,
          blkcnt * blksz))
         ret = MLAN_STATUS_SUCCESS;
+	sdio_release_host(((struct sdio_mmc_card *) handle->card)->func);
 
     return ret;
 }
@@ -438,10 +482,12 @@ woal_read_data_sync(moal_handle * handle, mlan_buffer * pmbuf, t_u32 port,
                         MLAN_SDIO_BLOCK_SIZE) : pmbuf->data_len;
     t_u32 ioport = (port & MLAN_SDIO_IO_PORT_MASK);
 
+	sdio_claim_host(((struct sdio_mmc_card *) handle->card)->func);
     if (!sdio_readsb
         (((struct sdio_mmc_card *) handle->card)->func, buffer, ioport,
          blkcnt * blksz))
         ret = MLAN_STATUS_SUCCESS;
+	sdio_release_host(((struct sdio_mmc_card *) handle->card)->func);
 
     return ret;
 }
@@ -590,4 +636,57 @@ woal_sdio_set_bus_clock(moal_handle * handle, t_u8 option)
     LEAVE();
 #endif
     return MLAN_STATUS_SUCCESS;
+}
+
+/** 
+ *  @brief This function updates card reg based on the Cmd52 value in dev structure
+ *  
+ *  @param priv    	A pointer to moal_handle structure
+ *  @param func    	A pointer to store func variable
+ *  @param reg    	A pointer to store reg variable
+ *  @param val    	A pointer to store val variable
+ *  @return 	   	MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ */
+int
+woal_sdio_read_write_cmd52(moal_handle * handle, int func, int reg, int val)
+{
+    int ret = MLAN_STATUS_SUCCESS;
+    struct sdio_mmc_card *card = (struct sdio_mmc_card *) handle->card;
+
+    ENTER();
+    /* Save current func and reg for read */
+    handle->cmd52_func = func;
+    handle->cmd52_reg = reg;
+    sdio_claim_host(card->func);
+    if (val >= 0) {
+        /* Perform actual write only if val is provided */
+        if (func)
+            sdio_writeb(card->func, val, reg, &ret);
+        else
+            sdio_f0_writeb(card->func, val, reg, &ret);
+        if (ret) {
+            PRINTM(MERROR, "Cannot write value (0x%x) to func %d reg 0x%x\n",
+                   val, func, reg);
+        } else {
+            PRINTM(MMSG, "write value (0x%x) to func %d reg 0x%x\n", (u8) val,
+                   func, reg);
+            handle->cmd52_val = val;
+        }
+    } else {
+        if (func)
+            val = sdio_readb(card->func, reg, &ret);
+        else
+            val = sdio_f0_readb(card->func, reg, &ret);
+        if (ret) {
+            PRINTM(MERROR, "Cannot read value from func %d reg 0x%x\n", func,
+                   reg);
+        } else {
+            PRINTM(MMSG, "read value (0x%x) from func %d reg 0x%x\n", (u8) val,
+                   func, reg);
+            handle->cmd52_val = val;
+        }
+    }
+    sdio_release_host(card->func);
+    LEAVE();
+    return ret;
 }

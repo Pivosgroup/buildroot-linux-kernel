@@ -838,7 +838,7 @@ wlan_scan_channel_list(IN mlan_private * pmpriv,
  *
  *  @return                 n/a
  */
-static t_void
+static mlan_status
 wlan_scan_setup_scan_config(IN mlan_private * pmpriv,
                             IN const wlan_user_scan_cfg * puser_scan_in,
                             OUT wlan_scan_cmd_config * pscan_cfg_out,
@@ -851,6 +851,7 @@ wlan_scan_setup_scan_config(IN mlan_private * pmpriv,
 {
     mlan_adapter *pmadapter = pmpriv->adapter;
     MrvlIEtypes_NumProbes_t *pnum_probes_tlv;
+    mlan_status ret = MLAN_STATUS_SUCCESS;
     MrvlIEtypes_WildCardSsIdParamSet_t *pwildcard_ssid_tlv;
     MrvlIEtypes_RatesParamSet_t *prates_tlv;
     const t_u8 zero_mac[MLAN_MAC_ADDR_LENGTH] = { 0, 0, 0, 0, 0, 0 };
@@ -892,10 +893,7 @@ wlan_scan_setup_scan_config(IN mlan_private * pmpriv,
 
     if (puser_scan_in) {
 
-        /* Default the ssid_filter flag to TRUE, set false under certain
-           wildcard conditions and qualified by the existence of an SSID list
-           before marking the scan as filtered */
-        ssid_filter = MTRUE;
+        ssid_filter = MFALSE;
 
         /* Set the bss type scan filter, use Adapter setting if unset */
         pscan_cfg_out->bss_mode = (puser_scan_in->bss_mode
@@ -920,8 +918,7 @@ wlan_scan_setup_scan_config(IN mlan_private * pmpriv,
              ssid_idx++) {
 
             ssid_len =
-                wlan_strlen((t_s8 *) puser_scan_in->ssid_list[ssid_idx].ssid) +
-                1;
+                wlan_strlen((t_s8 *) puser_scan_in->ssid_list[ssid_idx].ssid);
 
             pwildcard_ssid_tlv
                 = (MrvlIEtypes_WildCardSsIdParamSet_t *) ptlv_pos;
@@ -947,11 +944,8 @@ wlan_scan_setup_scan_config(IN mlan_private * pmpriv,
                    pwildcard_ssid_tlv->ssid,
                    pwildcard_ssid_tlv->max_ssid_length);
 
-            /* Empty wildcard ssid with a maxlen will match many or potentially 
-               all SSIDs (maxlen == 32), therefore do not treat the scan as
-               filtered. */
-            if (!ssid_len && pwildcard_ssid_tlv->max_ssid_length) {
-                ssid_filter = MFALSE;
+            if (ssid_len) {
+                ssid_filter = MTRUE;
             }
         }
 
@@ -1054,6 +1048,19 @@ wlan_scan_setup_scan_config(IN mlan_private * pmpriv,
 
             scan_type = puser_scan_in->chan_list[chan_idx].scan_type;
 
+            if (radio_type == HostCmd_SCAN_RADIO_TYPE_A) {
+                if (pmadapter->fw_bands & BAND_A)
+                    PRINTM(MINFO, "UserScan request for A Band channel %d!!\n",
+                           channel);
+                else {
+                    PRINTM(MERROR, "Scan in A band is not allowed!!\n");
+                    ret = MLAN_STATUS_FAILURE;
+                    LEAVE();
+                    return ret;
+
+                }
+            }
+
             /* Prevent active scanning on a radar controlled channel */
             if (radio_type == HostCmd_SCAN_RADIO_TYPE_A) {
                 if (wlan_11h_radar_detect_required(pmpriv, channel)) {
@@ -1101,6 +1108,7 @@ wlan_scan_setup_scan_config(IN mlan_private * pmpriv,
     }
 
     LEAVE();
+    return ret;
 }
 
 /**
@@ -1351,7 +1359,6 @@ wlan_interpret_bss_desc_with_ie(IN pmlan_adapter pmadapter,
             PRINTM(MERROR, "InterpretIE: Error in processing IE, "
                    "bytes left < IE length\n");
             bytes_left_for_current_beacon = 0;
-            ret = MLAN_STATUS_FAILURE;
             continue;
         }
 
@@ -1581,6 +1588,75 @@ wlan_interpret_bss_desc_with_ie(IN pmlan_adapter pmadapter,
 }
 
 /**
+ *  @brief Adjust ie's position in BSSDescriptor_t
+ *  
+ *  @param pmpriv       A pointer to mlan_private structure
+ *  @param pbss_entry   A pointer to BSSDescriptor_t structure
+ *
+ *  @return           n/a
+ */
+static t_void
+wlan_adjust_ie_in_bss_entry(IN mlan_private * pmpriv,
+                            IN BSSDescriptor_t * pbss_entry)
+{
+    ENTER();
+    if (pbss_entry->pbeacon_buf) {
+        if (pbss_entry->pwpa_ie) {
+            pbss_entry->pwpa_ie = (IEEEtypes_VendorSpecific_t *)
+                (pbss_entry->pbeacon_buf + pbss_entry->wpa_offset);
+        }
+        if (pbss_entry->prsn_ie) {
+            pbss_entry->prsn_ie = (IEEEtypes_Generic_t *)
+                (pbss_entry->pbeacon_buf + pbss_entry->rsn_offset);
+        }
+        if (pbss_entry->pwapi_ie) {
+            pbss_entry->pwapi_ie = (IEEEtypes_Generic_t *)
+                (pbss_entry->pbeacon_buf + pbss_entry->wapi_offset);
+        }
+        if (pbss_entry->pht_cap) {
+            pbss_entry->pht_cap = (IEEEtypes_HTCap_t *)
+                (pbss_entry->pbeacon_buf + pbss_entry->ht_cap_offset);
+        }
+        if (pbss_entry->pht_info) {
+            pbss_entry->pht_info = (IEEEtypes_HTInfo_t *)
+                (pbss_entry->pbeacon_buf + pbss_entry->ht_info_offset);
+        }
+        if (pbss_entry->pbss_co_2040) {
+            pbss_entry->pbss_co_2040 = (IEEEtypes_2040BSSCo_t *)
+                (pbss_entry->pbeacon_buf + pbss_entry->bss_co_2040_offset);
+        }
+        if (pbss_entry->pext_cap) {
+            pbss_entry->pext_cap = (IEEEtypes_ExtCap_t *)
+                (pbss_entry->pbeacon_buf + pbss_entry->ext_cap_offset);
+        }
+        if (pbss_entry->poverlap_bss_scan_param) {
+            pbss_entry->poverlap_bss_scan_param =
+                (IEEEtypes_OverlapBSSScanParam_t *)
+                (pbss_entry->pbeacon_buf + pbss_entry->overlap_bss_offset);
+        }
+    } else {
+        pbss_entry->pwpa_ie = MNULL;
+        pbss_entry->wpa_offset = 0;
+        pbss_entry->prsn_ie = MNULL;
+        pbss_entry->rsn_offset = 0;
+        pbss_entry->pwapi_ie = MNULL;
+        pbss_entry->wapi_offset = 0;
+        pbss_entry->pht_cap = MNULL;
+        pbss_entry->ht_cap_offset = 0;
+        pbss_entry->pht_info = MNULL;
+        pbss_entry->ht_info_offset = 0;
+        pbss_entry->pbss_co_2040 = MNULL;
+        pbss_entry->bss_co_2040_offset = 0;
+        pbss_entry->pext_cap = MNULL;
+        pbss_entry->ext_cap_offset = 0;
+        pbss_entry->poverlap_bss_scan_param = MNULL;
+        pbss_entry->overlap_bss_offset = 0;
+    }
+    LEAVE();
+    return;
+}
+
+/**
  *  @brief Store a beacon or probe response for a BSS returned in the scan
  *  
  *  Store a new scan response or an update for a previous scan response.  New
@@ -1617,6 +1693,10 @@ wlan_ret_802_11_scan_store_beacon(IN mlan_private * pmpriv,
     t_u32 old_bcn_size;
     t_u32 bcn_space;
     t_u32 adj_idx;
+    mlan_status ret = MLAN_STATUS_SUCCESS;
+    t_u8 *tmp_buf;
+    t_u16 bcn_size = 0;
+    t_u32 bcn_offset = 0;
 
     ENTER();
 
@@ -1663,7 +1743,7 @@ wlan_ret_802_11_scan_store_beacon(IN mlan_private * pmpriv,
                 PRINTM(MINFO, "AppControl: Smaller Duplicate Beacon (%d), "
                        "old = %d, new = %d, space = %d, left = %d\n",
                        beacon_idx, old_bcn_size, new_bcn_size, bcn_space,
-                       (sizeof(pmadapter->bcn_buf) -
+                       (pmadapter->bcn_buf_size -
                         (pmadapter->pbcn_buf_end - pmadapter->bcn_buf)));
 
                 /* 
@@ -1693,66 +1773,14 @@ wlan_ret_802_11_scan_store_beacon(IN mlan_private * pmpriv,
                         pbcn_store) {
                         pmadapter->pscan_table[adj_idx].pbeacon_buf -=
                             (bcn_space - old_bcn_size);
-                        if (pmadapter->pscan_table[adj_idx].pwpa_ie) {
-                            pmadapter->pscan_table[adj_idx].pwpa_ie =
-                                (IEEEtypes_VendorSpecific_t *)
-                                (pmadapter->pscan_table[adj_idx].pbeacon_buf +
-                                 pmadapter->pscan_table[adj_idx].wpa_offset);
-                        }
-                        if (pmadapter->pscan_table[adj_idx].prsn_ie) {
-                            pmadapter->pscan_table[adj_idx].prsn_ie =
-                                (IEEEtypes_Generic_t *)
-                                (pmadapter->pscan_table[adj_idx].pbeacon_buf +
-                                 pmadapter->pscan_table[adj_idx].rsn_offset);
-                        }
-                        if (pmadapter->pscan_table[adj_idx].pwapi_ie) {
-                            pmadapter->pscan_table[adj_idx].pwapi_ie =
-                                (IEEEtypes_Generic_t *)
-                                (pmadapter->pscan_table[adj_idx].pbeacon_buf +
-                                 pmadapter->pscan_table[adj_idx].wapi_offset);
-                        }
-                        if (pmadapter->pscan_table[adj_idx].pht_cap) {
-                            pmadapter->pscan_table[adj_idx].pht_cap =
-                                (IEEEtypes_HTCap_t *)
-                                (pmadapter->pscan_table[adj_idx].pbeacon_buf +
-                                 pmadapter->pscan_table[adj_idx].ht_cap_offset);
-                        }
-
-                        if (pmadapter->pscan_table[adj_idx].pht_info) {
-                            pmadapter->pscan_table[adj_idx].pht_info =
-                                (IEEEtypes_HTInfo_t *)
-                                (pmadapter->pscan_table[adj_idx].pbeacon_buf +
-                                 pmadapter->pscan_table[adj_idx].
-                                 ht_info_offset);
-                        }
-                        if (pmadapter->pscan_table[adj_idx].pbss_co_2040) {
-                            pmadapter->pscan_table[adj_idx].pbss_co_2040 =
-                                (IEEEtypes_2040BSSCo_t *)
-                                (pmadapter->pscan_table[adj_idx].pbeacon_buf +
-                                 pmadapter->pscan_table[adj_idx].
-                                 bss_co_2040_offset);
-                        }
-                        if (pmadapter->pscan_table[adj_idx].pext_cap) {
-                            pmadapter->pscan_table[adj_idx].pext_cap =
-                                (IEEEtypes_ExtCap_t *)
-                                (pmadapter->pscan_table[adj_idx].pbeacon_buf +
-                                 pmadapter->pscan_table[adj_idx].
-                                 ext_cap_offset);
-                        }
-                        if (pmadapter->pscan_table[adj_idx].
-                            poverlap_bss_scan_param) {
-                            pmadapter->pscan_table[adj_idx].
-                                poverlap_bss_scan_param =
-                                (IEEEtypes_OverlapBSSScanParam_t *)
-                                (pmadapter->pscan_table[adj_idx].pbeacon_buf +
-                                 pmadapter->pscan_table[adj_idx].
-                                 overlap_bss_offset);
-                        }
+                        wlan_adjust_ie_in_bss_entry(pmpriv,
+                                                    &pmadapter->
+                                                    pscan_table[adj_idx]);
                     }
                 }
             }
         } else if (pmadapter->pbcn_buf_end + (new_bcn_size - bcn_space)
-                   < (pmadapter->bcn_buf + sizeof(pmadapter->bcn_buf))) {
+                   < (pmadapter->bcn_buf + pmadapter->bcn_buf_size)) {
             /* 
              * Beacon is larger than space previously allocated (bcn_space)
              *   and there is enough space left in the beaconBuffer to store
@@ -1761,7 +1789,7 @@ wlan_ret_802_11_scan_store_beacon(IN mlan_private * pmpriv,
             PRINTM(MINFO, "AppControl: Larger Duplicate Beacon (%d), "
                    "old = %d, new = %d, space = %d, left = %d\n",
                    beacon_idx, old_bcn_size, new_bcn_size, bcn_space,
-                   (sizeof(pmadapter->bcn_buf) -
+                   (pmadapter->bcn_buf_size -
                     (pmadapter->pbcn_buf_end - pmadapter->bcn_buf)));
 
             /* 
@@ -1796,58 +1824,9 @@ wlan_ret_802_11_scan_store_beacon(IN mlan_private * pmpriv,
                 if (pmadapter->pscan_table[adj_idx].pbeacon_buf > pbcn_store) {
                     pmadapter->pscan_table[adj_idx].pbeacon_buf
                         += (new_bcn_size - bcn_space);
-                    if (pmadapter->pscan_table[adj_idx].pwpa_ie) {
-                        pmadapter->pscan_table[adj_idx].pwpa_ie =
-                            (IEEEtypes_VendorSpecific_t *)
-                            (pmadapter->pscan_table[adj_idx].pbeacon_buf +
-                             pmadapter->pscan_table[adj_idx].wpa_offset);
-                    }
-                    if (pmadapter->pscan_table[adj_idx].prsn_ie) {
-                        pmadapter->pscan_table[adj_idx].prsn_ie =
-                            (IEEEtypes_Generic_t *)
-                            (pmadapter->pscan_table[adj_idx].pbeacon_buf +
-                             pmadapter->pscan_table[adj_idx].rsn_offset);
-                    }
-                    if (pmadapter->pscan_table[adj_idx].pwapi_ie) {
-                        pmadapter->pscan_table[adj_idx].pwapi_ie =
-                            (IEEEtypes_Generic_t *)
-                            (pmadapter->pscan_table[adj_idx].pbeacon_buf +
-                             pmadapter->pscan_table[adj_idx].wapi_offset);
-                    }
-                    if (pmadapter->pscan_table[adj_idx].pht_cap) {
-                        pmadapter->pscan_table[adj_idx].pht_cap =
-                            (IEEEtypes_HTCap_t *)
-                            (pmadapter->pscan_table[adj_idx].pbeacon_buf +
-                             pmadapter->pscan_table[adj_idx].ht_cap_offset);
-                    }
-
-                    if (pmadapter->pscan_table[adj_idx].pht_info) {
-                        pmadapter->pscan_table[adj_idx].pht_info =
-                            (IEEEtypes_HTInfo_t *)
-                            (pmadapter->pscan_table[adj_idx].pbeacon_buf +
-                             pmadapter->pscan_table[adj_idx].ht_info_offset);
-                    }
-                    if (pmadapter->pscan_table[adj_idx].pbss_co_2040) {
-                        pmadapter->pscan_table[adj_idx].pbss_co_2040 =
-                            (IEEEtypes_2040BSSCo_t *)
-                            (pmadapter->pscan_table[adj_idx].pbeacon_buf +
-                             pmadapter->pscan_table[adj_idx].
-                             bss_co_2040_offset);
-                    }
-                    if (pmadapter->pscan_table[adj_idx].pext_cap) {
-                        pmadapter->pscan_table[adj_idx].pext_cap =
-                            (IEEEtypes_ExtCap_t *)
-                            (pmadapter->pscan_table[adj_idx].pbeacon_buf +
-                             pmadapter->pscan_table[adj_idx].ext_cap_offset);
-                    }
-                    if (pmadapter->pscan_table[adj_idx].poverlap_bss_scan_param) {
-                        pmadapter->pscan_table[adj_idx].
-                            poverlap_bss_scan_param =
-                            (IEEEtypes_OverlapBSSScanParam_t *)
-                            (pmadapter->pscan_table[adj_idx].pbeacon_buf +
-                             pmadapter->pscan_table[adj_idx].
-                             overlap_bss_offset);
-                    }
+                    wlan_adjust_ie_in_bss_entry(pmpriv,
+                                                &pmadapter->
+                                                pscan_table[adj_idx]);
                 }
             }
         } else {
@@ -1859,7 +1838,7 @@ wlan_ret_802_11_scan_store_beacon(IN mlan_private * pmpriv,
                    "AppControl: Failed: Larger Duplicate Beacon (%d),"
                    " old = %d, new = %d, space = %d, left = %d\n",
                    beacon_idx, old_bcn_size, new_bcn_size, bcn_space,
-                   (sizeof(pmadapter->bcn_buf) -
+                   (pmadapter->bcn_buf_size -
                     (pmadapter->pbcn_buf_end - pmadapter->bcn_buf)));
 
             /* Storage failure, keep old beacon intact */
@@ -1891,49 +1870,50 @@ wlan_ret_802_11_scan_store_beacon(IN mlan_private * pmpriv,
         }
         /* Point the new entry to its permanent storage space */
         pnew_beacon->pbeacon_buf = pbcn_store;
-        if (pnew_beacon->pwpa_ie) {
-            pnew_beacon->pwpa_ie = (IEEEtypes_VendorSpecific_t *)
-                (pnew_beacon->pbeacon_buf + pnew_beacon->wpa_offset);
-        }
-        if (pnew_beacon->prsn_ie) {
-            pnew_beacon->prsn_ie = (IEEEtypes_Generic_t *)
-                (pnew_beacon->pbeacon_buf + pnew_beacon->rsn_offset);
-        }
-        if (pnew_beacon->pwapi_ie) {
-            pnew_beacon->pwapi_ie = (IEEEtypes_Generic_t *)
-                (pnew_beacon->pbeacon_buf + pnew_beacon->wapi_offset);
-        }
-        if (pnew_beacon->pht_cap) {
-            pnew_beacon->pht_cap = (IEEEtypes_HTCap_t *)
-                (pnew_beacon->pbeacon_buf + pnew_beacon->ht_cap_offset);
-        }
-
-        if (pnew_beacon->pht_info) {
-            pnew_beacon->pht_info = (IEEEtypes_HTInfo_t *)
-                (pnew_beacon->pbeacon_buf + pnew_beacon->ht_info_offset);
-        }
-        if (pnew_beacon->pbss_co_2040) {
-            pnew_beacon->pbss_co_2040 = (IEEEtypes_2040BSSCo_t *)
-                (pnew_beacon->pbeacon_buf + pnew_beacon->bss_co_2040_offset);
-        }
-        if (pnew_beacon->pext_cap) {
-            pnew_beacon->pext_cap = (IEEEtypes_ExtCap_t *)
-                (pnew_beacon->pbeacon_buf + pnew_beacon->ext_cap_offset);
-        }
-        if (pnew_beacon->poverlap_bss_scan_param) {
-            pnew_beacon->poverlap_bss_scan_param =
-                (IEEEtypes_OverlapBSSScanParam_t *)
-                (pnew_beacon->pbeacon_buf + pnew_beacon->overlap_bss_offset);
-        }
-
+        wlan_adjust_ie_in_bss_entry(pmpriv, pnew_beacon);
     } else {
+        if ((pmadapter->pbcn_buf_end + pnew_beacon->beacon_buf_size +
+             SCAN_BEACON_ENTRY_PAD > (pmadapter->bcn_buf +
+                                      pmadapter->bcn_buf_size)) &&
+            (pmadapter->bcn_buf_size < MAX_SCAN_BEACON_BUFFER)) {
+            /* no space for this entry, realloc bcn buffer */
+            ret = pmadapter->callbacks.moal_malloc(pmadapter->pmoal_handle,
+                                                   pmadapter->bcn_buf_size +
+                                                   DEFAULT_SCAN_BEACON_BUFFER,
+                                                   MLAN_MEM_DEF,
+                                                   (t_u8 **) & tmp_buf);
+            if ((ret == MLAN_STATUS_SUCCESS) && (tmp_buf)) {
+                PRINTM(MCMND,
+                       "Realloc Beacon buffer, old size=%d, new_size=%d\n",
+                       pmadapter->bcn_buf_size,
+                       pmadapter->bcn_buf_size + DEFAULT_SCAN_BEACON_BUFFER);
+                bcn_size = pmadapter->pbcn_buf_end - pmadapter->bcn_buf;
+                memcpy(pmadapter, tmp_buf, pmadapter->bcn_buf, bcn_size);
+                /* Adjust beacon buffer pointers that are past the current */
+                for (adj_idx = 0; adj_idx < num_of_ent; adj_idx++) {
+                    bcn_offset =
+                        pmadapter->pscan_table[adj_idx].pbeacon_buf -
+                        pmadapter->bcn_buf;
+                    pmadapter->pscan_table[adj_idx].pbeacon_buf =
+                        tmp_buf + bcn_offset;
+                    wlan_adjust_ie_in_bss_entry(pmpriv,
+                                                &pmadapter->
+                                                pscan_table[adj_idx]);
+                }
+                pmadapter->pbcn_buf_end = tmp_buf + bcn_size;
+                pmadapter->callbacks.moal_mfree(pmadapter->pmoal_handle,
+                                                (t_u8 *) pmadapter->bcn_buf);
+                pmadapter->bcn_buf = tmp_buf;
+                pmadapter->bcn_buf_size += DEFAULT_SCAN_BEACON_BUFFER;
+            }
+        }
         /* 
          * No existing beacon data exists for this entry, check to see
          *   if we can fit it in the remaining space
          */
         if (pmadapter->pbcn_buf_end + pnew_beacon->beacon_buf_size +
             SCAN_BEACON_ENTRY_PAD < (pmadapter->bcn_buf +
-                                     sizeof(pmadapter->bcn_buf))) {
+                                     pmadapter->bcn_buf_size)) {
 
             /* 
              * Copy the beacon buffer data from the local entry to the
@@ -1947,43 +1927,7 @@ wlan_ret_802_11_scan_store_beacon(IN mlan_private * pmpriv,
             pnew_beacon->pbeacon_buf = pmadapter->pbcn_buf_end;
             pnew_beacon->beacon_buf_size_max = (pnew_beacon->beacon_buf_size
                                                 + SCAN_BEACON_ENTRY_PAD);
-
-            if (pnew_beacon->pwpa_ie) {
-                pnew_beacon->pwpa_ie = (IEEEtypes_VendorSpecific_t *)
-                    (pnew_beacon->pbeacon_buf + pnew_beacon->wpa_offset);
-            }
-            if (pnew_beacon->prsn_ie) {
-                pnew_beacon->prsn_ie = (IEEEtypes_Generic_t *)
-                    (pnew_beacon->pbeacon_buf + pnew_beacon->rsn_offset);
-            }
-            if (pnew_beacon->pwapi_ie) {
-                pnew_beacon->pwapi_ie = (IEEEtypes_Generic_t *)
-                    (pnew_beacon->pbeacon_buf + pnew_beacon->wapi_offset);
-            }
-            if (pnew_beacon->pht_cap) {
-                pnew_beacon->pht_cap = (IEEEtypes_HTCap_t *)
-                    (pnew_beacon->pbeacon_buf + pnew_beacon->ht_cap_offset);
-            }
-
-            if (pnew_beacon->pht_info) {
-                pnew_beacon->pht_info = (IEEEtypes_HTInfo_t *)
-                    (pnew_beacon->pbeacon_buf + pnew_beacon->ht_info_offset);
-            }
-            if (pnew_beacon->pbss_co_2040) {
-                pnew_beacon->pbss_co_2040 = (IEEEtypes_2040BSSCo_t *)
-                    (pnew_beacon->pbeacon_buf +
-                     pnew_beacon->bss_co_2040_offset);
-            }
-            if (pnew_beacon->pext_cap) {
-                pnew_beacon->pext_cap = (IEEEtypes_ExtCap_t *)
-                    (pnew_beacon->pbeacon_buf + pnew_beacon->ext_cap_offset);
-            }
-            if (pnew_beacon->poverlap_bss_scan_param) {
-                pnew_beacon->poverlap_bss_scan_param =
-                    (IEEEtypes_OverlapBSSScanParam_t *)
-                    (pnew_beacon->pbeacon_buf +
-                     pnew_beacon->overlap_bss_offset);
-            }
+            wlan_adjust_ie_in_bss_entry(pmpriv, pnew_beacon);
 
             /* Increment the end pointer by the size reserved */
             pmadapter->pbcn_buf_end += pnew_beacon->beacon_buf_size_max;
@@ -1993,42 +1937,27 @@ wlan_ret_802_11_scan_store_beacon(IN mlan_private * pmpriv,
                    beacon_idx,
                    pnew_beacon->beacon_buf_size,
                    (pmadapter->pbcn_buf_end - pmadapter->bcn_buf),
-                   (sizeof(pmadapter->bcn_buf) -
+                   (pmadapter->bcn_buf_size -
                     (pmadapter->pbcn_buf_end - pmadapter->bcn_buf)));
         } else {
             /* 
              * No space for new beacon
              */
-            PRINTM(MINFO, "AppControl: No space beacon (%d): "
+            PRINTM(MCMND, "AppControl: No space beacon (%d): "
                    "%02x:%02x:%02x:%02x:%02x:%02x; sz=%03d, left=%03d\n",
                    beacon_idx,
                    pnew_beacon->mac_address[0], pnew_beacon->mac_address[1],
                    pnew_beacon->mac_address[2], pnew_beacon->mac_address[3],
                    pnew_beacon->mac_address[4], pnew_beacon->mac_address[5],
                    pnew_beacon->beacon_buf_size,
-                   (sizeof(pmadapter->bcn_buf) -
+                   (pmadapter->bcn_buf_size -
                     (pmadapter->pbcn_buf_end - pmadapter->bcn_buf)));
 
             /* Storage failure; clear storage records for this bcn */
             pnew_beacon->pbeacon_buf = MNULL;
             pnew_beacon->beacon_buf_size = 0;
             pnew_beacon->beacon_buf_size_max = 0;
-            pnew_beacon->pwpa_ie = MNULL;
-            pnew_beacon->wpa_offset = 0;
-            pnew_beacon->prsn_ie = MNULL;
-            pnew_beacon->rsn_offset = 0;
-            pnew_beacon->pwapi_ie = MNULL;
-            pnew_beacon->wapi_offset = 0;
-            pnew_beacon->pht_cap = MNULL;
-            pnew_beacon->ht_cap_offset = 0;
-            pnew_beacon->pht_info = MNULL;
-            pnew_beacon->ht_info_offset = 0;
-            pnew_beacon->pbss_co_2040 = MNULL;
-            pnew_beacon->bss_co_2040_offset = 0;
-            pnew_beacon->pext_cap = MNULL;
-            pnew_beacon->ext_cap_offset = 0;
-            pnew_beacon->poverlap_bss_scan_param = MNULL;
-            pnew_beacon->overlap_bss_offset = 0;
+            wlan_adjust_ie_in_bss_entry(pmpriv, pnew_beacon);
         }
     }
 
@@ -2372,6 +2301,7 @@ wlan_scan_networks(IN mlan_private * pmpriv,
     mlan_adapter *pmadapter = pmpriv->adapter;
     mlan_callbacks *pcb = (mlan_callbacks *) & pmadapter->callbacks;
     cmd_ctrl_node *pcmd_node = MNULL;
+    pmlan_ioctl_req pioctl_req = (mlan_ioctl_req *) pioctl_buf;
 
     wlan_scan_cmd_config_tlv *pscan_cfg_out = MNULL;
     MrvlIEtypes_ChanListParamSet_t *pchan_list_out;
@@ -2412,13 +2342,26 @@ wlan_scan_networks(IN mlan_private * pmpriv,
 
     keep_previous_scan = MFALSE;
 
-    wlan_scan_setup_scan_config(pmpriv,
-                                puser_scan_in,
-                                &pscan_cfg_out->config,
-                                &pchan_list_out,
-                                pscan_chan_list,
-                                &max_chan_per_scan,
-                                &filtered_scan, &scan_current_chan_only);
+    ret = wlan_scan_setup_scan_config(pmpriv,
+                                      puser_scan_in,
+                                      &pscan_cfg_out->config,
+                                      &pchan_list_out,
+                                      pscan_chan_list,
+                                      &max_chan_per_scan,
+                                      &filtered_scan, &scan_current_chan_only);
+
+    if (ret != MLAN_STATUS_SUCCESS) {
+
+        PRINTM(MERROR, "Failed to setup scan config\n");
+        if (pscan_cfg_out)
+            pcb->moal_mfree(pmadapter->pmoal_handle, (t_u8 *) pscan_cfg_out);
+        if (pscan_chan_list)
+            pcb->moal_mfree(pmadapter->pmoal_handle, (t_u8 *) pscan_chan_list);
+        if (pioctl_req)
+            pioctl_req->status_code = MLAN_ERROR_INVALID_PARAMETER;
+        LEAVE();
+        return MLAN_STATUS_FAILURE;
+    }
 
     if (puser_scan_in) {
         keep_previous_scan = puser_scan_in->keep_previous_scan;
@@ -2563,6 +2506,7 @@ wlan_ret_802_11_scan(IN mlan_private * pmpriv,
     ChanBandParamSet_t *pchan_band;
     t_u8 band;
     t_u8 is_bgscan_resp;
+    t_u32 age_ts_usec;
 
     ENTER();
     pcb = (pmlan_callbacks) & pmadapter->callbacks;
@@ -2700,6 +2644,11 @@ wlan_ret_802_11_scan(IN mlan_private * pmpriv,
             wlan_ret_802_11_scan_store_beacon(pmpriv,
                                               bss_idx,
                                               num_in_table, bss_new_entry);
+            if (bss_new_entry->pbeacon_buf == MNULL) {
+                PRINTM(MCMND, "No space for beacon, drop this entry\n");
+                num_in_table--;
+                continue;
+            }
             /* 
              * If the TSF TLV was appended to the scan results, save
              *   this entry's TSF value in the networkTSF field.  The
@@ -2754,6 +2703,10 @@ wlan_ret_802_11_scan(IN mlan_private * pmpriv,
 
     /* Update the total number of BSSIDs in the scan table */
     pmadapter->num_in_scan_table = num_in_table;
+    /* Update the age_in_second */
+    pmadapter->callbacks.moal_get_system_time(pmadapter->pmoal_handle,
+                                              &pmadapter->age_in_secs,
+                                              &age_ts_usec);
 
     if (!util_peek_list
         (pmadapter->pmoal_handle, &pmadapter->scan_pending_q,
@@ -2779,14 +2732,44 @@ wlan_ret_802_11_scan(IN mlan_private * pmpriv,
         }
         wlan_recv_event(pmpriv, MLAN_EVENT_ID_DRV_SCAN_REPORT, MNULL);
     } else {
-        /* Get scan command from scan_pending_q and put to cmd_pending_q */
-        pcmd_node =
-            (cmd_ctrl_node *) util_dequeue_list(pmadapter->pmoal_handle,
-                                                &pmadapter->scan_pending_q,
-                                                pcb->moal_spin_lock,
-                                                pcb->moal_spin_unlock);
+        /* If firmware not ready, do not issue any more scan commands */
+        if (pmadapter->hw_status != WlanHardwareStatusReady) {
+            /* Flush all pending scan commands */
+            while ((pcmd_node =
+                    (cmd_ctrl_node *) util_peek_list(pmadapter->pmoal_handle,
+                                                     &pmadapter->scan_pending_q,
+                                                     pcb->moal_spin_lock,
+                                                     pcb->moal_spin_unlock))) {
+                util_unlink_list(pmadapter->pmoal_handle,
+                                 &pmadapter->scan_pending_q,
+                                 (pmlan_linked_list) pcmd_node,
+                                 pcb->moal_spin_lock, pcb->moal_spin_unlock);
+                pcmd_node->pioctl_buf = MNULL;
+                wlan_insert_cmd_to_free_q(pmadapter, pcmd_node);
+            }
+            wlan_request_cmd_lock(pmadapter);
+            pmadapter->scan_processing = MFALSE;
+            wlan_release_cmd_lock(pmadapter);
 
-        wlan_insert_cmd_to_pending_q(pmadapter, pcmd_node, MTRUE);
+            /* Indicate IOCTL complete */
+            if (pioctl_req != MNULL) {
+                pioctl_req->status_code = MLAN_ERROR_FW_NOT_READY;
+
+                /* Indicate ioctl complete */
+                pcb->moal_ioctl_complete(pmadapter->pmoal_handle,
+                                         (pmlan_ioctl_req) pioctl_buf,
+                                         MLAN_STATUS_FAILURE);
+            }
+        } else {
+            /* Get scan command from scan_pending_q and put to cmd_pending_q */
+            pcmd_node =
+                (cmd_ctrl_node *) util_dequeue_list(pmadapter->pmoal_handle,
+                                                    &pmadapter->scan_pending_q,
+                                                    pcb->moal_spin_lock,
+                                                    pcb->moal_spin_unlock);
+
+            wlan_insert_cmd_to_pending_q(pmadapter, pcmd_node, MTRUE);
+        }
     }
 
   done:
@@ -3235,7 +3218,7 @@ wlan_restore_curr_bcn(IN mlan_private * pmpriv)
 
     if (pmpriv->pcurr_bcn_buf &&
         ((pmadapter->pbcn_buf_end + pmpriv->curr_bcn_size) <
-         (pmadapter->bcn_buf + sizeof(pmadapter->bcn_buf)))) {
+         (pmadapter->bcn_buf + pmadapter->bcn_buf_size))) {
 
         pcb->moal_spin_lock(pmadapter->pmoal_handle, pmpriv->curr_bcn_buf_lock);
 

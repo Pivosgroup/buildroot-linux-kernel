@@ -5,24 +5,25 @@
  * Hsinchu County 302,
  * Taiwan, R.O.C.
  *
- * (c) Copyright 2002-2010, Ralink Technology, Inc.
+ * (c) Copyright 2002-2007, Ralink Technology, Inc.
  *
- * This program is free software; you can redistribute it and/or modify  *
- * it under the terms of the GNU General Public License as published by  *
- * the Free Software Foundation; either version 2 of the License, or     *
- * (at your option) any later version.                                   *
- *                                                                       *
- * This program is distributed in the hope that it will be useful,       *
- * but WITHOUT ANY WARRANTY; without even the implied warranty of        *
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
- * GNU General Public License for more details.                          *
- *                                                                       *
- * You should have received a copy of the GNU General Public License     *
- * along with this program; if not, write to the                         *
- * Free Software Foundation, Inc.,                                       *
- * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
- *                                                                       *
- *************************************************************************/
+ * This program is free software; you can redistribute it and/or modify  * 
+ * it under the terms of the GNU General Public License as published by  * 
+ * the Free Software Foundation; either version 2 of the License, or     * 
+ * (at your option) any later version.                                   * 
+ *                                                                       * 
+ * This program is distributed in the hope that it will be useful,       * 
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of        * 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         * 
+ * GNU General Public License for more details.                          * 
+ *                                                                       * 
+ * You should have received a copy of the GNU General Public License     * 
+ * along with this program; if not, write to the                         * 
+ * Free Software Foundation, Inc.,                                       * 
+ * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             * 
+ *                                                                       * 
+ *************************************************************************
+ */
 
 
 #ifndef __CRYPT_SHA2_H__
@@ -32,23 +33,24 @@
 #define EXIT_SUCCESS    0
 #define EXIT_FAILURE    1
 
-typedef unsigned char uint_8t;
-typedef unsigned short uint_16t;
-typedef unsigned int uint_32t;
-typedef unsigned long long uint_64t;
+typedef unsigned char       uint_8t;
+typedef unsigned short      uint_16t;
+typedef unsigned int        uint_32t;
+typedef unsigned long long  uint_64t;
 
 #define void_ret  void
 #define int_ret   int
 
 
 /* define the hash functions that you need  */
-#define SHA_2			/* for dynamic hash length  */
+#define SHA_2   /* for dynamic hash length  */
 #define SHA_224
 #define SHA_256
 
 
 #if defined(__cplusplus)
-extern "C" {
+extern "C"
+{
 #endif
 
 /* Note that the following function prototypes are the same */
@@ -58,8 +60,8 @@ extern "C" {
 /* in which bit sequence indexes increase from the most to  */
 /* the least significant end of each byte                   */
 
-#define SHA1_BLOCK_SIZE    64	/* 512 bits = 64 bytes */
-#define SHA1_DIGEST_SIZE   20	/* 160 bits = 20 bytes */
+#define SHA1_BLOCK_SIZE    64 /* 512 bits = 64 bytes */
+#define SHA1_DIGEST_SIZE   20 /* 160 bits = 20 bytes */
 #define SHA224_DIGEST_SIZE  28
 #define SHA224_BLOCK_SIZE   64
 #define SHA256_DIGEST_SIZE  32
@@ -144,10 +146,13 @@ int_ret  sha2(unsigned char hval[], unsigned int size, const unsigned char data[
 #endif
 
 #define RT_SHA256(Message, MessageL, DMessage) \
-    sha256((DMessage), (Message), (MessageL));
+    sha256((DMessage), (Message), (MessageL));    
+
 
 #if defined(__cplusplus)
 }
 #endif
 
+
 #endif /* __CRYPT_SHA2_H__ */
+

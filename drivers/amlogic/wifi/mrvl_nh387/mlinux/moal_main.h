@@ -2,7 +2,7 @@
   *
   * @brief This file contains wlan driver specific defines etc.
   * 
-  * Copyright (C) 2008-2010, Marvell International Ltd.  
+  * Copyright (C) 2008-2011, Marvell International Ltd.  
   *
   * This software file (the "File") is distributed by Marvell International 
   * Ltd. under the terms of the GNU General Public License Version 2, June 1991 
@@ -72,6 +72,7 @@ Change log:
 #include        <linux/wireless.h>
 #include        <linux/netdevice.h>
 #include        <linux/net.h>
+#include        <linux/inet.h>
 #include        <linux/ip.h>
 #include        <linux/skbuff.h>
 #include        <linux/if_arp.h>
@@ -122,6 +123,16 @@ enum
     MOAL_CMD_WAIT,
     MOAL_PROC_WAIT,
     MOAL_WSTATS_WAIT
+};
+
+/** moal_main_state */
+enum
+{
+    MOAL_STATE_IDLE,
+    MOAL_RECV_INT,
+    MOAL_ENTER_WORK_QUEUE,
+    MOAL_START_MAIN_PROCESS,
+    MOAL_END_MAIN_PROCESS
 };
 
 /** HostCmd_Header */
@@ -355,10 +366,17 @@ woal_sched_timeout(t_u32 millisec)
 /** Put module */
 #define MODULE_PUT	module_put(THIS_MODULE)
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,37)
 /** Initialize semaphore */
 #define MOAL_INIT_SEMAPHORE(x)    	init_MUTEX(x)
 /** Initialize semaphore */
 #define MOAL_INIT_SEMAPHORE_LOCKED(x) 	init_MUTEX_LOCKED(x)
+#else
+/** Initialize semaphore */
+#define MOAL_INIT_SEMAPHORE(x)    	sema_init(x, 1)
+/** Initialize semaphore */
+#define MOAL_INIT_SEMAPHORE_LOCKED(x) 	sema_init(x, 0)
+#endif
 /** Acquire semaphore and with blocking */
 #define MOAL_ACQ_SEMAPHORE_BLOCK(x)	down_interruptible(x)
 /** Acquire semaphore without blocking */
@@ -460,6 +478,11 @@ struct debug_data_priv
 };
 #endif
 
+/** Maximum IP address buffer length */
+#define IPADDR_MAX_BUF          20
+/** IP address operation: Remove */
+#define IPADDR_OP_REMOVE        0
+
 /** Private structure for MOAL */
 struct _moal_private
 {
@@ -509,6 +532,8 @@ struct _moal_private
     t_u8 nick_name[16];
         /** AdHoc link sensed flag */
     BOOLEAN is_adhoc_link_sensed;
+        /** Block scan flag */
+    t_u8 scan_block_flag;
         /** IW statistics */
     struct iw_statistics w_stats;
         /** w_stats wait queue token */
@@ -534,6 +559,8 @@ struct _moal_private
     t_u8 wpa_version;
         /** key mgmt */
     t_u8 key_mgmt;
+        /** rx_filter */
+    t_u8 rx_filter;
 #endif                          /* STA_SUPPORT */
 #ifdef PROC_DEBUG
     /** MLAN debug info */
@@ -561,6 +588,8 @@ struct _moal_handle
 #endif
         /** Firmware */
     const struct firmware *firmware;
+        /** Init config file */
+    const struct firmware *user_data;
         /** Hotplug device */
     struct device *hotplug_device;
         /** STATUS variables */
@@ -576,6 +605,10 @@ struct _moal_handle
 #if defined(SDIO_SUSPEND_RESUME)
         /** Device suspend flag */
     BOOLEAN is_suspended;
+#ifdef SDIO_SUSPEND_RESUME
+        /** suspend notify flag */
+    BOOLEAN suspend_notify_req;
+#endif
         /** Host Sleep activated flag */
     t_u8 hs_activated;
         /** Host Sleep activated event wait queue token */
@@ -589,6 +622,10 @@ struct _moal_handle
     atomic_t rx_pending;
         /** Tx packet pending count in mlan */
     atomic_t tx_pending;
+        /** Low tx pending */
+    t_u32 low_tx_pending;
+        /** Max tx pending */
+    t_u32 max_tx_pending;
         /** IOCTL pending count in mlan */
     atomic_t ioctl_pending;
         /** Malloc count */
@@ -597,6 +634,14 @@ struct _moal_handle
     t_u32 lock_count;
         /** mlan buffer alloc count */
     t_u32 mbufalloc_count;
+#if defined(SDIO_SUSPEND_RESUME)
+        /** hs skip count */
+    t_u32 hs_skip_count;
+        /** hs force count */
+    t_u32 hs_force_count;
+        /** suspend_fail flag */
+    BOOLEAN suspend_fail;
+#endif
 #ifdef REASSOCIATION
         /** Re-association thread */
     moal_thread reassoc_thread;
@@ -623,7 +668,103 @@ struct _moal_handle
     wait_queue_head_t meas_wait_q __ATTRIB_ALIGN__;
     /** handle index - for multiple card supports */
     t_u8 handle_idx;
+        /** main state */
+    t_u8 main_state;
+        /** cmd52 function */
+    t_u8 cmd52_func;
+        /** cmd52 register */
+    t_u8 cmd52_reg;
+        /** cmd52 value */
+    t_u8 cmd52_val;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34)
+        /** spinlock to stop_queue/wake_queue*/
+    spinlock_t queue_lock;
+#endif
 };
+
+/** 
+ *  @brief set trans_start for each TX queue. 
+ *  
+ *  @param dev		A pointer to net_device structure
+ *
+ *  @return			N/A
+ */
+static inline void
+woal_set_trans_start(struct net_device *dev)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34)
+    unsigned int i;
+    for (i = 0; i < dev->num_tx_queues; i++) {
+        netdev_get_tx_queue(dev, i)->trans_start = jiffies;
+    }
+#endif
+    dev->trans_start = jiffies;
+}
+
+/** 
+ *  @brief Start queue
+ *  
+ *  @param dev		A pointer to net_device structure
+ *
+ *  @return			N/A
+ */
+static inline void
+woal_start_queue(struct net_device *dev)
+{
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,34)
+    netif_start_queue(dev);
+#else
+    netif_tx_start_all_queues(dev);
+#endif
+}
+
+/** 
+ *  @brief Stop queue
+ *  
+ *  @param dev		A pointer to net_device structure
+ *
+ *  @return			N/A
+ */
+static inline void
+woal_stop_queue(struct net_device *dev)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34)
+    unsigned long flags;
+    moal_private *priv = (moal_private *) netdev_priv(dev);
+    spin_lock_irqsave(&priv->phandle->queue_lock, flags);
+    woal_set_trans_start(dev);
+    if (!netif_queue_stopped(dev))
+        netif_tx_stop_all_queues(dev);
+    spin_unlock_irqrestore(&priv->phandle->queue_lock, flags);
+#else
+    woal_set_trans_start(dev);
+    if (!netif_queue_stopped(dev))
+        netif_stop_queue(dev);
+#endif
+}
+
+/** 
+ *  @brief wake queue
+ *  
+ *  @param dev		A pointer to net_device structure
+ *
+ *  @return			N/A
+ */
+static inline void
+woal_wake_queue(struct net_device *dev)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34)
+    unsigned long flags;
+    moal_private *priv = (moal_private *) netdev_priv(dev);
+    spin_lock_irqsave(&priv->phandle->queue_lock, flags);
+    if (netif_queue_stopped(dev))
+        netif_tx_wake_all_queues(dev);
+    spin_unlock_irqrestore(&priv->phandle->queue_lock, flags);
+#else
+    if (netif_queue_stopped(dev))
+        netif_wake_queue(dev);
+#endif
+}
 
 /** Debug Macro definition*/
 #ifdef	DEBUG_LEVEL1
@@ -652,8 +793,8 @@ extern t_u32 ifdbg;
 #define	PRINTM_MEVENT(msg...) do {if (drvdbg & MEVENT) printk(msg);} while(0)
 #define	PRINTM_MCMND(msg...)  do {if (drvdbg & MCMND) printk(KERN_DEBUG msg);} while(0)
 #define	PRINTM_MDATA(msg...)  do {if (drvdbg & MDATA) printk(KERN_DEBUG msg);} while(0)
-#define	PRINTM_MERROR(msg...) do {if (drvdbg & MERROR) printk(KERN_DEBUG msg);} while(0)
-#define	PRINTM_MFATAL(msg...) do {if (drvdbg & MFATAL) printk(KERN_DEBUG msg);} while(0)
+#define	PRINTM_MERROR(msg...) do {if (drvdbg & MERROR) printk(KERN_ERR msg);} while(0)
+#define	PRINTM_MFATAL(msg...) do {if (drvdbg & MFATAL) printk(KERN_ERR msg);} while(0)
 #define	PRINTM_MMSG(msg...)   do {if (drvdbg & MMSG) printk(KERN_ALERT msg);} while(0)
 
 #define	PRINTM_MIF_D(msg...) do {if (ifdbg & MIF_D) printk(KERN_DEBUG msg);} while(0)
@@ -779,12 +920,48 @@ woal_get_priv(moal_handle * handle, mlan_bss_role bss_role)
     return ((i < handle->priv_num) ? handle->priv[i] : NULL);
 }
 
+/** Max line length allowed in init config file */
+#define MAX_LINE_LEN        256
+/** Max MAC address string length allowed */
+#define MAX_MAC_ADDR_LEN    18
+/** Max register type/offset/value etc. parameter length allowed */
+#define MAX_PARAM_LEN       12
+
+/** HostCmd_CMD_CFG_DATA for CAL data */
+#define HostCmd_CMD_CFG_DATA 0x008f
+/** HostCmd action set */
+#define HostCmd_ACT_GEN_SET 0x0001
+/** HostCmd CAL data header length */
+#define CFG_DATA_HEADER_LEN	6
+
+typedef struct _HostCmd_DS_GEN
+{
+    t_u16 command;
+    t_u16 size;
+    t_u16 seq_num;
+    t_u16 result;
+} HostCmd_DS_GEN;
+
+typedef struct _HostCmd_DS_802_11_CFG_DATA
+{
+    /** Action */
+    t_u16 action;
+    /** Type */
+    t_u16 type;
+    /** Data length */
+    t_u16 data_len;
+    /** Data */
+    t_u8 data[1];
+} __ATTRIB_PACK__ HostCmd_DS_802_11_CFG_DATA;
+
 /**  Convert ASCII string to hex value */
 int woal_ascii2hex(t_u8 * d, char *s, t_u32 dlen);
 /**  Convert mac address from string to t_u8 buffer */
 void woal_mac2u8(t_u8 * mac_addr, char *buf);
 /**  Extract token from string */
 char *woal_strsep(char **s, char delim, char esc);
+/** Return int value of a given ASCII string */
+mlan_status woal_atoi(int *data, char *a);
 /** Return hex value of a given ASCII string */
 int woal_atox(char *a);
 /** Return hex value of a given character */
@@ -849,15 +1026,18 @@ mlan_status woal_cancel_hs(moal_private * priv, t_u8 wait_option);
 #if defined(SDIO_SUSPEND_RESUME)
 /** Enable Host Sleep configuration */
 int woal_enable_hs(moal_private * priv);
+/** hs active timeout 2 second */
+#define HS_ACTIVE_TIMEOUT  (2 * HZ)
 #endif
+
+/** set deep sleep */
+int woal_set_deep_sleep(moal_private * priv, t_u8 wait_option,
+                        BOOLEAN bdeep_sleep, t_u16 idletime);
 
 /** Get BSS information */
 mlan_status woal_get_bss_info(moal_private * priv, t_u8 wait_option,
                               mlan_bss_info * bss_info);
 #ifdef STA_SUPPORT
-/** set deep sleep */
-int woal_set_deep_sleep(moal_private * priv, t_u8 wait_option,
-                        BOOLEAN bdeep_sleep, t_u16 idletime);
 void woal_send_iwevcustom_event(moal_private * priv, t_s8 * str);
 void woal_send_mic_error_event(moal_private * priv, t_u32 event);
 void woal_process_ioctl_resp(moal_private * priv, mlan_ioctl_req * req);
@@ -950,6 +1130,9 @@ void woal_debug_entry(moal_private * priv);
 /** Remove debug proc fs */
 void woal_debug_remove(moal_private * priv);
 #endif /* PROC_DEBUG */
+
+/** check pm info */
+mlan_status woal_get_pm_info(moal_private * priv, mlan_ds_ps_info * pm_info);
 
 #ifdef REASSOCIATION
 int woal_reassociation_thread(void *data);

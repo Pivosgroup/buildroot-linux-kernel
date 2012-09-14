@@ -4,7 +4,7 @@
  *  @brief This file contains the handling of CMD/EVENT in MLAN
  *
  *
- *  Copyright (C) 2009-2010, Marvell International Ltd. 
+ *  Copyright (C) 2009-2011, Marvell International Ltd. 
  *  All Rights Reserved
  *   
  */
@@ -35,6 +35,85 @@ Change Log:
 /********************************************************
                 Local Functions
 ********************************************************/
+
+/** 
+ *  @brief This function convert a given character to hex
+ *
+ *  @param chr        Character to be converted
+ *
+ *  @return           The converted hex if chr is a valid hex, else 0
+ */
+static t_u32
+wlan_hexval(t_u8 chr)
+{
+    ENTER();
+
+    if (chr >= '0' && chr <= '9')
+        return chr - '0';
+    if (chr >= 'A' && chr <= 'F')
+        return chr - 'A' + 10;
+    if (chr >= 'a' && chr <= 'f')
+        return chr - 'a' + 10;
+
+    LEAVE();
+    return 0;
+}
+
+/**
+ *  @brief This function convert a given string to hex
+ *
+ *  @param a            A pointer to string to be converted
+ *
+ *  @return             The converted hex value if param a is a valid hex, else 0
+ */
+int
+wlan_atox(t_u8 * a)
+{
+    int i = 0;
+
+    ENTER();
+
+    while (wlan_isxdigit(*a))
+        i = i * 16 + wlan_hexval(*a++);
+
+    LEAVE();
+    return i;
+}
+
+/**
+ *  @brief This function parse cal data from ASCII to hex
+ *
+ *  @param src          A pointer to source data
+ *  @param len          Source dara length
+ *  @param dst          A pointer to a buf to store the parsed data
+ *
+ *  @return             The parsed hex data length
+ */
+static t_u32
+wlan_parse_cal_cfg(t_u8 * src, t_u32 len, t_u8 * dst)
+{
+    t_u8 *ptr;
+    t_u8 *dptr;
+
+    ptr = src;
+    dptr = dst;
+
+    while (ptr - src < len) {
+        while (*ptr && (wlan_isspace(*ptr) || *ptr == '\t')) {
+            ptr++;
+        }
+
+        if (wlan_isxdigit(*ptr)) {
+            *dptr++ = wlan_atox(ptr);
+            ptr += 2;
+        } else {
+            ptr++;
+        }
+    }
+
+    return (dptr - dst);
+}
+
 /** 
  *  @brief This function initializes the command node.
  *  
@@ -276,8 +355,8 @@ wlan_dnld_cmd_to_fw(IN mlan_private * pmpriv, IN cmd_ctrl_node * pcmd_node)
         PRINTM(MERROR, "DNLD_CMD: pcmd is null or command size is zero, "
                "Not sending\n");
         if (pioctl_buf != MNULL)
-            pioctl_buf->status_code = MLAN_ERROR_CMD_DNLD_FAIL,
-                wlan_insert_cmd_to_free_q(pmadapter, pcmd_node);
+            pioctl_buf->status_code = MLAN_ERROR_CMD_DNLD_FAIL;
+        wlan_insert_cmd_to_free_q(pmadapter, pcmd_node);
         ret = MLAN_STATUS_FAILURE;
         goto done;
     }
@@ -300,7 +379,7 @@ wlan_dnld_cmd_to_fw(IN mlan_private * pmpriv, IN cmd_ctrl_node * pcmd_node)
 
     pmadapter->callbacks.moal_get_system_time(pmadapter->pmoal_handle, &sec,
                                               &usec);
-    PRINTM(MCMND, "DNLD_CMD (%lu.%lu): 0x%x, act 0x%x, len %d, seqno 0x%x\n",
+    PRINTM(MCMND, "DNLD_CMD (%lu.%06lu): 0x%x, act 0x%x, len %d, seqno 0x%x\n",
            sec, usec, cmd_code,
            wlan_le16_to_cpu(*(t_u16 *) ((t_u8 *) pcmd + S_DS_GEN)), cmd_size,
            wlan_le16_to_cpu(pcmd->seq_num));
@@ -318,8 +397,8 @@ wlan_dnld_cmd_to_fw(IN mlan_private * pmpriv, IN cmd_ctrl_node * pcmd_node)
     if (ret == MLAN_STATUS_FAILURE) {
         PRINTM(MERROR, "DNLD_CMD: Host to Card Failed\n");
         if (pioctl_buf != MNULL)
-            pioctl_buf->status_code = MLAN_ERROR_CMD_DNLD_FAIL,
-                wlan_insert_cmd_to_free_q(pmadapter, pmadapter->curr_cmd);
+            pioctl_buf->status_code = MLAN_ERROR_CMD_DNLD_FAIL;
+        wlan_insert_cmd_to_free_q(pmadapter, pmadapter->curr_cmd);
 
         wlan_request_cmd_lock(pmadapter);
         pmadapter->curr_cmd = MNULL;
@@ -624,7 +703,7 @@ wlan_process_event(pmlan_adapter pmadapter)
     if (eventcause != EVENT_PS_SLEEP && eventcause != EVENT_PS_AWAKE) {
         pmadapter->callbacks.moal_get_system_time(pmadapter->pmoal_handle,
                                                   &in_ts_sec, &in_ts_usec);
-        PRINTM(MEVENT, "%lu.%lu : Event: 0x%x\n", in_ts_sec, in_ts_usec,
+        PRINTM(MEVENT, "%lu.%06lu : Event: 0x%x\n", in_ts_sec, in_ts_usec,
                eventcause);
     }
 
@@ -766,6 +845,7 @@ wlan_prepare_cmd(IN mlan_private * pmpriv,
     /* Return error, since the command preparation failed */
     if (ret != MLAN_STATUS_SUCCESS) {
         PRINTM(MERROR, "PREP_CMD: Command 0x%x preparation failed\n", cmd_no);
+        pcmd_node->pioctl_buf = MNULL;
         wlan_insert_cmd_to_free_q(pmadapter, pcmd_node);
         ret = MLAN_STATUS_FAILURE;
         goto done;
@@ -775,9 +855,17 @@ wlan_prepare_cmd(IN mlan_private * pmpriv,
 #ifdef STA_SUPPORT
     if (cmd_no == HostCmd_CMD_802_11_SCAN)
         wlan_queue_scan_cmd(pmpriv, pcmd_node);
-    else
+    else {
 #endif
-        wlan_insert_cmd_to_pending_q(pmadapter, pcmd_node, MTRUE);
+        if ((cmd_no == HostCmd_CMD_802_11_HS_CFG_ENH) &&
+            (cmd_action == HostCmd_ACT_GEN_SET) &&
+            (pmadapter->hs_cfg.conditions == HOST_SLEEP_CFG_CANCEL))
+            wlan_insert_cmd_to_pending_q(pmadapter, pcmd_node, MFALSE);
+        else
+            wlan_insert_cmd_to_pending_q(pmadapter, pcmd_node, MTRUE);
+#ifdef STA_SUPPORT
+    }
+#endif
   done:
     LEAVE();
     return ret;
@@ -1060,7 +1148,7 @@ wlan_process_cmdresp(mlan_adapter * pmadapter)
 
     pmadapter->callbacks.moal_get_system_time(pmadapter->pmoal_handle, &sec,
                                               &usec);
-    PRINTM(MCMND, "CMD_RESP (%lu.%lu): 0x%x, result %d, len %d, seqno 0x%x\n",
+    PRINTM(MCMND, "CMD_RESP (%lu.%06lu): 0x%x, result %d, len %d, seqno 0x%x\n",
            sec, usec, orig_cmdresp_no, cmdresp_result, resp->size,
            resp->seq_num);
 
@@ -1130,6 +1218,7 @@ wlan_cmd_timeout_func(t_void * function_context)
     mlan_ioctl_req *pioctl_buf = MNULL;
     t_u32 sec, usec;
     t_u8 i;
+
     ENTER();
 
     pmadapter->cmd_timer_is_set = MFALSE;
@@ -1152,14 +1241,19 @@ wlan_cmd_timeout_func(t_void * function_context)
             pmadapter->dbg.last_cmd_act[pmadapter->dbg.last_cmd_index];
         pmadapter->callbacks.moal_get_system_time(pmadapter->pmoal_handle, &sec,
                                                   &usec);
-        PRINTM(MERROR, "Timeout cmd id (%lu.%lu) = 0x%x, act = 0x%x \n", sec,
+        PRINTM(MERROR, "Timeout cmd id (%lu.%06lu) = 0x%x, act = 0x%x \n", sec,
                usec, pmadapter->dbg.timeout_cmd_id,
                pmadapter->dbg.timeout_cmd_act);
-
-        PRINTM(MERROR, "num_data_h2c_failure = %d\n",
-               pmadapter->dbg.num_tx_host_to_card_failure);
-        PRINTM(MERROR, "num_cmd_h2c_failure = %d\n",
-               pmadapter->dbg.num_cmd_host_to_card_failure);
+        if (pcmd_node->cmdbuf) {
+            t_u8 *pcmd_buf;
+            pcmd_buf =
+                pcmd_node->cmdbuf->pbuf + pcmd_node->cmdbuf->data_offset +
+                INTF_HEADER_LEN;
+            for (i = 0; i < 16; i++) {
+                PRINTM(MERROR, "%02x ", *pcmd_buf++);
+            }
+            PRINTM(MERROR, "\n");
+        }
 
         PRINTM(MERROR, "num_cmd_timeout = %d\n",
                pmadapter->dbg.num_cmd_timeout);
@@ -1183,7 +1277,6 @@ wlan_cmd_timeout_func(t_void * function_context)
             PRINTM(MERROR, "0x%x ", pmadapter->dbg.last_cmd_resp_id[i]);
         }
         PRINTM(MERROR, "\n");
-
         PRINTM(MERROR, "last_event_index = %d\n",
                pmadapter->dbg.last_event_index);
         PRINTM(MERROR, "last_event = ");
@@ -1192,14 +1285,37 @@ wlan_cmd_timeout_func(t_void * function_context)
         }
         PRINTM(MERROR, "\n");
 
+        PRINTM(MERROR, "num_data_h2c_failure = %d\n",
+               pmadapter->dbg.num_tx_host_to_card_failure);
+        PRINTM(MERROR, "num_cmd_h2c_failure = %d\n",
+               pmadapter->dbg.num_cmd_host_to_card_failure);
+        PRINTM(MERROR, "num_data_c2h_failure = %d\n",
+               pmadapter->dbg.num_rx_card_to_host_failure);
+        PRINTM(MERROR, "num_cmdevt_c2h_failure = %d\n",
+               pmadapter->dbg.num_cmdevt_card_to_host_failure);
+        PRINTM(MERROR, "num_int_read_failure = %d\n",
+               pmadapter->dbg.num_int_read_failure);
+        PRINTM(MERROR, "last_int_status = %d\n",
+               pmadapter->dbg.last_int_status);
+
         PRINTM(MERROR, "data_sent=%d cmd_sent=%d\n", pmadapter->data_sent,
                pmadapter->cmd_sent);
 
         PRINTM(MERROR, "ps_mode=%d ps_state=%d\n", pmadapter->ps_mode,
                pmadapter->ps_state);
+        PRINTM(MERROR, "wakeup_dev_req=%d wakeup_tries=%d\n",
+               pmadapter->pm_wakeup_card_req, pmadapter->pm_wakeup_fw_try);
+        PRINTM(MERROR, "hs_configured=%d hs_activated=%d\n",
+               pmadapter->is_hs_configured, pmadapter->hs_activated);
+
+        PRINTM(MERROR, "mp_rd_bitmap=0x%x curr_rd_port=0x%x\n",
+               pmadapter->mp_rd_bitmap, pmadapter->curr_rd_port);
+        PRINTM(MERROR, "mp_wr_bitmap=0x%x curr_wr_port=0x%x\n",
+               pmadapter->mp_wr_bitmap, pmadapter->curr_wr_port);
     }
     if (pmadapter->hw_status == WlanHardwareStatusInitializing)
         wlan_init_fw_complete(pmadapter);
+
   exit:
     LEAVE();
     return;
@@ -1429,6 +1545,14 @@ wlan_ret_802_11_hs_cfg(IN pmlan_private pmpriv,
     ENTER();
 
     if (wlan_le16_to_cpu(phs_cfg->action) == HS_ACTIVATE) {
+        /* clean up curr_cmd to allow suspend */
+        if (pioctl_buf)
+            pioctl_buf->status_code = MLAN_ERROR_NO_ERROR;
+        /* Clean up and put current command back to cmd_free_q */
+        wlan_insert_cmd_to_free_q(pmadapter, pmadapter->curr_cmd);
+        wlan_request_cmd_lock(pmadapter);
+        pmadapter->curr_cmd = MNULL;
+        wlan_release_cmd_lock(pmadapter);
         wlan_host_sleep_activated_event(pmpriv, MTRUE);
         goto done;
     } else {
@@ -1461,14 +1585,9 @@ wlan_ret_802_11_hs_cfg(IN pmlan_private pmpriv,
 t_void
 wlan_process_hs_config(pmlan_adapter pmadapter)
 {
-    PRINTM(MINFO,
-           "Auto canceling host sleep since there is some interrupt from the firmware\n");
+    PRINTM(MINFO, "Recevie interrupt/data in HS mode\n");
     if (pmadapter->hs_cfg.gap == HOST_SLEEP_CFG_GAP_FF)
         wlan_pm_wakeup_card(pmadapter);
-    pmadapter->hs_activated = MFALSE;
-    pmadapter->is_hs_configured = MFALSE;
-    wlan_host_sleep_activated_event(wlan_get_priv(pmadapter, MLAN_BSS_ROLE_ANY),
-                                    MFALSE);
     return;
 }
 
@@ -1645,6 +1764,83 @@ wlan_cmd_enh_power_mode(pmlan_private pmpriv,
         cmd->size = wlan_cpu_to_le16(cmd_size);
     }
     return MLAN_STATUS_SUCCESS;
+}
+
+/** 
+ *  @brief This function prepares command of set_cfg_data.
+ *
+ *  @param pmpriv       A pointer to mlan_private strcture
+ *  @param pcmd         A pointer to HostCmd_DS_COMMAND structure
+ *  @param cmd_action   Command action: GET or SET
+ *  @param pdata_buf    A pointer to cal_data buf
+ *  
+ *  @return             MLAN_STATUS_SUCCESS
+ */
+mlan_status
+wlan_cmd_cfg_data(IN pmlan_private pmpriv,
+                  IN HostCmd_DS_COMMAND * pcmd,
+                  IN t_u16 cmd_action, IN t_void * pdata_buf)
+{
+    mlan_status ret = MLAN_STATUS_SUCCESS;
+    HostCmd_DS_802_11_CFG_DATA *pcfg_data = &(pcmd->params.cfg_data);
+    pmlan_adapter pmadapter = pmpriv->adapter;
+    t_u32 len;
+    t_u32 cal_data_offset;
+    t_u8 *temp_pcmd = (t_u8 *) pcmd;
+
+    ENTER();
+
+    cal_data_offset = S_DS_GEN + sizeof(HostCmd_DS_802_11_CFG_DATA);
+    if ((pmadapter->pcal_data) && (pmadapter->cal_data_len > 0)) {
+        len = wlan_parse_cal_cfg((t_u8 *) pmadapter->pcal_data,
+                                 pmadapter->cal_data_len,
+                                 (t_u8 *) (temp_pcmd + cal_data_offset));
+    } else {
+        ret = MLAN_STATUS_FAILURE;
+        goto done;
+    }
+
+    pcfg_data->action = cmd_action;
+    pcfg_data->type = 2;        /* cal data type */
+    pcfg_data->data_len = len;
+
+    pcmd->command = HostCmd_CMD_CFG_DATA;
+    pcmd->size = pcfg_data->data_len + cal_data_offset;
+
+    pcmd->command = wlan_cpu_to_le16(pcmd->command);
+    pcmd->size = wlan_cpu_to_le16(pcmd->size);
+    pcfg_data->action = wlan_cpu_to_le16(pcfg_data->action);
+    pcfg_data->type = wlan_cpu_to_le16(pcfg_data->type);
+    pcfg_data->data_len = wlan_cpu_to_le16(pcfg_data->data_len);
+
+  done:
+    LEAVE();
+    return ret;
+}
+
+/**
+ *  @brief This function handles the command response of set_cfg_data
+ *  
+ *  @param pmpriv       A pointer to mlan_private structure
+ *  @param resp         A pointer to HostCmd_DS_COMMAND
+ *  @param pioctl_buf   A pointer to A pointer to mlan_ioctl_req
+ *  
+ *  @return             MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ */
+mlan_status
+wlan_ret_cfg_data(IN pmlan_private pmpriv,
+                  IN HostCmd_DS_COMMAND * resp, IN t_void * pioctl_buf)
+{
+    mlan_status ret = MLAN_STATUS_SUCCESS;
+
+    ENTER();
+
+    if (resp->result != HostCmd_RESULT_OK) {
+        PRINTM(MERROR, "Cal data cmd resp failed\n");
+        ret = MLAN_STATUS_FAILURE;
+    }
+    LEAVE();
+    return ret;
 }
 
 /** 

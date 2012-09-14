@@ -2,7 +2,7 @@
  *
  *  @brief This file contains functions for 11n handling.
  *
- *  Copyright (C) 2008-2010, Marvell International Ltd. 
+ *  Copyright (C) 2008-2011, Marvell International Ltd. 
  *  All Rights Reserved
  */
 
@@ -137,6 +137,34 @@ wlan_11n_ioctl_amsdu_aggr_ctrl(IN pmlan_adapter pmadapter,
                            (t_void *) & cfg->param.amsdu_aggr_ctrl);
     if (ret == MLAN_STATUS_SUCCESS)
         ret = MLAN_STATUS_PENDING;
+
+    LEAVE();
+    return ret;
+}
+
+/** 
+ * @brief Set/get TX beamforming capabilities
+ *
+ * @param pmadapter    A pointer to mlan_adapter structure
+ * @param pioctl_req   A pointer to ioctl request buffer
+ *
+ * @return             MLAN_STATUS_SUCCESS --success
+ */
+static mlan_status
+wlan_11n_ioctl_tx_bf_cap(IN pmlan_adapter pmadapter,
+                         IN pmlan_ioctl_req pioctl_req)
+{
+    mlan_status ret = MLAN_STATUS_SUCCESS;
+    mlan_private *pmpriv = pmadapter->priv[pioctl_req->bss_num];
+    mlan_ds_11n_cfg *cfg = MNULL;
+
+    ENTER();
+
+    cfg = (mlan_ds_11n_cfg *) pioctl_req->pbuf;
+    if (pioctl_req->action == MLAN_ACT_SET)
+        pmpriv->tx_bf_cap = cfg->param.tx_bf_cap;
+    else
+        cfg->param.tx_bf_cap = pmpriv->tx_bf_cap;
 
     LEAVE();
     return ret;
@@ -378,6 +406,12 @@ wlan_fill_cap_info(mlan_private * priv, MrvlIETypes_HTCap_t * pht_cap)
     else
         RESETHT_RXSTBC(pht_cap->ht_cap.ht_cap_info);
 
+    /* No user config for LDPC coding capability yet */
+    if (ISSUPP_RXLDPC(pmadapter->hw_dot_11n_dev_cap))
+        SETHT_LDPCCODINGCAP(pht_cap->ht_cap.ht_cap_info);
+    else
+        RESETHT_LDPCCODINGCAP(pht_cap->ht_cap.ht_cap_info);
+
     /* No user config for TX STBC yet */
     if (ISSUPP_TXSTBC(pmadapter->hw_dot_11n_dev_cap))
         SETHT_TXSTBC(pht_cap->ht_cap.ht_cap_info);
@@ -419,6 +453,9 @@ wlan_fill_cap_info(mlan_private * priv, MrvlIETypes_HTCap_t * pht_cap)
 
     /* Clear RD responder bit */
     RESETHT_EXTCAP_RDG(pht_cap->ht_cap.ht_ext_cap);
+
+    /* Set Tx BF cap */
+    pht_cap->ht_cap.tx_bf_cap = wlan_cpu_to_le32(priv->tx_bf_cap);
 
     LEAVE();
 }
@@ -1024,6 +1061,9 @@ wlan_11n_cfg_ioctl(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
         break;
     case MLAN_OID_11N_CFG_AMSDU_AGGR_CTRL:
         status = wlan_11n_ioctl_amsdu_aggr_ctrl(pmadapter, pioctl_req);
+        break;
+    case MLAN_OID_11N_CFG_TX_BF_CAP:
+        status = wlan_11n_ioctl_tx_bf_cap(pmadapter, pioctl_req);
         break;
     default:
         status = MLAN_STATUS_FAILURE;

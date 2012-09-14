@@ -143,3 +143,5 @@ mlan-objs += mlan/mlan_uap_ioctl.o \
              mlan/mlan_uap_cmdevent.o \
              mlan/mlan_uap_txrx.o
 endif
+
+

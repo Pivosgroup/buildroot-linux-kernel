@@ -378,6 +378,7 @@ woal_uap_ioctl(struct net_device *dev, struct ifreq *req)
         break;
     case UAP_DEEP_SLEEP:
         ret = woal_uap_deep_sleep(dev, req);
+        break;
     default:
         break;
     }
@@ -861,9 +862,6 @@ woal_enable_wapi(moal_private * priv, t_u8 enable)
 
     ENTER();
 
-    // if (priv->bss_started == MTRUE)
-    woal_uap_bss_ctrl(priv, MOAL_IOCTL_WAIT, UAP_BSS_STOP);
-
     /* Allocate an IOCTL request buffer */
     req = (mlan_ioctl_req *) woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_bss));
     if (req == NULL) {
@@ -935,6 +933,8 @@ woal_uap_set_wapi_flag_ioctl(moal_private * priv, wapi_msg * msg)
     int ret = 0;
 
     ENTER();
+
+    woal_uap_bss_ctrl(priv, MOAL_IOCTL_WAIT, UAP_BSS_STOP);
 
     req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_misc_cfg));
     if (req == NULL) {
@@ -1353,6 +1353,11 @@ woal_set_sys_config_invalid_data(mlan_uap_bss_param * config)
     config->max_sta_count = 0x7FFF;
     config->auth_mode = 0x7F;
     config->sta_ageout_timer = 0x7FFFFFFF;
+    config->pairwise_update_timeout = 0x7FFFFFFF;
+    config->pwk_retries = 0x7FFFFFFF;
+    config->groupwise_update_timeout = 0x7FFFFFFF;
+    config->gwk_retries = 0x7FFFFFFF;
+    config->mgmt_ie_passthru_mask = 0x7FFFFFFF;
     config->ps_sta_ageout_timer = 0x7FFFFFFF;
     config->rts_threshold = 0x7FFF;
     config->frag_threshold = 0x7FFF;

@@ -5,25 +5,38 @@
  * Hsinchu County 302,
  * Taiwan, R.O.C.
  *
- * (c) Copyright 2002-2010, Ralink Technology, Inc.
+ * (c) Copyright 2002-2007, Ralink Technology, Inc.
  *
- * This program is free software; you can redistribute it and/or modify  *
- * it under the terms of the GNU General Public License as published by  *
- * the Free Software Foundation; either version 2 of the License, or     *
- * (at your option) any later version.                                   *
- *                                                                       *
- * This program is distributed in the hope that it will be useful,       *
- * but WITHOUT ANY WARRANTY; without even the implied warranty of        *
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
- * GNU General Public License for more details.                          *
- *                                                                       *
- * You should have received a copy of the GNU General Public License     *
- * along with this program; if not, write to the                         *
- * Free Software Foundation, Inc.,                                       *
- * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
- *                                                                       *
+ * This program is free software; you can redistribute it and/or modify  * 
+ * it under the terms of the GNU General Public License as published by  * 
+ * the Free Software Foundation; either version 2 of the License, or     * 
+ * (at your option) any later version.                                   * 
+ *                                                                       * 
+ * This program is distributed in the hope that it will be useful,       * 
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of        * 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         * 
+ * GNU General Public License for more details.                          * 
+ *                                                                       * 
+ * You should have received a copy of the GNU General Public License     * 
+ * along with this program; if not, write to the                         * 
+ * Free Software Foundation, Inc.,                                       * 
+ * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             * 
+ *                                                                       * 
  *************************************************************************/
 
+
+
+/****************************************************************************
+    Module Name:
+    RC4
+
+    Abstract:
+    
+    Revision History:
+    Who         When            What
+    --------    ----------      ------------------------------------------
+    Eddy        2009/05/13      ARC4
+***************************************************************************/
 
 #include "crypt_arc4.h"
 
@@ -48,13 +61,13 @@ VOID ARC4_INIT (
     UINT BlockIndex = 0, SWAPIndex = 0, KeyIndex = 0;
     UINT8 TempValue = 0;
 
-    /*Initialize the block value*/
+    //Initialize the block value
     pARC4_CTX->BlockIndex1 = 0;
     pARC4_CTX->BlockIndex2 = 0;
     for (BlockIndex = 0; BlockIndex < ARC4_KEY_BLOCK_SIZE; BlockIndex++)
         pARC4_CTX->KeyBlock[BlockIndex] = (UINT8) BlockIndex;
 
-    /*Key schedule*/
+    //Key schedule
     for (BlockIndex = 0; BlockIndex < ARC4_KEY_BLOCK_SIZE; BlockIndex++)
     {
         TempValue = pARC4_CTX->KeyBlock[BlockIndex];

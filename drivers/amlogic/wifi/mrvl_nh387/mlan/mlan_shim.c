@@ -2,7 +2,7 @@
  *  
  *  @brief This file contains APIs to MOAL module.
  * 
- *  Copyright (C) 2008-2010, Marvell International Ltd. 
+ *  Copyright (C) 2008-2011, Marvell International Ltd. 
  *  All Rights Reserved
  */
 
@@ -16,7 +16,7 @@
  * 
  *  @section copyright_sec Copyright
  *
- *  Copyright (C) 2008-2010, Marvell International Ltd. 
+ *  Copyright (C) 2008-2011, Marvell International Ltd. 
  */
 
 /********************************************************
@@ -231,6 +231,8 @@ mlan_register(IN pmlan_device pmdevice, OUT t_void ** ppmlan_adapter)
     pmadapter->init_para.cfg_11d = pmdevice->cfg_11d;
 #endif
 
+    pmadapter->init_para.fw_crc_check = pmdevice->fw_crc_check;
+
     for (i = 0; i < MLAN_MAX_BSS_NUM; i++) {
         pmadapter->priv[i] = MNULL;
         if (pmdevice->bss_attr[i].active == MTRUE) {
@@ -429,6 +431,35 @@ mlan_dnld_fw(IN t_void * pmlan_adapter, IN pmlan_fw_image pmfw)
 }
 
 /**
+ *  @brief This function pass init param to MLAN
+ *
+ *  @param pmlan_adapter  A pointer to a t_void pointer to store
+ *                        mlan_adapter structure pointer
+ *  @param pparam         A pointer to mlan_init_param structure
+ *
+ *  @return               MLAN_STATUS_SUCCESS
+ *
+ */
+mlan_status
+mlan_set_init_param(IN t_void * pmlan_adapter, IN pmlan_init_param pparam)
+{
+    mlan_status ret = MLAN_STATUS_SUCCESS;
+    mlan_adapter *pmadapter = (mlan_adapter *) pmlan_adapter;
+
+    ENTER();
+    MASSERT(pmlan_adapter);
+
+    /** Save cal data in MLAN */
+    if ((pparam->pcal_data_buf) && (pparam->cal_data_len > 0)) {
+        pmadapter->pcal_data = pparam->pcal_data_buf;
+        pmadapter->cal_data_len = pparam->cal_data_len;
+    }
+
+    LEAVE();
+    return ret;
+}
+
+/**
  *  @brief This function initializes the firmware
  *  
  *  @param pmlan_adapter   A pointer to a t_void pointer to store
@@ -597,6 +628,13 @@ mlan_main_process(IN t_void * pmlan_adapter)
             continue;
         }
         if (IS_CARD_RX_RCVD(pmadapter)) {
+            pmadapter->data_received = MFALSE;
+            if (pmadapter->hs_activated == MTRUE) {
+                pmadapter->is_hs_configured = MFALSE;
+                wlan_host_sleep_activated_event(wlan_get_priv
+                                                (pmadapter, MLAN_BSS_ROLE_ANY),
+                                                MFALSE);
+            }
             pmadapter->pm_wakeup_fw_try = MFALSE;
             if (pmadapter->ps_state == PS_STATE_SLEEP)
                 pmadapter->ps_state = PS_STATE_AWAKE;
@@ -803,9 +841,26 @@ mlan_recv_packet_complete(IN t_void * pmlan_adapter,
     mlan_adapter *pmadapter = (mlan_adapter *) pmlan_adapter;
 
     ENTER();
-    wlan_free_mlan_buffer(pmadapter, pmbuf);
+    wlan_recv_packet_complete(pmadapter, pmbuf, status);
     LEAVE();
     return MLAN_STATUS_SUCCESS;
+}
+
+/**
+ *  @brief select wmm queue
+ *
+ *  @param pmlan_adapter	A pointer to mlan_adapter structure
+ *  @param bss_num		BSS number
+ *  @param tid			TID
+ *
+ *  @return			wmm queue priority (0 - 3)
+ */
+t_u8
+mlan_select_wmm_queue(IN t_void * pmlan_adapter, IN t_u8 bss_num, IN t_u8 tid)
+{
+    mlan_adapter *pmadapter = (mlan_adapter *) pmlan_adapter;
+    pmlan_private pmpriv = pmadapter->priv[bss_num];
+    return wlan_wmm_select_queue(pmpriv, tid);
 }
 
 /** 
@@ -820,8 +875,10 @@ mlan_interrupt(IN t_void * adapter)
     mlan_adapter *pmadapter = (mlan_adapter *) adapter;
 
     ENTER();
-    if (!pmadapter->pps_uapsd_mode && pmadapter->ps_state == PS_STATE_SLEEP)
+    if (!pmadapter->pps_uapsd_mode && pmadapter->ps_state == PS_STATE_SLEEP) {
+        pmadapter->pm_wakeup_fw_try = MFALSE;
         pmadapter->ps_state = PS_STATE_AWAKE;
+    }
     wlan_interrupt(pmadapter);
     LEAVE();
 }

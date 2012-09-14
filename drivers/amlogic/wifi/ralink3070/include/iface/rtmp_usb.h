@@ -5,25 +5,25 @@
  * Hsinchu County 302,
  * Taiwan, R.O.C.
  *
- * (c) Copyright 2002-2010, Ralink Technology, Inc.
+ * (c) Copyright 2002-2007, Ralink Technology, Inc.
  *
- * This program is free software; you can redistribute it and/or modify  *
- * it under the terms of the GNU General Public License as published by  *
- * the Free Software Foundation; either version 2 of the License, or     *
- * (at your option) any later version.                                   *
- *                                                                       *
- * This program is distributed in the hope that it will be useful,       *
- * but WITHOUT ANY WARRANTY; without even the implied warranty of        *
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
- * GNU General Public License for more details.                          *
- *                                                                       *
- * You should have received a copy of the GNU General Public License     *
- * along with this program; if not, write to the                         *
- * Free Software Foundation, Inc.,                                       *
- * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
- *                                                                       *
- *************************************************************************/
-
+ * This program is free software; you can redistribute it and/or modify  * 
+ * it under the terms of the GNU General Public License as published by  * 
+ * the Free Software Foundation; either version 2 of the License, or     * 
+ * (at your option) any later version.                                   * 
+ *                                                                       * 
+ * This program is distributed in the hope that it will be useful,       * 
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of        * 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         * 
+ * GNU General Public License for more details.                          * 
+ *                                                                       * 
+ * You should have received a copy of the GNU General Public License     * 
+ * along with this program; if not, write to the                         * 
+ * Free Software Foundation, Inc.,                                       * 
+ * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             * 
+ *                                                                       * 
+ *************************************************************************
+*/
 
 #ifndef __RTMP_USB_H__
 #define __RTMP_USB_H__
@@ -38,19 +38,12 @@ extern UCHAR EpToQueue[6];
 #define MAX_RXBULK_SIZE			(LOCAL_TXBUF_SIZE*RXBULKAGGRE_SIZE)
 #define MAX_MLME_HANDLER_MEMORY 20
 
-/*Power saving */
-#define PowerWakeCID		3
-#define CID0MASK		0x000000ff
-#define CID1MASK		0x0000ff00
-#define CID2MASK		0x00ff0000
-#define CID3MASK		0xff000000
 
-
-/* Flags for Bulkflags control for bulk out data */
-/* */
+// Flags for Bulkflags control for bulk out data
+//
 #define	fRTUSB_BULK_OUT_DATA_NULL				0x00000001
 #define	fRTUSB_BULK_OUT_RTS						0x00000002
-#define	fRTUSB_BULK_OUT_MLME					0x00000004
+#define	fRTUSB_BULK_OUT_MLME						0x00000004
 
 #define	fRTUSB_BULK_OUT_PSPOLL					0x00000010
 #define	fRTUSB_BULK_OUT_DATA_FRAG				0x00000020
@@ -63,10 +56,10 @@ extern UCHAR EpToQueue[6];
 #define	fRTUSB_BULK_OUT_DATA_NORMAL_3			0x00040000
 #define	fRTUSB_BULK_OUT_DATA_NORMAL_4			0x00080000
 
-/* TODO:move to ./ate/include/iface/ate_usb.h */
+// TODO:move to ./ate/include/iface/ate_usb.h
 #ifdef RALINK_ATE
 #define	fRTUSB_BULK_OUT_DATA_ATE				0x00100000
-#endif /* RALINK_ATE */
+#endif // RALINK_ATE //
 
 
 #define FREE_HTTX_RING(_pCookie, _pipeId, _txContext)			\
@@ -82,27 +75,75 @@ extern UCHAR EpToQueue[6];
 
 
 
+#define USBD_TRANSFER_DIRECTION_OUT		0
+#define USBD_TRANSFER_DIRECTION_IN		0
+#define USBD_SHORT_TRANSFER_OK			0
+#define PURB			purbb_t
 
 #define PIRP		PVOID
-/*#define NDIS_OID	UINT */
+//#define NDIS_OID	UINT
 #ifndef USB_ST_NOERROR
 #define USB_ST_NOERROR     0
 #endif
 
 
-/* vendor-specific control operations */
+// vendor-specific control operations
 #define CONTROL_TIMEOUT_JIFFIES ( (300 * OS_HZ) / 1000)
-/*#define UNLINK_TIMEOUT_MS		3 // os abl move */
+#define UNLINK_TIMEOUT_MS		3
+
+#ifdef KTHREAD_SUPPORT
+#define RTUSBMlmeUp(pAd) \
+	do{								    \
+		RTMP_OS_TASK	*_pTask = &((pAd)->mlmeTask);\
+		if (_pTask->kthread_task) \
+        { \
+			_pTask->kthread_running = TRUE; \
+	        wake_up(&_pTask->kthread_q); \
+		} \
+	}while(0)
+#else
+#define RTUSBMlmeUp(pAd)	        \
+	do{								    \
+		RTMP_OS_TASK	*_pTask = &((pAd)->mlmeTask);\
+		CHECK_PID_LEGALITY(_pTask->taskPID)		    \
+		{ \
+			RTMP_SEM_EVENT_UP(&(_pTask->taskSema)); \
+		}	\
+	}while(0)
+#endif
+
+
+#ifdef KTHREAD_SUPPORT
+#define RTUSBCMDUp(pAd) \
+	do{	\
+		RTMP_OS_TASK	*_pTask = &((pAd)->cmdQTask);	\
+		{ \
+			_pTask->kthread_running = TRUE; \
+	        wake_up(&_pTask->kthread_q); \
+		} \
+	}while(0)
+
+#else
+#define RTUSBCMDUp(pAd)	                \
+	do{									    \
+		RTMP_OS_TASK	*_pTask = &((pAd)->cmdQTask);	\
+		CHECK_PID_LEGALITY(_pTask->taskPID)	    \
+		{	\
+			RTMP_SEM_EVENT_UP(&(_pTask->taskSema)); \
+		}	\
+	}while(0)
+#endif
 
 
 #define DEVICE_VENDOR_REQUEST_OUT       0x40
 #define DEVICE_VENDOR_REQUEST_IN        0xc0
-/*#define INTERFACE_VENDOR_REQUEST_OUT    0x41 */
-/*#define INTERFACE_VENDOR_REQUEST_IN     0xc1 */
+//#define INTERFACE_VENDOR_REQUEST_OUT    0x41
+//#define INTERFACE_VENDOR_REQUEST_IN     0xc1
+
 #define BULKOUT_MGMT_RESET_FLAG		0x80
 
 #define RTUSB_SET_BULK_FLAG(_M, _F)	((_M)->BulkFlags |= (_F))
 #define RTUSB_CLEAR_BULK_FLAG(_M, _F)	((_M)->BulkFlags &= ~(_F))
 #define RTUSB_TEST_BULK_FLAG(_M, _F)	(((_M)->BulkFlags & (_F)) != 0)
 
-#endif /* __RTMP_USB_H__ */
+#endif // __RTMP_USB_H__ //

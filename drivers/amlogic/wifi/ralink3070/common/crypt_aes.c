@@ -5,36 +5,34 @@
  * Hsinchu County 302,
  * Taiwan, R.O.C.
  *
- * (c) Copyright 2002-2010, Ralink Technology, Inc.
+ * (c) Copyright 2002-2007, Ralink Technology, Inc.
  *
- * This program is free software; you can redistribute it and/or modify  *
- * it under the terms of the GNU General Public License as published by  *
- * the Free Software Foundation; either version 2 of the License, or     *
- * (at your option) any later version.                                   *
- *                                                                       *
- * This program is distributed in the hope that it will be useful,       *
- * but WITHOUT ANY WARRANTY; without even the implied warranty of        *
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
- * GNU General Public License for more details.                          *
- *                                                                       *
- * You should have received a copy of the GNU General Public License     *
- * along with this program; if not, write to the                         *
- * Free Software Foundation, Inc.,                                       *
- * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
- *                                                                       *
+ * This program is free software; you can redistribute it and/or modify  * 
+ * it under the terms of the GNU General Public License as published by  * 
+ * the Free Software Foundation; either version 2 of the License, or     * 
+ * (at your option) any later version.                                   * 
+ *                                                                       * 
+ * This program is distributed in the hope that it will be useful,       * 
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of        * 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         * 
+ * GNU General Public License for more details.                          * 
+ *                                                                       * 
+ * You should have received a copy of the GNU General Public License     * 
+ * along with this program; if not, write to the                         * 
+ * Free Software Foundation, Inc.,                                       * 
+ * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             * 
+ *                                                                       * 
  *************************************************************************/
 
 
 #include "crypt_aes.h"
 
 
-#define assert(a)   /*ASSERT(a)
-*/
+#define assert(a)   //ASSERT(a)
 
 #undef u32
 #define	u32 unsigned int
-/*typedef unsigned int u32;
-*/
+//typedef unsigned int u32;
 
 static const u32 Te0[256] = {
     0xc66363a5U, 0xf87c7c84U, 0xee777799U, 0xf67b7b8dU,
@@ -1186,8 +1184,7 @@ int AES_set_encrypt_key(const unsigned char *userKey, const int bits, AES_KEY *k
 			rk += 8;
         	}
 	}
-	return 0;   /*Success
-*/
+	return 0;   //Success
 }
 
 void evp_aes_cbc_encrypt(const unsigned char *in, unsigned char *out,
@@ -1315,8 +1312,7 @@ int AES_set_decrypt_key(const unsigned char *userKey, const int bits, AES_KEY *k
 
 int EVP_aes_128_cbc()
 {
-	return 128; /*aes_128_cbc
-*/
+	return 128; //aes_128_cbc
 }
 
 int EVP_EncryptInit(EVP_CIPHER_CTX *ctx, int type, unsigned char *key, unsigned char *iv)
@@ -1325,11 +1321,9 @@ int EVP_EncryptInit(EVP_CIPHER_CTX *ctx, int type, unsigned char *key, unsigned 
 
 	memset(ctx, 0x00, sizeof(EVP_CIPHER_CTX));
 
-	ctx->flag = 1;   /*Init ok.
-*/
+	ctx->flag = 1;   //Init ok.
 	ctx->type = type;
-	ctx->encrypt = 1;  /*Do Encrypt
-*/
+	ctx->encrypt = 1;  //Do Encrypt
 	
 
 	memcpy(ctx->key, key, 16);
@@ -1345,8 +1339,7 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *outbuf, int *outlen, u
 	int encryptSize = 0;
 
 	if ((ctx->flag == 0) || (inlen == 0) || (ctx->encrypt == 0))
-		return 0;  /*Failed, ctx not been initializzd or input size is empty.
-*/
+		return 0;  //Failed, ctx not been initializzd or input size is empty.
 
 	while (inlen >= AES_BLOCK_SIZE)
 	{
@@ -1369,8 +1362,7 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *outbuf, int *outlen, u
 		ctx->bufferlen = AES_BLOCK_SIZE;
 	}
 
-	return 1; /*Success
-*/
+	return 1; //Success
 }
 
 int EVP_EncryptFinal(EVP_CIPHER_CTX *ctx, unsigned char *outbuf, int *outlen)
@@ -1378,15 +1370,13 @@ int EVP_EncryptFinal(EVP_CIPHER_CTX *ctx, unsigned char *outbuf, int *outlen)
 	if ((ctx->flag == 0) || (ctx->bufferlen == 0) || (ctx->encrypt == 0))
 	{
 		*outlen = 0;
-		return 0; /*Failed, ctx not been initialized or buffer is empty.
-*/
+		return 0; //Failed, ctx not been initialized or buffer is empty.
 	}
 
 	*outlen = AES_BLOCK_SIZE;
 	evp_aes_cbc_encrypt(ctx->buffer, outbuf, AES_BLOCK_SIZE, &ctx->aesKey, ctx->iv, ctx->encrypt);
 
-	return 1; /*Success
-*/
+	return 1; //Success
 }
 
 int EVP_DecryptInit(EVP_CIPHER_CTX *ctx, int type, unsigned char *key, unsigned char *iv)
@@ -1395,11 +1385,9 @@ int EVP_DecryptInit(EVP_CIPHER_CTX *ctx, int type, unsigned char *key, unsigned 
 
 	memset(ctx, 0x00, sizeof(EVP_CIPHER_CTX));
 
-	ctx->flag = 1;   /*Init ok.
-*/
+	ctx->flag = 1;   //Init ok.
 	ctx->type = type;
-	ctx->encrypt = 0;  /*Do Decrypt
-*/
+	ctx->encrypt = 0;  //Do Decrypt
 	
 	memcpy(ctx->key, key, 16);
 	memcpy(ctx->iv, iv, 16);
@@ -1414,8 +1402,7 @@ int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *outbuf, int *outlen, u
 	int decryptSize = 0;
 
 	if ((ctx->flag == 0) || (inlen == 0) || (ctx->encrypt == 1))
-		return 0;  /*Failed, ctx not been initializzd or input size is empty.
-*/
+		return 0;  //Failed, ctx not been initializzd or input size is empty.
 
 	while (inlen >= AES_BLOCK_SIZE)
 	{
@@ -1434,8 +1421,7 @@ int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *outbuf, int *outlen, u
 	}
 	*outlen = decryptSize;
 
-	return 1; /*Success.
-*/
+	return 1; //Success.
 }
 
 int EVP_DecryptFinal(EVP_CIPHER_CTX *ctx, unsigned char *outbuf, int *outlen)
@@ -1446,8 +1432,7 @@ int EVP_DecryptFinal(EVP_CIPHER_CTX *ctx, unsigned char *outbuf, int *outlen)
 	if ((ctx->flag == 0) || (ctx->bufferlen == 0) || (ctx->encrypt == 1))
 	{
 		*outlen = 0;
-		return 0; /*Failed, ctx not been initialized or buffer is empty.
-*/
+		return 0; //Failed, ctx not been initialized or buffer is empty.
 	}
 
 	lastchar = ctx->buffer[AES_BLOCK_SIZE - 1];
@@ -1459,8 +1444,7 @@ int EVP_DecryptFinal(EVP_CIPHER_CTX *ctx, unsigned char *outbuf, int *outlen)
 
 	*outlen = datasize;
 
-	return 1; /*Success
-*/
+	return 1; //Success
 }
 
 
@@ -1482,45 +1466,23 @@ void WscEncryptData(
     unsigned char *key, unsigned char *iv,
     unsigned char *cipherText,  int *ctx_len)
 {
-/*    EVP_CIPHER_CTX ctx;
-*/
-	EVP_CIPHER_CTX *pctx = NULL;
+    EVP_CIPHER_CTX ctx;
     int bufLen = 1024;
-/*    unsigned char outBuf[1024];
-*/
-	unsigned char *outBuf = NULL;
+    unsigned char outBuf[1024];
     int outLen, currentLength;
     
-    /*block size = 1024 bytes - 128 bits, 
-*/
-    /*leave 128 bits at the end to accommodate any possible padding 
-*/
-    /*and avoid a buffer overflow
-*/
+    //block size = 1024 bytes - 128 bits, 
+    //leave 128 bits at the end to accommodate any possible padding 
+    //and avoid a buffer overflow
     int blockSize = bufLen - AES_BLOCK_SIZE; 
     unsigned char *bufPtr=NULL;
     int data_len;
 
-	/* allocate memory */
-	os_alloc_mem(NULL, (UCHAR **)&pctx, sizeof(EVP_CIPHER_CTX));
-	if (pctx == NULL)
-	{
-		DBGPRINT(RT_DEBUG_ERROR, ("%s: Allocate memory fail!!!\n", __FUNCTION__));
-		goto LabelErr;
-	}
-	os_alloc_mem(NULL, (UCHAR **)&outBuf, 1024);
-	if (outBuf == NULL)
-	{
-		DBGPRINT(RT_DEBUG_ERROR, ("%s: Allocate memory fail!!!\n", __FUNCTION__));
-		goto LabelErr;
-	}
-
-    /* init buffer
-*/
+    // init buffer
     bufPtr = plainText;
     data_len = ptx_len;
 
-    if(0 != EVP_EncryptInit(pctx, EVP_aes_128_cbc(), key, iv))
+    if(0 != EVP_EncryptInit(&ctx, EVP_aes_128_cbc(), key, iv))
     {
         DBGPRINT(RT_DEBUG_INFO, ("WscEncryptData: EncryptInit failed\n"));
     }
@@ -1533,13 +1495,12 @@ void WscEncryptData(
         else
             currentLength = data_len;
 
-        if(0 == EVP_EncryptUpdate(pctx, outBuf, &outLen, bufPtr, currentLength))
+        if(0 == EVP_EncryptUpdate(&ctx, outBuf, &outLen, bufPtr, currentLength))
         {
             DBGPRINT(RT_DEBUG_INFO, ("WscEncryptData: EncryptUpdate failed\n")); 
         }
         
-        /* fill in output cipherText
-*/
+        // fill in output cipherText
         memcpy(cipherText, outBuf, outLen);
         cipherText += outLen;
         *ctx_len += outLen;
@@ -1549,21 +1510,15 @@ void WscEncryptData(
     }
 
     
-    if(0 == EVP_EncryptFinal(pctx, outBuf, &outLen))
+    if(0 == EVP_EncryptFinal(&ctx, outBuf, &outLen))
     {
         DBGPRINT(RT_DEBUG_INFO, ("WscEncryptData: EncryptFinal failed\n"));
     }
 
-    /* fill in output cipherText
-*/
+    // fill in output cipherText
     memcpy(cipherText, outBuf, outLen);
     *ctx_len += outLen;
-
-LabelErr:
-	if (pctx != NULL)
-		os_free_mem(NULL, pctx);
-	if (outBuf != NULL)
-		os_free_mem(NULL, outBuf);
+    
 }
 
 
@@ -1580,45 +1535,23 @@ void WscDecryptData(
     unsigned char *key, unsigned char *iv,
     unsigned char *plainText,   int *ptx_len)
 {
-/*    EVP_CIPHER_CTX ctx;
-*/
-	EVP_CIPHER_CTX *pctx = NULL;
+    EVP_CIPHER_CTX ctx;
     int bufLen = 1024;
-/*    unsigned char  outBuf[1024];
-*/
-	unsigned char *outBuf = NULL;
+    unsigned char  outBuf[1024];
     int outLen = 0, currentLength;
     
-    /*block size = 1024 bytes - 128 bits, 
-*/
-    /*leave 128 bits at the end to accommodate any possible padding 
-*/
-    /*and avoid a buffer overflow
-*/
+    //block size = 1024 bytes - 128 bits, 
+    //leave 128 bits at the end to accommodate any possible padding 
+    //and avoid a buffer overflow
     int blockSize = bufLen - AES_BLOCK_SIZE;
     unsigned char *bufPtr=NULL;
     int data_len;
-
-	/* allocate memory */
-	os_alloc_mem(NULL, (UCHAR **)&pctx, sizeof(EVP_CIPHER_CTX));
-	if (pctx == NULL)
-	{
-		DBGPRINT(RT_DEBUG_ERROR, ("%s: Allocate memory fail!!!\n", __FUNCTION__));
-		goto LabelErr;
-	}
-	os_alloc_mem(NULL, (UCHAR **)&outBuf, 1024);
-	if (outBuf == NULL)
-	{
-		DBGPRINT(RT_DEBUG_ERROR, ("%s: Allocate memory fail!!!\n", __FUNCTION__));
-		goto LabelErr;
-	}
-
-    /* init buffer
-*/
+    
+    // init buffer
     bufPtr = cipherText;
     data_len = ctx_len;
 
-    if(0 != EVP_DecryptInit(pctx, EVP_aes_128_cbc(), key, iv))
+    if(0 != EVP_DecryptInit(&ctx, EVP_aes_128_cbc(), key, iv))
     {
         DBGPRINT(RT_DEBUG_INFO, ("WscEncryptData: DecryptInit failed\n"));
     }
@@ -1631,14 +1564,13 @@ void WscDecryptData(
         else
             currentLength = data_len;
 
-        if(0 == EVP_DecryptUpdate(pctx, outBuf, &outLen, bufPtr, currentLength))
+        if(0 == EVP_DecryptUpdate(&ctx, outBuf, &outLen, bufPtr, currentLength))
         {
             DBGPRINT(RT_DEBUG_INFO, ("WscDecryptData: DecryptUpdate failed\n"));
         }
 
 
-        /* fill in output plainText
-*/
+        // fill in output plainText
         memcpy(plainText, outBuf, outLen);
         plainText += outLen;
         *ptx_len += outLen;
@@ -1648,21 +1580,15 @@ void WscDecryptData(
     }
 
 
-    if(0 == EVP_DecryptFinal(pctx, outBuf, &outLen))
+    if(0 == EVP_DecryptFinal(&ctx, outBuf, &outLen))
     {
         DBGPRINT(RT_DEBUG_INFO, ("WscDecryptData: DecryptFinal failed\n"));
     }
 
-    /* fill in output plainText
-*/
+    // fill in output plainText
     memcpy(plainText, outBuf, outLen);
     *ptx_len += outLen;
-
-LabelErr:
-	if (pctx != NULL)
-		os_free_mem(NULL, pctx);
-	if (outBuf != NULL)
-		os_free_mem(NULL, outBuf);
+    
 }
 
 /* =========================  AES En/Decryption ========================== */
@@ -2291,58 +2217,34 @@ VOID AES_GTK_KEY_WRAP(
 	OUT UINT    *c_len) 
 {
     UCHAR       A[8], BIN[16], BOUT[16];
-/*    UCHAR       R[512];
-*/
-	UCHAR		*R = NULL;
-    int         num_blocks = p_len/8;   /* unit:64bits
-*/
-    int         i, j;
-/*    aes_context aesctx;
-*/
-	aes_context *paesctx = NULL;
+    UCHAR       R[512];
+    INT         num_blocks = p_len/8;   // unit:64bits
+    INT         i, j;
+    aes_context aesctx;
     UCHAR       xor;
 
+    rtmp_aes_set_key(&aesctx, key, 128);
 
-	/* allocate memory */
-	os_alloc_mem(NULL, (UCHAR **)&R, 512);
-	if (R == NULL)
-	{
-		DBGPRINT(RT_DEBUG_ERROR, ("%s: Allocate memory fail!!!\n", __FUNCTION__));
-		goto LabelErr;
-	}
-	os_alloc_mem(NULL, (UCHAR **)&paesctx, sizeof(aes_context));
-	if (paesctx == NULL)
-	{
-		DBGPRINT(RT_DEBUG_ERROR, ("%s: Allocate memory fail!!!\n", __FUNCTION__));
-		goto LabelErr;
-	}
-
-    rtmp_aes_set_key(paesctx, key, 128);
-
-    /* Init IA
-*/
+    // Init IA
     for (i = 0; i < 8; i++)
         A[i] = 0xa6;
 
-    /*Input plaintext
-*/
+    //Input plaintext
     for (i = 0; i < num_blocks; i++)
     {
         for (j = 0 ; j < 8; j++)
             R[8 * (i + 1) + j] = plaintext[8 * i + j];
     }
 
-    /* Key Mix
-*/
+    // Key Mix
     for (j = 0; j < 6; j++)
     {
         for(i = 1; i <= num_blocks; i++)
         {
-            /*phase 1
-*/
+            //phase 1
             NdisMoveMemory(BIN, A, 8);
             NdisMoveMemory(&BIN[8], &R[8 * i], 8);
-            rtmp_aes_encrypt(paesctx, BIN, BOUT);
+            rtmp_aes_encrypt(&aesctx, BIN, BOUT);
 
             NdisMoveMemory(A, &BOUT[0], 8);
             xor = num_blocks * j + i;
@@ -2351,8 +2253,7 @@ VOID AES_GTK_KEY_WRAP(
         }
     }
 
-    /* Output ciphertext
-*/
+    // Output ciphertext
     NdisMoveMemory(ciphertext, A, 8);
 
     for (i = 1; i <= num_blocks; i++)
@@ -2361,12 +2262,6 @@ VOID AES_GTK_KEY_WRAP(
             ciphertext[8 * i + j] = R[8 * i + j];
     }
     *c_len = p_len + 8;
-
-LabelErr:
-	if (R != NULL)
-		os_free_mem(NULL, R);
-	if (paesctx != NULL)
-		os_free_mem(NULL, paesctx);
 }
 
 
@@ -2395,40 +2290,29 @@ VOID	AES_GTK_KEY_UNWRAP(
 {
 	UCHAR       A[8], BIN[16], BOUT[16];
 	UCHAR       xor;
-	int         i, j;
-/*	aes_context aesctx;
-*/
-	aes_context *paesctx = NULL;
-	UCHAR       *R = NULL;
-	int         num_blocks = c_len/8;	/* unit:64bits
-*/
+	INT         i, j;
+	aes_context aesctx;
+	UCHAR       *R;
+	INT         num_blocks = c_len/8;	// unit:64bits
 
 	
 	os_alloc_mem(NULL, (PUCHAR *)&R, 512);
+
 	if (R == NULL)
     {
         DBGPRINT(RT_DEBUG_ERROR, ("!!!AES_GTK_KEY_UNWRAP: no memory!!!\n"));
         return;
     } /* End of if */
 
-	os_alloc_mem(NULL, (UCHAR **)&paesctx, sizeof(aes_context));
-	if (paesctx == NULL)
-	{
-		DBGPRINT(RT_DEBUG_ERROR, ("!!!AES_GTK_KEY_UNWRAP: no memory!!!\n"));
-		goto LabelOK;
-	}
-
-	/* Initialize
-*/
+	// Initialize
 	NdisMoveMemory(A, ciphertext, 8);
-	/*Input plaintext
-*/
+	//Input plaintext
 	for(i = 0; i < (c_len-8); i++)
 	{
 		R[ i] = ciphertext[i + 8];
 	}
 
-	rtmp_aes_set_key(paesctx, key, 128);
+	rtmp_aes_set_key(&aesctx, key, 128);
 
 	for(j = 5; j >= 0; j--)
 	{
@@ -2438,14 +2322,13 @@ VOID	AES_GTK_KEY_UNWRAP(
 			NdisMoveMemory(BIN, A, 8);
 			BIN[7] = A[7] ^ xor;
 			NdisMoveMemory(&BIN[8], &R[(i-1)*8], 8);
-			rtmp_aes_decrypt(paesctx, BIN, BOUT);
+			rtmp_aes_decrypt(&aesctx, BIN, BOUT);
 			NdisMoveMemory(A, &BOUT[0], 8);
 			NdisMoveMemory(&R[(i-1)*8], &BOUT[8], 8);
 		}
 	}
 
-	/* OUTPUT
-*/
+	// OUTPUT
 	for(i = 0; i < c_len; i++)
 	{
 		plaintext[i] = R[i];
@@ -2461,13 +2344,7 @@ VOID	AES_GTK_KEY_UNWRAP(
 	DBGPRINT_RAW(RT_DEBUG_INFO, ("\n  \n"));	
 
     *p_len = c_len - 8;    
-
-LabelOK:
-	if (R != NULL)
-		os_free_mem(NULL, R);
-
-	if (paesctx != NULL)
-		os_free_mem(NULL, paesctx);
+	os_free_mem(NULL, R);
 }
 
 
@@ -2785,9 +2662,7 @@ VOID RT_AES_Encrypt (
     OUT UINT8 CipherBlock[],
     INOUT UINT *CipherBlockSize)
 {
-/*    AES_CTX_STRUC aes_ctx;
-*/
-	AES_CTX_STRUC *paes_ctx = NULL;
+    AES_CTX_STRUC aes_ctx;
     UINT RowIndex, ColumnIndex;
     UINT RoundIndex, NumberOfRound = 0;
     UINT8 Temp, Row0, Row1, Row2, Row3;
@@ -2811,114 +2686,103 @@ VOID RT_AES_Encrypt (
         return;
     } /* End of if */
 
-	/* allocate memory */
-	os_alloc_mem(NULL, (UCHAR **)&paes_ctx, sizeof(AES_CTX_STRUC));
-	if (paes_ctx == NULL)
-	{
-		DBGPRINT(RT_DEBUG_ERROR, ("%s: Allocate memory fail!!!\n", __FUNCTION__));
-		return;
-	}
-
     /* 
      * 2. Transfer the plain block to state block 
      */
     for (RowIndex = 0; RowIndex < AES_STATE_ROWS;RowIndex++)
         for (ColumnIndex = 0; ColumnIndex < AES_STATE_COLUMNS;ColumnIndex++)
-            paes_ctx->State[RowIndex][ColumnIndex] = PlainBlock[RowIndex + 4*ColumnIndex];
+            aes_ctx.State[RowIndex][ColumnIndex] = PlainBlock[RowIndex + 4*ColumnIndex];
 
     /* 
      *  3. Main encryption rounds
      */
-    RT_AES_KeyExpansion(Key, KeyLength, paes_ctx);
+    RT_AES_KeyExpansion(Key, KeyLength, &aes_ctx);
     NumberOfRound = (KeyLength >> 2) + 6;
 
     /* AES_AddRoundKey */
     RoundIndex = 0;
     for (RowIndex = 0; RowIndex < AES_STATE_ROWS;RowIndex++)
         for (ColumnIndex = 0; ColumnIndex < AES_STATE_COLUMNS;ColumnIndex++)
-            paes_ctx->State[RowIndex][ColumnIndex] ^= paes_ctx->KeyWordExpansion[RowIndex][(RoundIndex*((UINT) AES_STATE_COLUMNS)) + ColumnIndex];
+            aes_ctx.State[RowIndex][ColumnIndex] ^= aes_ctx.KeyWordExpansion[RowIndex][(RoundIndex*((UINT) AES_STATE_COLUMNS)) + ColumnIndex];
 
     for (RoundIndex = 1; RoundIndex < NumberOfRound;RoundIndex++)
     {
         /* AES_SubBytes */
         for (RowIndex = 0; RowIndex < AES_STATE_ROWS;RowIndex++)
             for (ColumnIndex = 0; ColumnIndex < AES_STATE_COLUMNS;ColumnIndex++)
-                paes_ctx->State[RowIndex][ColumnIndex] = aes_sbox_enc[paes_ctx->State[RowIndex][ColumnIndex]];
+                aes_ctx.State[RowIndex][ColumnIndex] = aes_sbox_enc[aes_ctx.State[RowIndex][ColumnIndex]];
 
         /* AES_ShiftRows */
-        Temp = paes_ctx->State[1][0];
-        paes_ctx->State[1][0] = paes_ctx->State[1][1];
-        paes_ctx->State[1][1] = paes_ctx->State[1][2];
-        paes_ctx->State[1][2] = paes_ctx->State[1][3];
-        paes_ctx->State[1][3] = Temp;
-        Temp = paes_ctx->State[2][0];
-        paes_ctx->State[2][0] = paes_ctx->State[2][2];
-        paes_ctx->State[2][2] = Temp;
-        Temp = paes_ctx->State[2][1];
-        paes_ctx->State[2][1] = paes_ctx->State[2][3];
-        paes_ctx->State[2][3] = Temp;
-        Temp = paes_ctx->State[3][3];
-        paes_ctx->State[3][3] = paes_ctx->State[3][2];
-        paes_ctx->State[3][2] = paes_ctx->State[3][1];
-        paes_ctx->State[3][1] = paes_ctx->State[3][0];
-        paes_ctx->State[3][0] = Temp;
+        Temp = aes_ctx.State[1][0];
+        aes_ctx.State[1][0] = aes_ctx.State[1][1];
+        aes_ctx.State[1][1] = aes_ctx.State[1][2];
+        aes_ctx.State[1][2] = aes_ctx.State[1][3];
+        aes_ctx.State[1][3] = Temp;
+        Temp = aes_ctx.State[2][0];
+        aes_ctx.State[2][0] = aes_ctx.State[2][2];
+        aes_ctx.State[2][2] = Temp;
+        Temp = aes_ctx.State[2][1];
+        aes_ctx.State[2][1] = aes_ctx.State[2][3];
+        aes_ctx.State[2][3] = Temp;
+        Temp = aes_ctx.State[3][3];
+        aes_ctx.State[3][3] = aes_ctx.State[3][2];
+        aes_ctx.State[3][2] = aes_ctx.State[3][1];
+        aes_ctx.State[3][1] = aes_ctx.State[3][0];
+        aes_ctx.State[3][0] = Temp;
 
         /* AES_MixColumns */
         for (ColumnIndex = 0; ColumnIndex < AES_STATE_COLUMNS;ColumnIndex++)
         {
-            Row0 = paes_ctx->State[0][ColumnIndex];
-            Row1 = paes_ctx->State[1][ColumnIndex];
-            Row2 = paes_ctx->State[2][ColumnIndex];
-            Row3 = paes_ctx->State[3][ColumnIndex];
-            paes_ctx->State[0][ColumnIndex] = aes_mul_2[Row0]^aes_mul_3[Row1]^Row2^Row3;
-            paes_ctx->State[1][ColumnIndex] = Row0^aes_mul_2[Row1]^aes_mul_3[Row2]^Row3;
-            paes_ctx->State[2][ColumnIndex] = Row0^Row1^aes_mul_2[Row2]^aes_mul_3[Row3];
-            paes_ctx->State[3][ColumnIndex] = aes_mul_3[Row0]^Row1^Row2^aes_mul_2[Row3];
+            Row0 = aes_ctx.State[0][ColumnIndex];
+            Row1 = aes_ctx.State[1][ColumnIndex];
+            Row2 = aes_ctx.State[2][ColumnIndex];
+            Row3 = aes_ctx.State[3][ColumnIndex];
+            aes_ctx.State[0][ColumnIndex] = aes_mul_2[Row0]^aes_mul_3[Row1]^Row2^Row3;
+            aes_ctx.State[1][ColumnIndex] = Row0^aes_mul_2[Row1]^aes_mul_3[Row2]^Row3;
+            aes_ctx.State[2][ColumnIndex] = Row0^Row1^aes_mul_2[Row2]^aes_mul_3[Row3];
+            aes_ctx.State[3][ColumnIndex] = aes_mul_3[Row0]^Row1^Row2^aes_mul_2[Row3];
         }
 
         /* AES_AddRoundKey */
         for (RowIndex = 0; RowIndex < AES_STATE_ROWS;RowIndex++)
             for (ColumnIndex = 0; ColumnIndex < AES_STATE_COLUMNS;ColumnIndex++)
-                paes_ctx->State[RowIndex][ColumnIndex] ^= paes_ctx->KeyWordExpansion[RowIndex][(RoundIndex*((UINT) AES_STATE_COLUMNS)) + ColumnIndex];
+                aes_ctx.State[RowIndex][ColumnIndex] ^= aes_ctx.KeyWordExpansion[RowIndex][(RoundIndex*((UINT) AES_STATE_COLUMNS)) + ColumnIndex];
     } /* End of for */
 
     /* AES_SubBytes */
     for (RowIndex = 0; RowIndex < AES_STATE_ROWS;RowIndex++)
         for (ColumnIndex = 0; ColumnIndex < AES_STATE_COLUMNS;ColumnIndex++)
-            paes_ctx->State[RowIndex][ColumnIndex] = aes_sbox_enc[paes_ctx->State[RowIndex][ColumnIndex]];
+            aes_ctx.State[RowIndex][ColumnIndex] = aes_sbox_enc[aes_ctx.State[RowIndex][ColumnIndex]];
     /* AES_ShiftRows */
-    Temp = paes_ctx->State[1][0];
-    paes_ctx->State[1][0] = paes_ctx->State[1][1];
-    paes_ctx->State[1][1] = paes_ctx->State[1][2];
-    paes_ctx->State[1][2] = paes_ctx->State[1][3];
-    paes_ctx->State[1][3] = Temp;
-    Temp = paes_ctx->State[2][0];
-    paes_ctx->State[2][0] = paes_ctx->State[2][2];
-    paes_ctx->State[2][2] = Temp;
-    Temp = paes_ctx->State[2][1];
-    paes_ctx->State[2][1] = paes_ctx->State[2][3];
-    paes_ctx->State[2][3] = Temp;
-    Temp = paes_ctx->State[3][3];
-    paes_ctx->State[3][3] = paes_ctx->State[3][2];
-    paes_ctx->State[3][2] = paes_ctx->State[3][1];
-    paes_ctx->State[3][1] = paes_ctx->State[3][0];
-    paes_ctx->State[3][0] = Temp;
+    Temp = aes_ctx.State[1][0];
+    aes_ctx.State[1][0] = aes_ctx.State[1][1];
+    aes_ctx.State[1][1] = aes_ctx.State[1][2];
+    aes_ctx.State[1][2] = aes_ctx.State[1][3];
+    aes_ctx.State[1][3] = Temp;
+    Temp = aes_ctx.State[2][0];
+    aes_ctx.State[2][0] = aes_ctx.State[2][2];
+    aes_ctx.State[2][2] = Temp;
+    Temp = aes_ctx.State[2][1];
+    aes_ctx.State[2][1] = aes_ctx.State[2][3];
+    aes_ctx.State[2][3] = Temp;
+    Temp = aes_ctx.State[3][3];
+    aes_ctx.State[3][3] = aes_ctx.State[3][2];
+    aes_ctx.State[3][2] = aes_ctx.State[3][1];
+    aes_ctx.State[3][1] = aes_ctx.State[3][0];
+    aes_ctx.State[3][0] = Temp;
     /* AES_AddRoundKey */
     for (RowIndex = 0; RowIndex < AES_STATE_ROWS;RowIndex++)
         for (ColumnIndex = 0; ColumnIndex < AES_STATE_COLUMNS;ColumnIndex++)
-            paes_ctx->State[RowIndex][ColumnIndex] ^= paes_ctx->KeyWordExpansion[RowIndex][(RoundIndex*((UINT) AES_STATE_COLUMNS)) + ColumnIndex];
+            aes_ctx.State[RowIndex][ColumnIndex] ^= aes_ctx.KeyWordExpansion[RowIndex][(RoundIndex*((UINT) AES_STATE_COLUMNS)) + ColumnIndex];
 
     /* 
      * 4. Transfer the state block to cipher block 
      */
     for (RowIndex = 0; RowIndex < AES_STATE_ROWS;RowIndex++)
         for (ColumnIndex = 0; ColumnIndex < AES_STATE_COLUMNS;ColumnIndex++)
-            CipherBlock[RowIndex + 4*ColumnIndex] = paes_ctx->State[RowIndex][ColumnIndex];
+            CipherBlock[RowIndex + 4*ColumnIndex] = aes_ctx.State[RowIndex][ColumnIndex];
 
     *CipherBlockSize = ((UINT) AES_STATE_ROWS)*((UINT) AES_STATE_COLUMNS);
-
-	if (paes_ctx != NULL)
-		os_free_mem(NULL, paes_ctx);
 } /* End of RT_AES_Encrypt */
 
 
@@ -2971,9 +2835,7 @@ VOID RT_AES_Decrypt (
     OUT UINT8 PlainBlock[],
     INOUT UINT *PlainBlockSize)
 {
-/*    AES_CTX_STRUC aes_ctx;
-*/
-	AES_CTX_STRUC *paes_ctx = NULL;
+    AES_CTX_STRUC aes_ctx;
     UINT RowIndex, ColumnIndex;
     UINT RoundIndex, NumberOfRound = 0;
     UINT8 Temp, Row0, Row1, Row2, Row3;
@@ -2997,114 +2859,103 @@ VOID RT_AES_Decrypt (
         return;
     } /* End of if */
 
-	/* allocate memory */
-	os_alloc_mem(NULL, (UCHAR **)&paes_ctx, sizeof(AES_CTX_STRUC));
-	if (paes_ctx == NULL)
-	{
-		DBGPRINT(RT_DEBUG_ERROR, ("%s: Allocate memory fail!!!\n", __FUNCTION__));
-		return;
-	}
-
     /* 
      * 2. Transfer the cipher block to state block 
      */
     for (RowIndex = 0; RowIndex < AES_STATE_ROWS;RowIndex++)
         for (ColumnIndex = 0; ColumnIndex < AES_STATE_COLUMNS;ColumnIndex++)
-            paes_ctx->State[RowIndex][ColumnIndex] = CipherBlock[RowIndex + 4*ColumnIndex];
+            aes_ctx.State[RowIndex][ColumnIndex] = CipherBlock[RowIndex + 4*ColumnIndex];
 
     /* 
      *  3. Main decryption rounds
      */
-    RT_AES_KeyExpansion(Key, KeyLength, paes_ctx);
+    RT_AES_KeyExpansion(Key, KeyLength, &aes_ctx);
     NumberOfRound = (KeyLength >> 2) + 6;
 
     /* AES_AddRoundKey */
     RoundIndex = NumberOfRound;
     for (RowIndex = 0; RowIndex < AES_STATE_ROWS;RowIndex++)
         for (ColumnIndex = 0; ColumnIndex < AES_STATE_COLUMNS;ColumnIndex++)
-            paes_ctx->State[RowIndex][ColumnIndex] ^= paes_ctx->KeyWordExpansion[RowIndex][(RoundIndex*((UINT) AES_STATE_COLUMNS)) + ColumnIndex];
+            aes_ctx.State[RowIndex][ColumnIndex] ^= aes_ctx.KeyWordExpansion[RowIndex][(RoundIndex*((UINT) AES_STATE_COLUMNS)) + ColumnIndex];
 
     for (RoundIndex = (NumberOfRound - 1); RoundIndex > 0 ;RoundIndex--)
     {
         /* AES_InvShiftRows */
-        Temp = paes_ctx->State[1][3];
-        paes_ctx->State[1][3] = paes_ctx->State[1][2];
-        paes_ctx->State[1][2] = paes_ctx->State[1][1];
-        paes_ctx->State[1][1] = paes_ctx->State[1][0];
-        paes_ctx->State[1][0] = Temp;
-        Temp = paes_ctx->State[2][0];
-        paes_ctx->State[2][0] = paes_ctx->State[2][2];
-        paes_ctx->State[2][2] = Temp;
-        Temp = paes_ctx->State[2][1];
-        paes_ctx->State[2][1] = paes_ctx->State[2][3];
-        paes_ctx->State[2][3] = Temp;
-        Temp = paes_ctx->State[3][0];
-        paes_ctx->State[3][0] = paes_ctx->State[3][1];
-        paes_ctx->State[3][1] = paes_ctx->State[3][2];
-        paes_ctx->State[3][2] = paes_ctx->State[3][3];
-        paes_ctx->State[3][3] = Temp;
+        Temp = aes_ctx.State[1][3];
+        aes_ctx.State[1][3] = aes_ctx.State[1][2];
+        aes_ctx.State[1][2] = aes_ctx.State[1][1];
+        aes_ctx.State[1][1] = aes_ctx.State[1][0];
+        aes_ctx.State[1][0] = Temp;
+        Temp = aes_ctx.State[2][0];
+        aes_ctx.State[2][0] = aes_ctx.State[2][2];
+        aes_ctx.State[2][2] = Temp;
+        Temp = aes_ctx.State[2][1];
+        aes_ctx.State[2][1] = aes_ctx.State[2][3];
+        aes_ctx.State[2][3] = Temp;
+        Temp = aes_ctx.State[3][0];
+        aes_ctx.State[3][0] = aes_ctx.State[3][1];
+        aes_ctx.State[3][1] = aes_ctx.State[3][2];
+        aes_ctx.State[3][2] = aes_ctx.State[3][3];
+        aes_ctx.State[3][3] = Temp;
 
         /* AES_InvSubBytes */
         for (RowIndex = 0; RowIndex < AES_STATE_ROWS;RowIndex++)
             for (ColumnIndex = 0; ColumnIndex < AES_STATE_COLUMNS;ColumnIndex++)
-                paes_ctx->State[RowIndex][ColumnIndex] = aes_sbox_dec[paes_ctx->State[RowIndex][ColumnIndex]];
+                aes_ctx.State[RowIndex][ColumnIndex] = aes_sbox_dec[aes_ctx.State[RowIndex][ColumnIndex]];
 
         /* AES_AddRoundKey */
         for (RowIndex = 0; RowIndex < AES_STATE_ROWS;RowIndex++)
             for (ColumnIndex = 0; ColumnIndex < AES_STATE_COLUMNS;ColumnIndex++)
-                paes_ctx->State[RowIndex][ColumnIndex] ^= paes_ctx->KeyWordExpansion[RowIndex][(RoundIndex*((UINT) AES_STATE_COLUMNS)) + ColumnIndex];
+                aes_ctx.State[RowIndex][ColumnIndex] ^= aes_ctx.KeyWordExpansion[RowIndex][(RoundIndex*((UINT) AES_STATE_COLUMNS)) + ColumnIndex];
 
         /* AES_InvMixColumns */
         for (ColumnIndex = 0; ColumnIndex < AES_STATE_COLUMNS;ColumnIndex++)
         {
-            Row0 = paes_ctx->State[0][ColumnIndex];
-            Row1 = paes_ctx->State[1][ColumnIndex];
-            Row2 = paes_ctx->State[2][ColumnIndex];
-            Row3 = paes_ctx->State[3][ColumnIndex];
-            paes_ctx->State[0][ColumnIndex] = aes_mul_e[Row0]^aes_mul_b[Row1]^aes_mul_d[Row2]^aes_mul_9[Row3];
-            paes_ctx->State[1][ColumnIndex] = aes_mul_9[Row0]^aes_mul_e[Row1]^aes_mul_b[Row2]^aes_mul_d[Row3];
-            paes_ctx->State[2][ColumnIndex] = aes_mul_d[Row0]^aes_mul_9[Row1]^aes_mul_e[Row2]^aes_mul_b[Row3];
-            paes_ctx->State[3][ColumnIndex] = aes_mul_b[Row0]^aes_mul_d[Row1]^aes_mul_9[Row2]^aes_mul_e[Row3];
+            Row0 = aes_ctx.State[0][ColumnIndex];
+            Row1 = aes_ctx.State[1][ColumnIndex];
+            Row2 = aes_ctx.State[2][ColumnIndex];
+            Row3 = aes_ctx.State[3][ColumnIndex];
+            aes_ctx.State[0][ColumnIndex] = aes_mul_e[Row0]^aes_mul_b[Row1]^aes_mul_d[Row2]^aes_mul_9[Row3];
+            aes_ctx.State[1][ColumnIndex] = aes_mul_9[Row0]^aes_mul_e[Row1]^aes_mul_b[Row2]^aes_mul_d[Row3];
+            aes_ctx.State[2][ColumnIndex] = aes_mul_d[Row0]^aes_mul_9[Row1]^aes_mul_e[Row2]^aes_mul_b[Row3];
+            aes_ctx.State[3][ColumnIndex] = aes_mul_b[Row0]^aes_mul_d[Row1]^aes_mul_9[Row2]^aes_mul_e[Row3];
         }
     } /* End of for */
 
     /* AES_InvShiftRows */
-    Temp = paes_ctx->State[1][3];
-    paes_ctx->State[1][3] = paes_ctx->State[1][2];
-    paes_ctx->State[1][2] = paes_ctx->State[1][1];
-    paes_ctx->State[1][1] = paes_ctx->State[1][0];
-    paes_ctx->State[1][0] = Temp;
-    Temp = paes_ctx->State[2][0];
-    paes_ctx->State[2][0] = paes_ctx->State[2][2];
-    paes_ctx->State[2][2] = Temp;
-    Temp = paes_ctx->State[2][1];
-    paes_ctx->State[2][1] = paes_ctx->State[2][3];
-    paes_ctx->State[2][3] = Temp;
-    Temp = paes_ctx->State[3][0];
-    paes_ctx->State[3][0] = paes_ctx->State[3][1];
-    paes_ctx->State[3][1] = paes_ctx->State[3][2];
-    paes_ctx->State[3][2] = paes_ctx->State[3][3];
-    paes_ctx->State[3][3] = Temp;
+    Temp = aes_ctx.State[1][3];
+    aes_ctx.State[1][3] = aes_ctx.State[1][2];
+    aes_ctx.State[1][2] = aes_ctx.State[1][1];
+    aes_ctx.State[1][1] = aes_ctx.State[1][0];
+    aes_ctx.State[1][0] = Temp;
+    Temp = aes_ctx.State[2][0];
+    aes_ctx.State[2][0] = aes_ctx.State[2][2];
+    aes_ctx.State[2][2] = Temp;
+    Temp = aes_ctx.State[2][1];
+    aes_ctx.State[2][1] = aes_ctx.State[2][3];
+    aes_ctx.State[2][3] = Temp;
+    Temp = aes_ctx.State[3][0];
+    aes_ctx.State[3][0] = aes_ctx.State[3][1];
+    aes_ctx.State[3][1] = aes_ctx.State[3][2];
+    aes_ctx.State[3][2] = aes_ctx.State[3][3];
+    aes_ctx.State[3][3] = Temp;
     /* AES_InvSubBytes */
     for (RowIndex = 0; RowIndex < AES_STATE_ROWS;RowIndex++)
         for (ColumnIndex = 0; ColumnIndex < AES_STATE_COLUMNS;ColumnIndex++)
-            paes_ctx->State[RowIndex][ColumnIndex] = aes_sbox_dec[paes_ctx->State[RowIndex][ColumnIndex]];
+            aes_ctx.State[RowIndex][ColumnIndex] = aes_sbox_dec[aes_ctx.State[RowIndex][ColumnIndex]];
     /* AES_AddRoundKey */
     for (RowIndex = 0; RowIndex < AES_STATE_ROWS;RowIndex++)
         for (ColumnIndex = 0; ColumnIndex < AES_STATE_COLUMNS;ColumnIndex++)
-            paes_ctx->State[RowIndex][ColumnIndex] ^= paes_ctx->KeyWordExpansion[RowIndex][(RoundIndex*((UINT) AES_STATE_COLUMNS)) + ColumnIndex];
+            aes_ctx.State[RowIndex][ColumnIndex] ^= aes_ctx.KeyWordExpansion[RowIndex][(RoundIndex*((UINT) AES_STATE_COLUMNS)) + ColumnIndex];
 
     /* 
      * 4. Transfer the state block to plain block 
      */
     for (RowIndex = 0; RowIndex < AES_STATE_ROWS;RowIndex++)
         for (ColumnIndex = 0; ColumnIndex < AES_STATE_COLUMNS;ColumnIndex++)
-            PlainBlock[RowIndex + 4*ColumnIndex] = paes_ctx->State[RowIndex][ColumnIndex];
+            PlainBlock[RowIndex + 4*ColumnIndex] = aes_ctx.State[RowIndex][ColumnIndex];
 
     *PlainBlockSize = ((UINT) AES_STATE_ROWS)*((UINT) AES_STATE_COLUMNS);
-
-	if (paes_ctx != NULL)
-		os_free_mem(NULL, paes_ctx);
 } /* End of RT_AES_Decrypt */
 
 
@@ -3266,7 +3117,7 @@ Note:
     Here, the implement of AES_CCM is suitable for WI_FI.
 ========================================================================
 */
-int AES_CCM_Encrypt (
+INT AES_CCM_Encrypt (
     IN UINT8 PlainText[],
     IN UINT PlainTextLength,
     IN UINT8 Key[],
@@ -3389,7 +3240,7 @@ Note:
     Here, the implement of AES_CCM is suitable for WI_FI.
 ========================================================================
 */
-int AES_CCM_Decrypt (
+INT AES_CCM_Decrypt (
     IN UINT8 CipherText[],
     IN UINT  CipherTextLength,
     IN UINT8 Key[],
@@ -3521,7 +3372,7 @@ VOID AES_CMAC_GenerateSubKey (
 {
     UINT8 MSB_L = 0, MSB_K1 = 0, Top_Bit = 0;
     UINT  SubKey1_Length = 0;
-    int   Index = 0;
+    INT   Index = 0;
 
     if (KeyLength != AES_KEY128_LENGTH) {
     	DBGPRINT(RT_DEBUG_ERROR, ("AES_CMAC_GenerateSubKey: key length is %d bytes, it must be %d bytes(128 bits).\n", 
@@ -3601,7 +3452,7 @@ VOID AES_CMAC (
     UINT8 X[AES_BLOCK_SIZES], Y[AES_BLOCK_SIZES];
     UINT8 SubKey1[16];
     UINT8 SubKey2[16];
-    int Index;
+    INT Index;
     UINT X_Length;
 
     if (*MACTextLength < AES_MAC_LENGTH) {

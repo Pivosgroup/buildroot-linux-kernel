@@ -15,9 +15,6 @@ Change log:
 #ifndef _MLAN_11N_AGGR_H_
 #define _MLAN_11N_AGGR_H_
 
-/** AMSDU packet type */
-#define PKT_TYPE_AMSDU	0xE6
-
 /** Aggregate 11N packets */
 mlan_status wlan_11n_deaggregate_pkt(pmlan_private priv, pmlan_buffer pmbuf);
 /** Deaggregate 11N packets */

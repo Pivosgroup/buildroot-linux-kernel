@@ -5,182 +5,152 @@
  * Hsinchu County 302,
  * Taiwan, R.O.C.
  *
- * (c) Copyright 2002-2010, Ralink Technology, Inc.
+ * (c) Copyright 2002-2007, Ralink Technology, Inc.
  *
- * This program is free software; you can redistribute it and/or modify  *
- * it under the terms of the GNU General Public License as published by  *
- * the Free Software Foundation; either version 2 of the License, or     *
- * (at your option) any later version.                                   *
- *                                                                       *
- * This program is distributed in the hope that it will be useful,       *
- * but WITHOUT ANY WARRANTY; without even the implied warranty of        *
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
- * GNU General Public License for more details.                          *
- *                                                                       *
- * You should have received a copy of the GNU General Public License     *
- * along with this program; if not, write to the                         *
- * Free Software Foundation, Inc.,                                       *
- * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
- *                                                                       *
+ * This program is free software; you can redistribute it and/or modify  * 
+ * it under the terms of the GNU General Public License as published by  * 
+ * the Free Software Foundation; either version 2 of the License, or     * 
+ * (at your option) any later version.                                   * 
+ *                                                                       * 
+ * This program is distributed in the hope that it will be useful,       * 
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of        * 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         * 
+ * GNU General Public License for more details.                          * 
+ *                                                                       * 
+ * You should have received a copy of the GNU General Public License     * 
+ * along with this program; if not, write to the                         * 
+ * Free Software Foundation, Inc.,                                       * 
+ * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             * 
+ *                                                                       * 
  *************************************************************************/
 
+/****************************************************************************
+
+	Abstract:
+
+	All MAC80211/CFG80211 Function Prototype.
+
+***************************************************************************/
 
 #ifdef RT_CFG80211_SUPPORT
 
-#define RT_CFG80211_REGISTER(__pDev, __pNetDev)								\
-	CFG80211_Register(__pDev, __pNetDev);
 
-#define RT_CFG80211_BEACON_CR_PARSE(__pAd, __pVIE, __LenVIE)				\
-	CFG80211_BeaconCountryRegionParse((VOID *)__pAd, __pVIE, __LenVIE);
+#define RT_CFG80211_API_INIT(__pAd)												\
+	__pAd->CFG80211_BeaconCountryRegionParse = CFG80211_BeaconCountryRegionParse;\
+	__pAd->CFG80211_RegHint = CFG80211_RegHint;									\
+	__pAd->CFG80211_RegHint11D = CFG80211_RegHint11D;							\
+	__pAd->CFG80211_RegRuleApply = CFG80211_RegRuleApply;						\
+	__pAd->CFG80211_Scaning = CFG80211_Scaning;									\
+	__pAd->CFG80211_ScanEnd = CFG80211_ScanEnd;									\
+	__pAd->CFG80211_SupBandReInit = CFG80211_SupBandReInit;						\
+	__pAd->CFG80211_ConnectResultInform = CFG80211_ConnectResultInform
 
-#define RT_CFG80211_CRDA_REG_HINT(__pAd, __pCountryIe, __CountryIeLen)		\
-	CFG80211_RegHint((VOID *)__pAd, __pCountryIe, __CountryIeLen);
+#define RT_CFG80211_REGISTER(__pAd, __pDev, __pNetDev)							\
+do {																			\
+	if (__pAd->CFG80211_Register != NULL)										\
+		__pAd->CFG80211_Register((VOID *)__pAd, __pDev, __pNetDev);				\
+} while(0);
 
-#define RT_CFG80211_CRDA_REG_HINT11D(__pAd, __pCountryIe, __CountryIeLen)	\
-	CFG80211_RegHint11D((VOID *)__pAd, __pCountryIe, __CountryIeLen);
+#define RT_CFG80211_BEACON_CR_PARSE(__pAd, __pVIE, __LenVIE)					\
+do {																			\
+	if ((__pAd->pCfg80211_CB != NULL) &&										\
+		(__pAd->CFG80211_BeaconCountryRegionParse != NULL))						\
+		__pAd->CFG80211_BeaconCountryRegionParse((VOID *)__pAd, __pVIE, __LenVIE);\
+} while(0);
 
-#define RT_CFG80211_CRDA_REG_RULE_APPLY(__pAd)								\
-	CFG80211_RegRuleApply((VOID *)__pAd, NULL, __pAd->Cfg80211_Alpha2);
+#define RT_CFG80211_CRDA_REG_HINT(__pAd, __pCountryIe, __CountryIeLen)			\
+do {																			\
+	if ((__pAd->pCfg80211_CB != NULL) &&										\
+		(__pAd->CFG80211_RegHint != NULL))										\
+		__pAd->CFG80211_RegHint((VOID *)__pAd, __pCountryIe, __CountryIeLen);	\
+} while(0);
 
-#define RT_CFG80211_SCANNING_INFORM(__pAd, __BssIdx, __ChanId, __pFrame,	\
-			__FrameLen, __RSSI)									\
-	CFG80211_Scaning((VOID *)__pAd, __BssIdx, __ChanId, __pFrame,			\
-						__FrameLen, __RSSI);
+#define RT_CFG80211_CRDA_REG_HINT11D(__pAd, __pCountryIe, __CountryIeLen)		\
+do {																			\
+	if ((__pAd->pCfg80211_CB != NULL) &&										\
+		(__pAd->CFG80211_RegHint11D != NULL))									\
+		__pAd->CFG80211_RegHint11D((VOID *)__pAd, __pCountryIe, __CountryIeLen);\
+} while(0);
 
-#define RT_CFG80211_SCAN_END(__pAd, __FlgIsAborted)							\
-	CFG80211_ScanEnd((VOID *)__pAd, __FlgIsAborted);
+#define RT_CFG80211_CRDA_REG_RULE_APPLY(__pAd)									\
+do {																			\
+	if ((__pAd->pCfg80211_CB != NULL) &&										\
+		(__pAd->CFG80211_RegHint != NULL))										\
+		__pAd->CFG80211_RegRuleApply((VOID *)__pAd, NULL, __pAd->Cfg80211_Alpha2);\
+} while(0);
 
-#define RT_CFG80211_REINIT(__pAd)											\
-	CFG80211_SupBandReInit((VOID *)__pAd);									\
+#define RT_CFG80211_SCANNING_INFORM(__pAd, __BssIdx, __ChanId, __pFrame,		\
+			__FrameLen, __RSSI, __MemFlag)										\
+do {																			\
+	if ((__pAd->pCfg80211_CB != NULL) &&										\
+		(__pAd->CFG80211_Scaning != NULL))										\
+		__pAd->CFG80211_Scaning((VOID *)__pAd, __BssIdx, __ChanId, __pFrame,	\
+								__FrameLen, __RSSI, __MemFlag);					\
+} while(0);
 
-#define RT_CFG80211_CONN_RESULT_INFORM(__pAd, __pBSSID, __pReqIe, __ReqIeLen,\
-			__pRspIe, __RspIeLen, __FlgIsSuccess)							\
-	CFG80211_ConnectResultInform((VOID *)__pAd, __pBSSID,					\
-			__pReqIe, __ReqIeLen, __pRspIe, __RspIeLen, __FlgIsSuccess);
+#define RT_CFG80211_SCAN_END(__pAd, __FlgIsAborted)								\
+do {																			\
+	if ((__pAd->pCfg80211_CB != NULL) &&										\
+		(__pAd->CFG80211_ScanEnd != NULL))										\
+		__pAd->CFG80211_ScanEnd((VOID *)__pAd, __FlgIsAborted);					\
+} while(0);
 
-#define RT_CFG80211_RFKILL_STATUS_UPDATE(_pAd, _active) \
-	CFG80211_RFKillStatusUpdate(_pAd, _active);
+#define RT_CFG80211_REINIT(__pAd)												\
+do {																			\
+		if ((__pAd->pCfg80211_CB != NULL) &&									\
+			(__pAd->CFG80211_SupBandReInit != NULL))							\
+			__pAd->CFG80211_SupBandReInit((VOID *)__pAd);						\
+} while(0);
 
-#ifdef SINGLE_SKU
-#define CFG80211_BANDINFO_FILL(__pAd, __pBandInfo)							\
-{																			\
-	(__pBandInfo)->RFICType = __pAd->RFICType;								\
-	(__pBandInfo)->MpduDensity = __pAd->CommonCfg.BACapability.field.MpduDensity;\
-	(__pBandInfo)->TxStream = __pAd->CommonCfg.TxStream;					\
-	(__pBandInfo)->RxStream = __pAd->CommonCfg.RxStream;					\
-	(__pBandInfo)->MaxTxPwr = __pAd->CommonCfg.DefineMaxTxPwr;				\
-	if (__pAd->CommonCfg.PhyMode == PHY_11B)								\
-		(__pBandInfo)->FlgIsBMode = TRUE;									\
-	else																	\
-		(__pBandInfo)->FlgIsBMode = FALSE;									\
-	(__pBandInfo)->MaxBssTable = MAX_LEN_OF_BSS_TABLE;						\
-	(__pBandInfo)->RtsThreshold = pAd->CommonCfg.RtsThreshold;				\
-	(__pBandInfo)->FragmentThreshold = pAd->CommonCfg.FragmentThreshold;	\
-	(__pBandInfo)->RetryMaxCnt = 0;											\
-	RTMP_IO_READ32(__pAd, TX_RTY_CFG, &((__pBandInfo)->RetryMaxCnt));		\
-}
-#else
-#define CFG80211_BANDINFO_FILL(__pAd, __pBandInfo)							\
-{																			\
-	(__pBandInfo)->RFICType = __pAd->RFICType;								\
-	(__pBandInfo)->MpduDensity = __pAd->CommonCfg.BACapability.field.MpduDensity;\
-	(__pBandInfo)->TxStream = __pAd->CommonCfg.TxStream;					\
-	(__pBandInfo)->RxStream = __pAd->CommonCfg.RxStream;					\
-	(__pBandInfo)->MaxTxPwr = 0;											\
-	if (__pAd->CommonCfg.PhyMode == PHY_11B)								\
-		(__pBandInfo)->FlgIsBMode = TRUE;									\
-	else																	\
-		(__pBandInfo)->FlgIsBMode = FALSE;									\
-	(__pBandInfo)->MaxBssTable = MAX_LEN_OF_BSS_TABLE;						\
-	(__pBandInfo)->RtsThreshold = pAd->CommonCfg.RtsThreshold;				\
-	(__pBandInfo)->FragmentThreshold = pAd->CommonCfg.FragmentThreshold;	\
-	(__pBandInfo)->RetryMaxCnt = 0;											\
-	RTMP_IO_READ32(__pAd, TX_RTY_CFG, &((__pBandInfo)->RetryMaxCnt));		\
-}
-#endif /* SINGLE_SKU */
+#define RT_CFG80211_CONN_RESULT_INFORM(__pAd, __pBSSID, __pReqIe, __ReqIeLen,	\
+			__pRspIe, __RspIeLen, __FlgIsSuccess)								\
+do {																			\
+		if ((__pAd->pCfg80211_CB != NULL) &&									\
+			(__pAd->CFG80211_ConnectResultInform != NULL))						\
+			__pAd->CFG80211_ConnectResultInform((VOID *)__pAd, __pBSSID,		\
+				__pReqIe, __ReqIeLen, __pRspIe, __RspIeLen, __FlgIsSuccess);	\
+} while(0);
 
 
-/* utilities used in DRV module */
-BOOLEAN CFG80211DRV_OpsSetChannel(
-	VOID						*pAdOrg,
-	VOID						*pData);
+#define CFG80211_FUNC_OPS								\
+	VOID (*CFG80211_BeaconCountryRegionParse)(			\
+		IN VOID							*pAd,			\
+		IN NDIS_802_11_VARIABLE_IEs		*pVIE,			\
+		IN UINT16						LenVIE);		\
+	VOID (*CFG80211_RegHint)(							\
+		IN VOID							*pAd,			\
+		IN UCHAR						*pCountryIe,	\
+		IN ULONG						CountryIeLen);	\
+	VOID (*CFG80211_RegHint11D)(						\
+		IN VOID							*pAd,			\
+		IN UCHAR						*pCountryIe,	\
+		IN ULONG						CountryIeLen);	\
+	VOID (*CFG80211_RegRuleApply)(						\
+		IN VOID							*pAd,			\
+		IN struct wiphy					*pWiphy,		\
+		IN UCHAR						*pAlpha2);		\
+	VOID (*CFG80211_Scaning)(							\
+		IN VOID							*pAd,			\
+		IN UINT32						BssIdx,			\
+		IN UINT32						ChanId,			\
+		IN UCHAR						*pFrame,		\
+		IN UINT32						FrameLen,		\
+		IN INT32						RSSI,			\
+		IN INT32						MemFlag);		\
+	VOID (*CFG80211_ScanEnd)(							\
+		IN VOID							*pAd,			\
+		IN BOOLEAN						FlgIsAborted);	\
+	BOOLEAN (*CFG80211_SupBandReInit)(					\
+		IN VOID							*pAd);			\
+	VOID (*CFG80211_ConnectResultInform)(				\
+		IN VOID							*pAd,			\
+		IN UCHAR						*pBSSID,		\
+		IN UCHAR						*pReqIe,		\
+		IN UINT32						ReqIeLen,		\
+		IN UCHAR						*pRspIe,		\
+		IN UINT32						RspIeLen,		\
+		IN UCHAR						FlgIsSuccess)
 
-BOOLEAN CFG80211DRV_OpsChgVirtualInf(
-	VOID						*pAdOrg,
-	VOID						*pFlgFilter,
-	UINT8						IfType);
-
-BOOLEAN CFG80211DRV_OpsScan(
-	VOID						*pAdOrg);
-
-BOOLEAN CFG80211DRV_OpsJoinIbss(
-	VOID						*pAdOrg,
-	VOID						*pData);
-
-BOOLEAN CFG80211DRV_OpsLeave(
-	VOID						*pAdOrg);
-
-BOOLEAN CFG80211DRV_StaGet(
-	VOID						*pAdOrg,
-	VOID						*pData);
-
-BOOLEAN CFG80211DRV_Connect(
-	VOID						*pAdOrg,
-	VOID						*pData);
-
-BOOLEAN CFG80211DRV_KeyAdd(
-	VOID						*pAdOrg,
-	VOID						*pData);
-
-VOID CFG80211DRV_RegNotify(
-	VOID						*pAdOrg,
-	VOID						*pData);
-
-VOID CFG80211_RegHint(
-	IN VOID						*pAdCB,
-	IN UCHAR					*pCountryIe,
-	IN ULONG					CountryIeLen);
-
-VOID CFG80211_RegHint11D(
-	IN VOID						*pAdCB,
-	IN UCHAR					*pCountryIe,
-	IN ULONG					CountryIeLen);
-
-VOID CFG80211_ScanEnd(
-	IN VOID						*pAdCB,
-	IN BOOLEAN					FlgIsAborted);
-
-VOID CFG80211_ConnectResultInform(
-	IN VOID						*pAdCB,
-	IN UCHAR					*pBSSID,
-	IN UCHAR					*pReqIe,
-	IN UINT32					ReqIeLen,
-	IN UCHAR					*pRspIe,
-	IN UINT32					RspIeLen,
-	IN UCHAR					FlgIsSuccess);
-
-BOOLEAN CFG80211_SupBandReInit(
-	IN VOID						*pAdCB);
-
-VOID CFG80211_RegRuleApply(
-	IN VOID						*pAdCB,
-	IN VOID						*pWiphy,
-	IN UCHAR					*pAlpha2);
-
-VOID CFG80211_Scaning(
-	IN VOID						*pAdCB,
-	IN UINT32					BssIdx,
-	IN UINT32					ChanId,
-	IN UCHAR					*pFrame,
-	IN UINT32					FrameLen,
-	IN INT32					RSSI);
-
-#ifdef RFKILL_HW_SUPPORT
-VOID CFG80211_RFKillStatusUpdate(
-	IN PVOID	pAd,
-	IN BOOLEAN	active);
-#endif /* RFKILL_HW_SUPPORT */
-
-#endif /* RT_CFG80211_SUPPORT */
+#endif // RT_CFG80211_SUPPORT //
 
 /* End of cfg80211extr.h */

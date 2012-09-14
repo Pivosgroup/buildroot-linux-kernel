@@ -41,42 +41,6 @@ Change log:
 ********************************************************/
 
 /**
- *  @brief Return integer value of a given ascii string
- *
- *  @param data    Converted data to be return
- *  @param a       String to be converted
- *
- *  @return        MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
- */
-mlan_status
-woal_atoi(int *data, char *a)
-{
-    int i, val = 0, len;
-
-    ENTER();
-
-    len = strlen(a);
-    if (!strncmp(a, "0x", 2)) {
-        a = a + 2;
-        len -= 2;
-        *data = woal_atox(a);
-        return MLAN_STATUS_SUCCESS;
-    }
-    for (i = 0; i < len; i++) {
-        if (isdigit(a[i])) {
-            val = val * 10 + (a[i] - '0');
-        } else {
-            PRINTM(MERROR, "Invalid char %c in string %s\n", a[i], a);
-            return MLAN_STATUS_FAILURE;
-        }
-    }
-    *data = val;
-
-    LEAVE();
-    return MLAN_STATUS_SUCCESS;
-}
-
-/**
  *  @brief Parse AP configuration from ASCII string
  *
  *  @param ap_cfg   A pointer to mlan_uap_bss_param structure

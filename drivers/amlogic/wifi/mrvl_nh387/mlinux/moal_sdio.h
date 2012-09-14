@@ -49,14 +49,6 @@ Change log:
 #define FIXED_ADDRESS	0
 #endif
 
-/** SD8787 chip revision ID */
-#define SD8787_W0       0x30
-#define SD8787_W1       0x31
-#define SD8787_A0_A1    0x40
-
-#define SD8787_W1_FW_NAME "mrvl/sd8787_uapsta_w1.bin"
-#define SD8787_AX_FW_NAME "mrvl/sd8787_uapsta.bin"
-
 #ifdef STA_SUPPORT
 /** Default firmware name */
 
@@ -132,5 +124,7 @@ struct sdio_mmc_card
         /** saved host clock value */
     unsigned int host_clock;
 };
-
+/** cmd52 read write */
+int woal_sdio_read_write_cmd52(moal_handle * handle, int func, int reg,
+                               int val);
 #endif /* _MOAL_SDIO_H */

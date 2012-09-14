@@ -3,7 +3,7 @@
  *  @brief This file contains the handling of data packet
  *  transmission in MLAN module.
  * 
- *  Copyright (C) 2008-2010, Marvell International Ltd. 
+ *  Copyright (C) 2008-2011, Marvell International Ltd. 
  *  All Rights Reserved
  */
 
@@ -58,8 +58,7 @@ mlan_process_sta_txpd(IN t_void * priv, IN pmlan_buffer pmbuf)
         goto done;
     }
 
-    if (pmbuf->data_offset < (sizeof(TxPD) + INTF_HEADER_LEN +
-                              HEADER_ALIGNMENT)) {
+    if (pmbuf->data_offset < (sizeof(TxPD) + INTF_HEADER_LEN + DMA_ALIGNMENT)) {
         PRINTM(MERROR, "not enough space for TxPD: %d\n", pmbuf->data_len);
         pmbuf->status_code = MLAN_ERROR_PKT_SIZE_INVALID;
         goto done;
@@ -68,7 +67,7 @@ mlan_process_sta_txpd(IN t_void * priv, IN pmlan_buffer pmbuf)
     /* head_ptr should be aligned */
     head_ptr =
         pmbuf->pbuf + pmbuf->data_offset - sizeof(TxPD) - INTF_HEADER_LEN;
-    head_ptr = (t_u8 *) ((t_ptr) head_ptr & ~((t_ptr) (HEADER_ALIGNMENT - 1)));
+    head_ptr = (t_u8 *) ((t_ptr) head_ptr & ~((t_ptr) (DMA_ALIGNMENT - 1)));
 
     plocal_tx_pd = (TxPD *) (head_ptr + INTF_HEADER_LEN);
     memset(pmadapter, plocal_tx_pd, 0, sizeof(TxPD));
@@ -198,7 +197,7 @@ wlan_send_null_packet(pmlan_private priv, t_u8 flags)
 
     pmadapter->callbacks.moal_get_system_time(pmadapter->pmoal_handle, &sec,
                                               &usec);
-    PRINTM(MDATA, "%lu.%lu : Null data => FW\n", sec, usec);
+    PRINTM(MDATA, "%lu.%06lu : Null data => FW\n", sec, usec);
     DBG_HEXDUMP(MDAT_D, "Null data", ptr, sizeof(TxPD) + INTF_HEADER_LEN);
   done:
     LEAVE();

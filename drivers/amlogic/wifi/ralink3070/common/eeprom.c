@@ -5,42 +5,43 @@
  * Hsinchu County 302,
  * Taiwan, R.O.C.
  *
- * (c) Copyright 2002-2010, Ralink Technology, Inc.
+ * (c) Copyright 2002-2007, Ralink Technology, Inc.
  *
- * This program is free software; you can redistribute it and/or modify  *
- * it under the terms of the GNU General Public License as published by  *
- * the Free Software Foundation; either version 2 of the License, or     *
- * (at your option) any later version.                                   *
- *                                                                       *
- * This program is distributed in the hope that it will be useful,       *
- * but WITHOUT ANY WARRANTY; without even the implied warranty of        *
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
- * GNU General Public License for more details.                          *
- *                                                                       *
- * You should have received a copy of the GNU General Public License     *
- * along with this program; if not, write to the                         *
- * Free Software Foundation, Inc.,                                       *
- * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
- *                                                                       *
- *************************************************************************/
+ * This program is free software; you can redistribute it and/or modify  * 
+ * it under the terms of the GNU General Public License as published by  * 
+ * the Free Software Foundation; either version 2 of the License, or     * 
+ * (at your option) any later version.                                   * 
+ *                                                                       * 
+ * This program is distributed in the hope that it will be useful,       * 
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of        * 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         * 
+ * GNU General Public License for more details.                          * 
+ *                                                                       * 
+ * You should have received a copy of the GNU General Public License     * 
+ * along with this program; if not, write to the                         * 
+ * Free Software Foundation, Inc.,                                       * 
+ * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             * 
+ *                                                                       * 
+ *************************************************************************
 
+	Module Name:
+	eeprom.c
 
+	Abstract:
+
+	Revision History:
+	Who			When			What
+	--------	----------		----------------------------------------------
+	Name		Date			Modification logs
+*/
 #include "rt_config.h"
 
 
-int RtmpChipOpsEepromHook(
+INT RtmpChipOpsEepromHook(
 	IN RTMP_ADAPTER *pAd,
-	IN int			infType)
+	IN INT			infType)
 {
 	RTMP_CHIP_OP	*pChipOps = &pAd->chipOps;
-
-#ifdef RTMP_FLASH_SUPPORT
-	pChipOps->eeinit = rtmp_nv_init;
-	pChipOps->eeread = rtmp_ee_flash_read;
-	pChipOps->eewrite = rtmp_ee_flash_write;
-	return 0;
-#endif /* RTMP_FLASH_SUPPORT */
-
 #ifdef RT30xx
 #ifdef RTMP_EFUSE_SUPPORT
 	UINT32			eFuseCtrl, MacCsr0;
@@ -49,9 +50,6 @@ int RtmpChipOpsEepromHook(
 	index = 0;
 	do
 	{
-		if (RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_NIC_NOT_EXIST))			
-			return -1;
-		
 		RTMP_IO_READ32(pAd, MAC_CSR0, &MacCsr0);
 		pAd->MACVersion = MacCsr0;
 
@@ -77,8 +75,8 @@ int RtmpChipOpsEepromHook(
 		pAd->bFroceEEPROMBuffer = FALSE;
 		DBGPRINT(RT_DEBUG_TRACE, ("NVM is EEPROM\n"));
 	}
-#endif /* RTMP_EFUSE_SUPPORT */
-#endif /* RT30xx */
+#endif // RTMP_EFUSE_SUPPORT //
+#endif // RT30xx //
 
 	switch(infType) 
 	{
@@ -90,7 +88,7 @@ int RtmpChipOpsEepromHook(
 			pChipOps->eeread = RTUSBReadEEPROM16;
 			pChipOps->eewrite = RTUSBWriteEEPROM16;
 			break;
-#endif /* RTMP_USB_SUPPORT */
+#endif // RTMP_USB_SUPPORT //
 		default:
 			DBGPRINT(RT_DEBUG_ERROR, ("RtmpChipOpsEepromHook() failed!\n"));
 			break;

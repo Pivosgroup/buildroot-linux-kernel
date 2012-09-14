@@ -2,7 +2,7 @@
  *
  *  @brief This file contains functions for 11n Aggregation.
  *
- *  Copyright (C) 2008-2010, Marvell International Ltd. 
+ *  Copyright (C) 2008-2011, Marvell International Ltd. 
  *  All Rights Reserved
  */
 
@@ -333,6 +333,8 @@ wlan_11n_aggregate_pkt(mlan_private * priv, raListTbl * pra_list,
                                                   pmadapter->tx_buf_size, 0,
                                                   MTRUE))) {
             PRINTM(MERROR, "Error allocating mlan_buffer\n");
+            pmadapter->callbacks.moal_spin_unlock(pmadapter->pmoal_handle,
+                                                  priv->wmm.ra_list_spinlock);
             return MLAN_STATUS_FAILURE;
         }
 
@@ -351,6 +353,8 @@ wlan_11n_aggregate_pkt(mlan_private * priv, raListTbl * pra_list,
             ptx_pd = (TxPD *) pmbuf_aggr->pbuf;
 #endif
     } else {
+        pmadapter->callbacks.moal_spin_unlock(pmadapter->pmoal_handle,
+                                              priv->wmm.ra_list_spinlock);
         goto exit;
     }
 
@@ -365,6 +369,7 @@ wlan_11n_aggregate_pkt(mlan_private * priv, raListTbl * pra_list,
         pra_list->total_pkts_size -= pmbuf_src->data_len;
 
         /* decrement for every PDU taken from the list */
+        priv->wmm.pkts_queued[ptrindex]--;
         util_scalar_decrement(pmadapter->pmoal_handle,
                               &priv->wmm.tx_pkts_queued, MNULL, MNULL);
 
@@ -439,6 +444,7 @@ wlan_11n_aggregate_pkt(mlan_private * priv, raListTbl * pra_list,
         pra_list->total_pkts_size += pmbuf_aggr->data_len;
 
         /* add back only one: aggregated packet is requeued as one */
+        priv->wmm.pkts_queued[ptrindex]++;
         util_scalar_increment(pmadapter->pmoal_handle,
                               &priv->wmm.tx_pkts_queued, MNULL, MNULL);
         pmbuf_aggr->flags |= MLAN_BUF_FLAG_REQUEUED_PKT;
@@ -475,7 +481,7 @@ wlan_11n_aggregate_pkt(mlan_private * priv, raListTbl * pra_list,
     }
     pmadapter->callbacks.moal_get_system_time(pmadapter->pmoal_handle, &sec,
                                               &usec);
-    PRINTM(MDATA, "%lu.%lu : Data => FW\n", sec, usec);
+    PRINTM(MDATA, "%lu.%06lu : Data => FW\n", sec, usec);
 
   exit:
     LEAVE();

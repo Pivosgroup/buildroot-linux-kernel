@@ -2,7 +2,7 @@
   *
   * @brief This file contains functions for debug proc file.
   *
-  * Copyright (C) 2008-2010, Marvell International Ltd.
+  * Copyright (C) 2008-2011, Marvell International Ltd.
   *
   * This software file (the "File") is distributed by Marvell International
   * Ltd. under the terms of the GNU General Public License Version 2, June 1991
@@ -50,78 +50,170 @@ static mlan_debug_info info;
 
 #ifdef STA_SUPPORT
 static struct debug_data items[] = {
-    {"int_counter", item_size(int_counter), item_addr(int_counter)},
+#ifdef DEBUG_LEVEL1
+    {"drvdbg", sizeof(drvdbg), (t_u32) & drvdbg}
+    ,
+#endif
     {"wmm_ac_vo", item_size(packets_out[WMM_AC_VO]),
-     item_addr(packets_out[WMM_AC_VO])},
+     item_addr(packets_out[WMM_AC_VO])}
+    ,
     {"wmm_ac_vi", item_size(packets_out[WMM_AC_VI]),
-     item_addr(packets_out[WMM_AC_VI])},
+     item_addr(packets_out[WMM_AC_VI])}
+    ,
     {"wmm_ac_be", item_size(packets_out[WMM_AC_BE]),
-     item_addr(packets_out[WMM_AC_BE])},
+     item_addr(packets_out[WMM_AC_BE])}
+    ,
     {"wmm_ac_bk", item_size(packets_out[WMM_AC_BK]),
-     item_addr(packets_out[WMM_AC_BK])},
-    {"max_tx_buf_size", item_size(max_tx_buf_size), item_addr(max_tx_buf_size)},
-    {"tx_buf_size", item_size(tx_buf_size), item_addr(tx_buf_size)},
+     item_addr(packets_out[WMM_AC_BK])}
+    ,
+    {"max_tx_buf_size", item_size(max_tx_buf_size), item_addr(max_tx_buf_size)}
+    ,
+    {"tx_buf_size", item_size(tx_buf_size), item_addr(tx_buf_size)}
+    ,
     {"curr_tx_buf_size", item_size(curr_tx_buf_size),
-     item_addr(curr_tx_buf_size)},
-    {"ps_mode", item_size(ps_mode), item_addr(ps_mode)},
-    {"ps_state", item_size(ps_state), item_addr(ps_state)},
-    {"is_deep_sleep", item_size(is_deep_sleep), item_addr(is_deep_sleep)},
+     item_addr(curr_tx_buf_size)}
+    ,
+    {"ps_mode", item_size(ps_mode), item_addr(ps_mode)}
+    ,
+    {"ps_state", item_size(ps_state), item_addr(ps_state)}
+    ,
+    {"is_deep_sleep", item_size(is_deep_sleep), item_addr(is_deep_sleep)}
+    ,
     {"wakeup_dev_req", item_size(pm_wakeup_card_req),
-     item_addr(pm_wakeup_card_req)},
-    {"wakeup_tries", item_size(pm_wakeup_fw_try), item_addr(pm_wakeup_fw_try)},
-    {"hs_configured", item_size(is_hs_configured), item_addr(is_hs_configured)},
-    {"hs_activated", item_size(hs_activated), item_addr(hs_activated)},
-    {"num_tx_timeout", item_size(num_tx_timeout), item_addr(num_tx_timeout)},
-    {"num_cmd_timeout", item_size(num_cmd_timeout), item_addr(num_cmd_timeout)},
-    {"timeout_cmd_id", item_size(timeout_cmd_id), item_addr(timeout_cmd_id)},
-    {"timeout_cmd_act", item_size(timeout_cmd_act), item_addr(timeout_cmd_act)},
-    {"last_cmd_id", item_size(last_cmd_id), item_addr(last_cmd_id)},
-    {"last_cmd_act", item_size(last_cmd_act), item_addr(last_cmd_act)},
-    {"last_cmd_index", item_size(last_cmd_index), item_addr(last_cmd_index)},
+     item_addr(pm_wakeup_card_req)}
+    ,
+    {"wakeup_tries", item_size(pm_wakeup_fw_try), item_addr(pm_wakeup_fw_try)}
+    ,
+    {"hs_configured", item_size(is_hs_configured), item_addr(is_hs_configured)}
+    ,
+    {"hs_activated", item_size(hs_activated), item_addr(hs_activated)}
+    ,
+    {"pps_uapsd_mode", item_size(pps_uapsd_mode), item_addr(pps_uapsd_mode)}
+    ,
+    {"sleep_pd", item_size(sleep_pd), item_addr(sleep_pd)}
+    ,
+    {"qos_cfg", item_size(qos_cfg), item_addr(qos_cfg)}
+    ,
+    {"tx_lock_flag", item_size(tx_lock_flag), item_addr(tx_lock_flag)}
+    ,
+    {"port_open", item_size(port_open), item_addr(port_open)}
+    ,
+    {"scan_processing", item_size(scan_processing), item_addr(scan_processing)}
+    ,
+    {"num_tx_timeout", item_size(num_tx_timeout), item_addr(num_tx_timeout)}
+    ,
+    {"num_cmd_timeout", item_size(num_cmd_timeout), item_addr(num_cmd_timeout)}
+    ,
+    {"timeout_cmd_id", item_size(timeout_cmd_id), item_addr(timeout_cmd_id)}
+    ,
+    {"timeout_cmd_act", item_size(timeout_cmd_act), item_addr(timeout_cmd_act)}
+    ,
+    {"last_cmd_id", item_size(last_cmd_id), item_addr(last_cmd_id)}
+    ,
+    {"last_cmd_act", item_size(last_cmd_act), item_addr(last_cmd_act)}
+    ,
+    {"last_cmd_index", item_size(last_cmd_index), item_addr(last_cmd_index)}
+    ,
     {"last_cmd_resp_id", item_size(last_cmd_resp_id),
-     item_addr(last_cmd_resp_id)},
+     item_addr(last_cmd_resp_id)}
+    ,
     {"last_cmd_resp_index", item_size(last_cmd_resp_index),
-     item_addr(last_cmd_resp_index)},
-    {"last_event", item_size(last_event), item_addr(last_event)},
+     item_addr(last_cmd_resp_index)}
+    ,
+    {"last_event", item_size(last_event), item_addr(last_event)}
+    ,
     {"last_event_index", item_size(last_event_index),
-     item_addr(last_event_index)},
+     item_addr(last_event_index)}
+    ,
     {"num_cmd_h2c_fail", item_size(num_cmd_host_to_card_failure),
-     item_addr(num_cmd_host_to_card_failure)},
+     item_addr(num_cmd_host_to_card_failure)}
+    ,
     {"num_cmd_sleep_cfm_fail",
      item_size(num_cmd_sleep_cfm_host_to_card_failure),
-     item_addr(num_cmd_sleep_cfm_host_to_card_failure)},
+     item_addr(num_cmd_sleep_cfm_host_to_card_failure)}
+    ,
     {"num_tx_h2c_fail", item_size(num_tx_host_to_card_failure),
-     item_addr(num_tx_host_to_card_failure)},
-    {"num_evt_deauth", item_size(num_event_deauth),
-     item_addr(num_event_deauth)},
+     item_addr(num_tx_host_to_card_failure)}
+    ,
+    {"num_cmdevt_c2h_fail", item_size(num_cmdevt_card_to_host_failure),
+     item_addr(num_cmdevt_card_to_host_failure)}
+    ,
+    {"num_rx_c2h_fail", item_size(num_rx_card_to_host_failure),
+     item_addr(num_rx_card_to_host_failure)}
+    ,
+    {"num_int_read_fail", item_size(num_int_read_failure),
+     item_addr(num_int_read_failure)}
+    ,
+    {"last_int_status", item_size(last_int_status), item_addr(last_int_status)}
+    ,
+    {"num_evt_deauth", item_size(num_event_deauth), item_addr(num_event_deauth)}
+    ,
     {"num_evt_disassoc", item_size(num_event_disassoc),
-     item_addr(num_event_disassoc)},
+     item_addr(num_event_disassoc)}
+    ,
     {"num_evt_link_lost", item_size(num_event_link_lost),
-     item_addr(num_event_link_lost)},
-    {"num_cmd_deauth", item_size(num_cmd_deauth), item_addr(num_cmd_deauth)},
+     item_addr(num_event_link_lost)}
+    ,
+    {"num_cmd_deauth", item_size(num_cmd_deauth), item_addr(num_cmd_deauth)}
+    ,
     {"num_cmd_assoc_ok", item_size(num_cmd_assoc_success),
-     item_addr(num_cmd_assoc_success)},
+     item_addr(num_cmd_assoc_success)}
+    ,
     {"num_cmd_assoc_fail", item_size(num_cmd_assoc_failure),
-     item_addr(num_cmd_assoc_failure)},
-    {"cmd_sent", item_size(cmd_sent), item_addr(cmd_sent)},
-    {"data_sent", item_size(data_sent), item_addr(data_sent)},
-    {"mp_rd_bitmap", item_size(mp_rd_bitmap), item_addr(mp_rd_bitmap)},
-    {"curr_rd_port", item_size(curr_rd_port), item_addr(curr_rd_port)},
-    {"mp_wr_bitmap", item_size(mp_wr_bitmap), item_addr(mp_wr_bitmap)},
-    {"curr_wr_port", item_size(curr_wr_port), item_addr(curr_wr_port)},
+     item_addr(num_cmd_assoc_failure)}
+    ,
+    {"cmd_sent", item_size(cmd_sent), item_addr(cmd_sent)}
+    ,
+    {"data_sent", item_size(data_sent), item_addr(data_sent)}
+    ,
+    {"mpa_tx_enable", item_size(mpa_tx_enable), item_addr(mpa_tx_enable)}
+    ,
+    {"mpa_rx_enable", item_size(mpa_rx_enable), item_addr(mpa_rx_enable)}
+    ,
+    {"mp_rd_bitmap", item_size(mp_rd_bitmap), item_addr(mp_rd_bitmap)}
+    ,
+    {"curr_rd_port", item_size(curr_rd_port), item_addr(curr_rd_port)}
+    ,
+    {"mp_wr_bitmap", item_size(mp_wr_bitmap), item_addr(mp_wr_bitmap)}
+    ,
+    {"curr_wr_port", item_size(curr_wr_port), item_addr(curr_wr_port)}
+    ,
     {"cmd_resp_received", item_size(cmd_resp_received),
-     item_addr(cmd_resp_received)},
-    {"event_received", item_size(event_received), item_addr(event_received)},
-
+     item_addr(cmd_resp_received)}
+    ,
+    {"event_received", item_size(event_received), item_addr(event_received)}
+    ,
     {"ioctl_pending", item_handle_size(ioctl_pending),
-     item_handle_addr(ioctl_pending)},
-    {"tx_pending", item_handle_size(tx_pending), item_handle_addr(tx_pending)},
-    {"rx_pending", item_handle_size(rx_pending), item_handle_addr(rx_pending)},
+     item_handle_addr(ioctl_pending)}
+    ,
+    {"tx_pending", item_handle_size(tx_pending), item_handle_addr(tx_pending)}
+    ,
+    {"rx_pending", item_handle_size(rx_pending), item_handle_addr(rx_pending)}
+    ,
     {"malloc_count", item_handle_size(malloc_count),
-     item_handle_addr(malloc_count)},
-    {"lock_count", item_handle_size(lock_count), item_handle_addr(lock_count)},
+     item_handle_addr(malloc_count)}
+    ,
+    {"lock_count", item_handle_size(lock_count), item_handle_addr(lock_count)}
+    ,
     {"mbufalloc_count", item_handle_size(mbufalloc_count),
-     item_handle_addr(mbufalloc_count)},
+     item_handle_addr(mbufalloc_count)}
+    ,
+    {"main_state", item_handle_size(main_state), item_handle_addr(main_state)}
+    ,
+    {"max_txpending", item_handle_size(max_tx_pending),
+     item_handle_addr(max_tx_pending)}
+    ,
+    {"low_txpending", item_handle_size(low_tx_pending),
+     item_handle_addr(low_tx_pending)}
+    ,
+#if defined(SDIO_SUSPEND_RESUME)
+    {"hs_skip_count", item_handle_size(hs_skip_count),
+     item_handle_addr(hs_skip_count)}
+    ,
+    {"hs_force_count", item_handle_size(hs_force_count),
+     item_handle_addr(hs_force_count)}
+    ,
+#endif
 };
 
 #endif
@@ -132,8 +224,6 @@ static struct debug_data uap_items[] = {
     {"drvdbg", sizeof(drvdbg), (t_u32) & drvdbg}
     ,
 #endif
-    {"int_counter", item_size(int_counter), item_addr(int_counter)}
-    ,
     {"wmm_ac_vo", item_size(packets_out[WMM_AC_VO]),
      item_addr(packets_out[WMM_AC_VO])}
     ,
@@ -201,13 +291,32 @@ static struct debug_data uap_items[] = {
     {"num_tx_h2c_fail", item_size(num_tx_host_to_card_failure),
      item_addr(num_tx_host_to_card_failure)}
     ,
+    {"num_cmdevt_c2h_fail", item_size(num_cmdevt_card_to_host_failure),
+     item_addr(num_cmdevt_card_to_host_failure)}
+    ,
+    {"num_rx_c2h_fail", item_size(num_rx_card_to_host_failure),
+     item_addr(num_rx_card_to_host_failure)}
+    ,
+    {"num_int_read_fail", item_size(num_int_read_failure),
+     item_addr(num_int_read_failure)}
+    ,
+    {"last_int_status", item_size(last_int_status), item_addr(last_int_status)}
+    ,
     {"cmd_sent", item_size(cmd_sent), item_addr(cmd_sent)}
     ,
     {"data_sent", item_size(data_sent), item_addr(data_sent)}
     ,
+    {"mpa_tx_enable", item_size(mpa_tx_enable), item_addr(mpa_tx_enable)}
+    ,
+    {"mpa_rx_enable", item_size(mpa_rx_enable), item_addr(mpa_rx_enable)}
+    ,
     {"mp_rd_bitmap", item_size(mp_rd_bitmap), item_addr(mp_rd_bitmap)}
     ,
+    {"curr_rd_port", item_size(curr_rd_port), item_addr(curr_rd_port)}
+    ,
     {"mp_wr_bitmap", item_size(mp_wr_bitmap), item_addr(mp_wr_bitmap)}
+    ,
+    {"curr_wr_port", item_size(curr_wr_port), item_addr(curr_wr_port)}
     ,
     {"cmd_resp_received", item_size(cmd_resp_received),
      item_addr(cmd_resp_received)}
@@ -230,6 +339,22 @@ static struct debug_data uap_items[] = {
     {"mbufalloc_count", item_handle_size(mbufalloc_count),
      item_handle_addr(mbufalloc_count)}
     ,
+    {"main_state", item_handle_size(main_state), item_handle_addr(main_state)}
+    ,
+    {"max_tx_pending", item_handle_size(max_tx_pending),
+     item_handle_addr(max_tx_pending)}
+    ,
+    {"low_tx_pending", item_handle_size(low_tx_pending),
+     item_handle_addr(low_tx_pending)}
+    ,
+#if defined(SDIO_SUSPEND_RESUME)
+    {"hs_skip_count", item_handle_size(hs_skip_count),
+     item_handle_addr(hs_skip_count)}
+    ,
+    {"hs_force_count", item_handle_size(hs_force_count),
+     item_handle_addr(hs_force_count)}
+    ,
+#endif
 };
 #endif /* UAP_SUPPORT */
 
@@ -293,6 +418,21 @@ woal_debug_read(char *page, char **s, off_t off, int cnt, int *eof, void *data)
         else
             p += sprintf(p, "%s=%d\n", d[i].name, val);
     }
+    p += sprintf(p,
+                 "Packets_in: 0x%lx 0x%lx 0x%lx 0x%lx 0x%lx 0x%lx 0x%lx 0x%lx\n",
+                 info.packets_in[0], info.packets_in[1], info.packets_in[2],
+                 info.packets_in[3], info.packets_in[4], info.packets_in[5],
+                 info.packets_in[6], info.packets_in[7]);
+    p += sprintf(p,
+                 "Packets_out: 0x%lx 0x%lx 0x%lx 0x%lx 0x%lx 0x%lx 0x%lx 0x%lx\n",
+                 info.packets_out[0], info.packets_out[1], info.packets_out[2],
+                 info.packets_out[3], info.packets_out[4], info.packets_out[5],
+                 info.packets_out[6], info.packets_out[7]);
+    p += sprintf(p,
+                 "Packets_queued: 0x%lx 0x%lx 0x%lx 0x%lx 0x%lx 0x%lx 0x%lx 0x%lx\n",
+                 info.pkts_queued[0], info.pkts_queued[1], info.pkts_queued[2],
+                 info.pkts_queued[3], info.pkts_queued[4], info.pkts_queued[5],
+                 info.pkts_queued[6], info.pkts_queued[7]);
     if (info.tx_tbl_num) {
         p += sprintf(p, "Tx BA stream table:\n");
         for (i = 0; i < info.tx_tbl_num; i++) {
@@ -470,6 +610,18 @@ woal_debug_entry(moal_private * priv)
         (t_u32) (priv->phandle);
     priv->items_priv.items[priv->items_priv.num_of_items - 6].addr +=
         (t_u32) (priv->phandle);
+    priv->items_priv.items[priv->items_priv.num_of_items - 7].addr +=
+        (t_u32) (priv->phandle);
+    priv->items_priv.items[priv->items_priv.num_of_items - 8].addr +=
+        (t_u32) (priv->phandle);
+    priv->items_priv.items[priv->items_priv.num_of_items - 9].addr +=
+        (t_u32) (priv->phandle);
+#if defined(SDIO_SUSPEND_RESUME)
+    priv->items_priv.items[priv->items_priv.num_of_items - 10].addr +=
+        (t_u32) (priv->phandle);
+    priv->items_priv.items[priv->items_priv.num_of_items - 11].addr +=
+        (t_u32) (priv->phandle);
+#endif
 
     /* Create proc entry */
     r = create_proc_entry("debug", 0644, priv->proc_entry);

@@ -2,7 +2,7 @@
   *
   * @brief This file contains functions for proc file.
   * 
-  * Copyright (C) 2008-2010, Marvell International Ltd. 
+  * Copyright (C) 2008-2011, Marvell International Ltd. 
   *
   * This software file (the "File") is distributed by Marvell International 
   * Ltd. under the terms of the GNU General Public License Version 2, June 1991 
@@ -28,6 +28,7 @@ Change log:
 #ifdef UAP_SUPPORT
 #include    "moal_uap.h"
 #endif
+#include 	"moal_sdio.h"
 
 /********************************************************
 		Local Variables
@@ -93,6 +94,10 @@ woal_info_proc_read(char *page, char **start, off_t offset,
     struct netdev_hw_addr *mcptr = NULL;
     int mc_count = netdev_mc_count(netdev);
 #endif /* < 2.6.35 */
+#else
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34)
+    int i = 0;
+#endif /* >= 2.6.34 */
 #endif
 #ifdef UAP_SUPPORT
     mlan_ds_uap_stats ustats;
@@ -183,8 +188,16 @@ woal_info_proc_read(char *page, char **start, off_t offset,
     p += sprintf(p, "num_rx_pkts_err = %lu\n", priv->stats.rx_errors);
     p += sprintf(p, "carrier %s\n",
                  ((netif_carrier_ok(priv->netdev)) ? "on" : "off"));
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34)
+    for (i = 0; i < netdev->num_tx_queues; i++) {
+        p += sprintf(p, "tx queue %d:  %s\n", i,
+                     ((netif_tx_queue_stopped(netdev_get_tx_queue(netdev, 0))) ?
+                      "stopped" : "started"));
+    }
+#else
     p += sprintf(p, "tx queue %s\n",
                  ((netif_queue_stopped(priv->netdev)) ? "stopped" : "started"));
+#endif
 #ifdef UAP_SUPPORT
     if (GET_BSS_ROLE(priv) == MLAN_BSS_ROLE_UAP) {
         p += sprintf(p, "tkip_mic_failures = %lu\n", ustats.tkip_mic_failures);
@@ -221,6 +234,59 @@ woal_info_proc_read(char *page, char **start, off_t offset,
     return (p - page);
 }
 
+#define     CMD52_STR_LEN   50
+/*
+ *  @brief Parse cmd52 string
+ *
+ *  @param buffer  A pointer user buffer
+ *  @param len     Length user buffer
+ *  @param func    Parsed func number
+ *  @param reg     Parsed reg value
+ *  @param val     Parsed value to set
+ *  @return 	   BT_STATUS_SUCCESS
+ */
+static int
+parse_cmd52_string(const char __user * buffer, size_t len, int *func, int *reg,
+                   int *val)
+{
+    int ret = MLAN_STATUS_SUCCESS;
+    char *string = NULL;
+    char *pos = NULL;
+
+    ENTER();
+
+    string = (char *) kmalloc(CMD52_STR_LEN, GFP_KERNEL);
+    memset(string, 0, CMD52_STR_LEN);
+    memcpy(string, buffer + strlen("sdcmd52rw="), len - strlen("sdcmd52rw="));
+    string = strstrip(string);
+
+    *func = -1;
+    *reg = -1;
+    *val = -1;
+
+    /* Get func */
+    pos = strsep(&string, " \t");
+    if (pos) {
+        *func = woal_string_to_number(pos);
+    }
+
+    /* Get reg */
+    pos = strsep(&string, " \t");
+    if (pos) {
+        *reg = woal_string_to_number(pos);
+    }
+
+    /* Get val (optional) */
+    pos = strsep(&string, " \t");
+    if (pos) {
+        *val = woal_string_to_number(pos);
+    }
+    if (string)
+        kfree(string);
+    LEAVE();
+    return ret;
+}
+
 /** 
  *  @brief config proc write function
  *
@@ -238,6 +304,7 @@ woal_config_write(struct file *f, const char *buf, unsigned long cnt,
     char *line;
     t_u32 config_data = 0;
     moal_handle *handle = (moal_handle *) data;
+    int func, reg, val;
 
     MODULE_GET;
     if (cnt > sizeof(databuf)) {
@@ -264,6 +331,10 @@ woal_config_write(struct file *f, const char *buf, unsigned long cnt,
         if (config_data != (t_u32) drv_mode)
             woal_switch_drv_mode(handle, config_data);
     }
+    if (!strncmp(databuf, "sdcmd52rw=", strlen("sdcmd52rw="))) {
+        parse_cmd52_string(databuf, cnt, &func, &reg, &val);
+        woal_sdio_read_write_cmd52(handle, func, reg, val);
+    }
     MODULE_PUT;
     return cnt;
 }
@@ -288,6 +359,8 @@ woal_config_read(char *page, char **s, off_t off, int cnt, int *eof, void *data)
     p += sprintf(p, "hardware_status=%d\n", (int) handle->hardware_status);
     p += sprintf(p, "netlink_num=%d\n", (int) handle->netlink_num);
     p += sprintf(p, "drv_mode=%d\n", (int) drv_mode);
+    p += sprintf(p, "sdcmd52rw=%d 0x%0x 0x%02X\n", handle->cmd52_func,
+                 handle->cmd52_reg, handle->cmd52_val);
     MODULE_PUT;
     return p - page;
 }

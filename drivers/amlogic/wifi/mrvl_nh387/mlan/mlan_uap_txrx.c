@@ -2,7 +2,7 @@
  *
  *  @brief This file contains AP mode transmit and receive functions
  * 
- *  Copyright (C) 2009-2010, Marvell International Ltd. 
+ *  Copyright (C) 2009-2011, Marvell International Ltd. 
  *  All Rights Reserved
  */
 
@@ -50,7 +50,7 @@ mlan_process_uap_txpd(IN t_void * priv, IN pmlan_buffer pmbuf)
         goto done;
     }
     if (pmbuf->data_offset < (sizeof(UapTxPD) + INTF_HEADER_LEN +
-                              HEADER_ALIGNMENT)) {
+                              DMA_ALIGNMENT)) {
         PRINTM(MERROR, "not enough space for UapTxPD: len=%d, offset=%d\n",
                pmbuf->data_len, pmbuf->data_offset);
         DBG_HEXDUMP(MDAT_D, "drop pkt", pmbuf->pbuf + pmbuf->data_offset,
@@ -62,7 +62,7 @@ mlan_process_uap_txpd(IN t_void * priv, IN pmlan_buffer pmbuf)
     /* head_ptr should be aligned */
     head_ptr =
         pmbuf->pbuf + pmbuf->data_offset - sizeof(UapTxPD) - INTF_HEADER_LEN;
-    head_ptr = (t_u8 *) ((t_u32) head_ptr & ~((t_u32) (HEADER_ALIGNMENT - 1)));
+    head_ptr = (t_u8 *) ((t_u32) head_ptr & ~((t_u32) (DMA_ALIGNMENT - 1)));
 
     plocal_tx_pd = (UapTxPD *) (head_ptr + INTF_HEADER_LEN);
     memset(pmpriv->adapter, plocal_tx_pd, 0, sizeof(UapTxPD));
@@ -124,10 +124,13 @@ wlan_upload_uap_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
     pmbuf->data_offset += prx_pd->rx_pkt_offset;
     pmbuf->pparent = MNULL;
 
+    DBG_HEXDUMP(MDAT_D, "UAP Rx", pmbuf->pbuf + pmbuf->data_offset,
+                MIN(pmbuf->data_len, MAX_DATA_DUMP_LEN));
+
     pmadapter->callbacks.moal_get_system_time(pmadapter->pmoal_handle,
                                               &pmbuf->out_ts_sec,
                                               &pmbuf->out_ts_usec);
-    PRINTM(MDATA, "%lu.%lu : Data => kernel seq_num=%d tid=%d\n",
+    PRINTM(MDATA, "%lu.%06lu : Data => kernel seq_num=%d tid=%d\n",
            pmbuf->out_ts_sec, pmbuf->out_ts_usec, prx_pd->seq_num,
            prx_pd->priority);
     ret = pmadapter->callbacks.moal_recv_packet(pmadapter->pmoal_handle, pmbuf);
@@ -159,6 +162,7 @@ mlan_process_uap_rx_packet(IN t_void * adapter, IN pmlan_buffer pmbuf)
     pmlan_adapter pmadapter = (pmlan_adapter) adapter;
     mlan_status ret = MLAN_STATUS_SUCCESS;
     UapRxPD *prx_pd;
+    wlan_mgmt_pkt *puap_pkt_hdr = MNULL;
     RxPacketHdr_t *prx_pkt;
     pmlan_private priv = pmadapter->priv[pmbuf->bss_num];
     t_u8 ta[MLAN_MAC_ADDR_LENGTH];
@@ -172,9 +176,6 @@ mlan_process_uap_rx_packet(IN t_void * adapter, IN pmlan_buffer pmbuf)
     uap_endian_convert_RxPD(prx_pd);
     rx_pkt_type = prx_pd->rx_pkt_type;
     prx_pkt = (RxPacketHdr_t *) ((t_u8 *) prx_pd + prx_pd->rx_pkt_offset);
-
-    DBG_HEXDUMP(MDAT_D, "UAP Rx", pmbuf->pbuf + pmbuf->data_offset,
-                MIN(pmbuf->data_len, MAX_DATA_DUMP_LEN));
 
     PRINTM(MINFO, "RX Data: data_len - prx_pd->rx_pkt_offset = %d - %d = %d\n",
            pmbuf->data_len, prx_pd->rx_pkt_offset,
@@ -192,6 +193,21 @@ mlan_process_uap_rx_packet(IN t_void * adapter, IN pmlan_buffer pmbuf)
     }
     pmbuf->data_len = prx_pd->rx_pkt_offset + prx_pd->rx_pkt_length;
 
+    if (prx_pd->rx_pkt_type == PKT_TYPE_MGMT_FRAME) {
+        /* Check if this is mgmt packet and needs to forwarded to app as an
+           event */
+        puap_pkt_hdr =
+            (wlan_mgmt_pkt *) ((t_u8 *) prx_pd + prx_pd->rx_pkt_offset);
+        puap_pkt_hdr->frm_len = wlan_le16_to_cpu(puap_pkt_hdr->frm_len);
+        if ((puap_pkt_hdr->wlan_header.
+             frm_ctl & IEEE80211_FC_MGMT_FRAME_TYPE_MASK) == 0)
+            wlan_process_802dot11_mgmt_pkt(pmadapter->priv[pmbuf->bss_num],
+                                           (t_u8 *) & puap_pkt_hdr->wlan_header,
+                                           puap_pkt_hdr->frm_len +
+                                           sizeof(wlan_mgmt_pkt) -
+                                           sizeof(puap_pkt_hdr->frm_len));
+    }
+
     pmbuf->priority = prx_pd->priority;
     if (prx_pd->rx_pkt_type == PKT_TYPE_AMSDU) {
         pmbuf->data_len = prx_pd->rx_pkt_length;
@@ -200,7 +216,7 @@ mlan_process_uap_rx_packet(IN t_void * adapter, IN pmlan_buffer pmbuf)
         goto done;
     }
     memcpy(pmadapter, ta, prx_pkt->eth803_hdr.src_addr, MLAN_MAC_ADDR_LENGTH);
-    if (rx_pkt_type != PKT_TYPE_BAR) {
+    if ((rx_pkt_type != PKT_TYPE_BAR) && (prx_pd->priority < MAX_NUM_TID)) {
         if ((sta_ptr = wlan_get_station_entry(priv, ta)))
             sta_ptr->rx_seq[prx_pd->priority] = prx_pd->seq_num;
     }
@@ -276,7 +292,7 @@ wlan_uap_recv_packet(IN mlan_private * priv, IN pmlan_buffer pmbuf)
             newbuf->in_ts_sec = pmbuf->in_ts_sec;
             newbuf->in_ts_usec = pmbuf->in_ts_usec;
             newbuf->data_offset =
-                (sizeof(UapTxPD) + INTF_HEADER_LEN + HEADER_ALIGNMENT);
+                (sizeof(UapTxPD) + INTF_HEADER_LEN + DMA_ALIGNMENT);
             pmadapter->pending_bridge_pkts++;
             newbuf->flags |= MLAN_BUF_FLAG_BRIDGE_BUF;
 
@@ -299,7 +315,7 @@ wlan_uap_recv_packet(IN mlan_private * priv, IN pmlan_buffer pmbuf)
                 newbuf->in_ts_sec = pmbuf->in_ts_sec;
                 newbuf->in_ts_usec = pmbuf->in_ts_usec;
                 newbuf->data_offset =
-                    (sizeof(UapTxPD) + INTF_HEADER_LEN + HEADER_ALIGNMENT);
+                    (sizeof(UapTxPD) + INTF_HEADER_LEN + DMA_ALIGNMENT);
                 pmadapter->pending_bridge_pkts++;
                 newbuf->flags |= MLAN_BUF_FLAG_BRIDGE_BUF;
 
@@ -369,7 +385,7 @@ wlan_process_uap_rx_packet(IN mlan_private * priv, IN pmlan_buffer pmbuf)
             newbuf->in_ts_sec = pmbuf->in_ts_sec;
             newbuf->in_ts_usec = pmbuf->in_ts_usec;
             newbuf->data_offset =
-                (sizeof(UapTxPD) + INTF_HEADER_LEN + HEADER_ALIGNMENT);
+                (sizeof(UapTxPD) + INTF_HEADER_LEN + DMA_ALIGNMENT);
             pmadapter->pending_bridge_pkts++;
             newbuf->flags |= MLAN_BUF_FLAG_BRIDGE_BUF;
 
@@ -401,7 +417,7 @@ wlan_process_uap_rx_packet(IN mlan_private * priv, IN pmlan_buffer pmbuf)
     pmadapter->callbacks.moal_get_system_time(pmadapter->pmoal_handle,
                                               &pmbuf->out_ts_sec,
                                               &pmbuf->out_ts_usec);
-    PRINTM(MDATA, "%lu.%lu : Data => kernel seq_num=%d tid=%d\n",
+    PRINTM(MDATA, "%lu.%06lu : Data => kernel seq_num=%d tid=%d\n",
            pmbuf->out_ts_sec, pmbuf->out_ts_usec, prx_pd->seq_num,
            prx_pd->priority);
     ret = pmadapter->callbacks.moal_recv_packet(pmadapter->pmoal_handle, pmbuf);

@@ -2,7 +2,7 @@
  *
  * @brief This file contains definition for extended private IOCTL call.
  *  
- * Copyright (C) 2008-2009, Marvell International Ltd.  
+ * Copyright (C) 2008-2011, Marvell International Ltd.  
  *
  * This software file (the "File") is distributed by Marvell International 
  * Ltd. under the terms of the GNU General Public License Version 2, June 1991 
@@ -68,8 +68,6 @@ Change log:
 #endif
 /** Private command ID to set/get beacon interval */
 #define WOAL_BEACON_INTERVAL        3
-/** Private command ID to set/get ATIM window */
-#define WOAL_ATIM_WINDOW            4
 /** Private command ID to get RSSI */
 #define WOAL_SIGNAL                 5
 /** Private command ID to set/get Deep Sleep mode */
@@ -114,6 +112,8 @@ Change log:
 #define WOAL_ADDBA_REJECT           27
 /** Private command ID to set/get sleep parameters */
 #define WOAL_SLEEP_PARAMS           28
+/** Private command ID to set/get TX BF capabilities */
+#define WOAL_TX_BF_CAP              30
 
 /** Private command ID to set one int/get one int */
 #define WOAL_SETONEINT_GETONEINT    (WOAL_IOCTL + 5)
@@ -148,6 +148,8 @@ Change log:
 /** Private command ID to set/get port control */
 #define WOAL_PORT_CTRL              19
 #define WOAL_SET_GET_11H_LOCAL_PWR_CONSTRAINT 22
+/** Private command ID to set/get MAC control */
+#define WOAL_MAC_CONTROL            24
 
 /** Private command ID to get log */
 #define WOALGETLOG                  (WOAL_IOCTL + 7)
@@ -167,6 +169,7 @@ Change log:
 #define WOAL_WMM_QUEUE_STATUS       4
 /** Private command ID to get Traffic stream status */
 #define WOAL_WMM_TS_STATUS          5
+#define WOAL_IP_ADDRESS             7
 
 /** Get log buffer size */
 #define GETLOG_BUFSIZE              512
@@ -355,6 +358,11 @@ static const struct iw_priv_args woal_private_args[] = {
      IW_PRIV_TYPE_INT | 1,
      "powercons"},
     {
+     WOAL_MAC_CONTROL,
+     IW_PRIV_TYPE_INT | 1,
+     IW_PRIV_TYPE_INT | 1,
+     "macctrl"},
+    {
      WOAL_SET_GET_SIXTEEN_INT,
      IW_PRIV_TYPE_INT | 16,
      IW_PRIV_TYPE_INT | 16,
@@ -376,11 +384,6 @@ static const struct iw_priv_args woal_private_args[] = {
      IW_PRIV_TYPE_INT | 16,
      IW_PRIV_TYPE_INT | 16,
      "bcninterval"},
-    {
-     WOAL_ATIM_WINDOW,
-     IW_PRIV_TYPE_INT | 16,
-     IW_PRIV_TYPE_INT | 16,
-     "atimwindow"},
     {
      WOAL_SIGNAL,
      IW_PRIV_TYPE_INT | 16,
@@ -490,6 +493,11 @@ static const struct iw_priv_args woal_private_args[] = {
      IW_PRIV_TYPE_INT | 16,
      "sleepparams"},
     {
+     WOAL_TX_BF_CAP,
+     IW_PRIV_TYPE_INT | 16,
+     IW_PRIV_TYPE_INT | 16,
+     "httxbfcap"},
+    {
      WOALGETLOG,
      IW_PRIV_TYPE_NONE,
      IW_PRIV_TYPE_CHAR | GETLOG_BUFSIZE,
@@ -529,6 +537,11 @@ static const struct iw_priv_args woal_private_args[] = {
      IW_PRIV_TYPE_CHAR | 256,
      IW_PRIV_TYPE_CHAR | 256,
      "ts_status"},
+    {
+     WOAL_IP_ADDRESS,
+     IW_PRIV_TYPE_CHAR | 256,
+     IW_PRIV_TYPE_CHAR | 256,
+     "ipaddr"},
     {
      WOAL_SETNONE_GETTWELVE_CHAR,
      IW_PRIV_TYPE_NONE,

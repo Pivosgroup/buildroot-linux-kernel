@@ -5,35 +5,47 @@
  * Hsinchu County 302,
  * Taiwan, R.O.C.
  *
- * (c) Copyright 2002-2010, Ralink Technology, Inc.
+ * (c) Copyright 2002-2007, Ralink Technology, Inc.
  *
- * This program is free software; you can redistribute it and/or modify  *
- * it under the terms of the GNU General Public License as published by  *
- * the Free Software Foundation; either version 2 of the License, or     *
- * (at your option) any later version.                                   *
- *                                                                       *
- * This program is distributed in the hope that it will be useful,       *
- * but WITHOUT ANY WARRANTY; without even the implied warranty of        *
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
- * GNU General Public License for more details.                          *
- *                                                                       *
- * You should have received a copy of the GNU General Public License     *
- * along with this program; if not, write to the                         *
- * Free Software Foundation, Inc.,                                       *
- * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
- *                                                                       *
- *************************************************************************/
+ * This program is free software; you can redistribute it and/or modify  * 
+ * it under the terms of the GNU General Public License as published by  * 
+ * the Free Software Foundation; either version 2 of the License, or     * 
+ * (at your option) any later version.                                   * 
+ *                                                                       * 
+ * This program is distributed in the hope that it will be useful,       * 
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of        * 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         * 
+ * GNU General Public License for more details.                          * 
+ *                                                                       * 
+ * You should have received a copy of the GNU General Public License     * 
+ * along with this program; if not, write to the                         * 
+ * Free Software Foundation, Inc.,                                       * 
+ * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             * 
+ *                                                                       * 
+ *************************************************************************
 
+    Module Name:
+    ap.h
 
+    Abstract:
+    Miniport generic portion header file
+
+    Revision History:
+    Who         When          What
+    --------    ----------    ----------------------------------------------
+    Paul Lin    08-01-2002    created
+    James Tan   09-06-2002    modified (Revise NTCRegTable)
+    John Chang  12-22-2004    modified for RT2561/2661. merge with STA driver
+*/
 #ifndef __AP_H__
 #define __AP_H__
 
 
-/* ============================================================= */
-/*      Function Prototypes */
-/* ============================================================= */
+// =============================================================
+//      Function Prototypes
+// =============================================================
 
-/* ap_data.c */
+// ap_data.c
 
 BOOLEAN APBridgeToWirelessSta(
     IN  PRTMP_ADAPTER   pAd,
@@ -57,11 +69,6 @@ NDIS_STATUS APSendPacket(
     IN  PRTMP_ADAPTER   pAd,
     IN  PNDIS_PACKET    pPacket);
 
-NDIS_STATUS APInsertPsQueue(
-	IN PRTMP_ADAPTER pAd,
-	IN PNDIS_PACKET pPacket,
-	IN MAC_TABLE_ENTRY *pMacEntry,
-	IN UCHAR QueIdx);
 
 NDIS_STATUS APHardTransmit(
 	IN	PRTMP_ADAPTER	pAd,
@@ -100,7 +107,7 @@ VOID    RTMPFrameEndianChange(
     IN  ULONG           Dir,
     IN  BOOLEAN         FromRxDoneInt);
 
-/* ap_assoc.c */
+// ap_assoc.c
 
 VOID APAssocStateMachineInit(
     IN  PRTMP_ADAPTER   pAd, 
@@ -121,7 +128,7 @@ VOID  APPeerDisassocReqAction(
 
 VOID MbssKickOutStas(
 	IN PRTMP_ADAPTER pAd,
-	IN int apidx,
+	IN INT apidx,
 	IN USHORT Reason);
 
 VOID APMlmeKickOutSta(
@@ -151,7 +158,7 @@ USHORT APBuildAssociation(
     IN ULONG  RalinkIe,
     IN EXT_CAP_INFO_ELEMENT ExtCapInfo,
 	IN HT_CAPABILITY_IE		*pHtCapability,
-	OUT UCHAR		 *pHtCapabilityLen,
+	IN UCHAR		 HtCapabilityLen,
     OUT USHORT *pAid);
 
 /*
@@ -166,7 +173,7 @@ VOID	RTMPAddClientSec(
 	IN MAC_TABLE_ENTRY *pEntry);
 */
 
-/* ap_auth.c */
+// ap_auth.c
 
 void APAuthStateMachineInit(
     IN PRTMP_ADAPTER pAd, 
@@ -178,16 +185,16 @@ VOID APCls2errAction(
 	IN 	ULONG Wcid,
     IN	PHEADER_802_11	pHeader);
 
-/* ap_connect.c */
+// ap_connect.c
 
 
 VOID APMakeBssBeacon(
     IN  PRTMP_ADAPTER   pAd,
-	IN	int				apidx);
+	IN	INT				apidx);
 
 VOID  APUpdateBeaconFrame(
     IN  PRTMP_ADAPTER   pAd,
-	IN	int				apidx);
+	IN	INT				apidx);
 
 VOID APMakeAllBssBeacon(
     IN  PRTMP_ADAPTER   pAd);
@@ -196,7 +203,7 @@ VOID  APUpdateAllBeaconFrame(
     IN  PRTMP_ADAPTER   pAd);
 
 
-/* ap_sync.c */
+// ap_sync.c
 
 VOID APSyncStateMachineInit(
     IN PRTMP_ADAPTER pAd,
@@ -240,8 +247,7 @@ VOID APScanCnclAction(
 VOID ApSiteSurvey(
 	IN	PRTMP_ADAPTER  		pAd,
 	IN	PNDIS_802_11_SSID	pSsid,
-	IN	UCHAR				ScanType,
-	IN	BOOLEAN				ChannelSel);
+	IN	UCHAR				ScanType);
 
 VOID SupportRate(
 	IN PUCHAR SupRate,
@@ -260,19 +266,19 @@ BOOLEAN ApScanRunning(
 VOID APOverlappingBSSScan(
 	IN RTMP_ADAPTER *pAd);
 
-int GetBssCoexEffectedChRange(
+INT GetBssCoexEffectedChRange(
 	IN RTMP_ADAPTER *pAd,
 	IN BSS_COEX_CH_RANGE *pCoexChRange);
 
-#endif /* DOT11N_DRAFT3 */
+#endif // DOT11N_DRAFT3 //
 
-/* ap_wpa.c */
+// ap_wpa.c
 VOID WpaStateMachineInit(
     IN  PRTMP_ADAPTER   pAd, 
     IN  STATE_MACHINE *Sm, 
     OUT STATE_MACHINE_FUNC Trans[]);
 
-/* ap_mlme.c */
+// ap_mlme.c
 VOID APMlmePeriodicExec(
     IN  PRTMP_ADAPTER   pAd);
 
@@ -288,10 +294,6 @@ VOID APMlmeSetTxRate(
 	IN PMAC_TABLE_ENTRY		pEntry,
 	IN PRTMP_TX_RATE_SWITCH	pTxRate);
 
-VOID APMlmeSelectRateSwitchTable11N3SReplacement(
-	IN PUCHAR	*ppTable);
-
-
 VOID APMlmeDynamicTxRateSwitching(
     IN PRTMP_ADAPTER pAd);
 
@@ -304,8 +306,8 @@ VOID APQuickResponeForRateUpExec(
 BOOLEAN APMsgTypeSubst(
     IN PRTMP_ADAPTER pAd,
     IN PFRAME_802_11 pFrame, 
-    OUT int *Machine, 
-    OUT int *MsgType);
+    OUT INT *Machine, 
+    OUT INT *MsgType);
 
 VOID APQuickResponeForRateUpExec(
     IN PVOID SystemSpecific1, 
@@ -313,15 +315,6 @@ VOID APQuickResponeForRateUpExec(
     IN PVOID SystemSpecific2, 
     IN PVOID SystemSpecific3);
 
-#ifdef NEW_RATE_ADAPT_SUPPORT
-VOID APMlmeDynamicTxRateSwitchingAdapt(
-    IN PRTMP_ADAPTER pAd,
-    IN ULONG idx);
-
-VOID APQuickResponeForRateUpExecAdapt(
-    IN PRTMP_ADAPTER pAd,
-    IN ULONG idx);
-#endif /*NEW_RATE_ADAPT_SUPPORT */
 
 #ifdef RTMP_MAC_USB
 VOID BeaconUpdateExec(
@@ -329,7 +322,7 @@ VOID BeaconUpdateExec(
     IN PVOID FunctionContext, 
     IN PVOID SystemSpecific2, 
     IN PVOID SystemSpecific3);
-#endif /* RTMP_MAC_USB */
+#endif // RTMP_MAC_USB //
 
 VOID RTMPSetPiggyBack(
 	IN PRTMP_ADAPTER	pAd,
@@ -341,7 +334,7 @@ VOID APAsicEvaluateRxAnt(
 VOID APAsicRxAntEvalTimeout(
 	IN PRTMP_ADAPTER	pAd);
 
-/* ap.c */
+// ap.c
 NDIS_STATUS APInitialize(
     IN  PRTMP_ADAPTER   pAd);
 
@@ -365,7 +358,6 @@ MAC_TABLE_ENTRY *MacTableInsertEntry(
     IN  PRTMP_ADAPTER   pAd, 
     IN  PUCHAR          pAddr,
 	IN	UCHAR			apidx,
-	IN	UCHAR           OpMode,
 	IN BOOLEAN	CleanAll); 
 
 BOOLEAN MacTableDeleteEntry(
@@ -404,12 +396,12 @@ VOID ApLogEvent(
     IN USHORT           Event);
 #else
 #define ApLogEvent(_pAd, _pAddr, _Event)
-#endif /* SYSTEM_LOG_SUPPORT */
+#endif // SYSTEM_LOG_SUPPORT //
 
 #ifdef DOT11_N_SUPPORT
 VOID APUpdateOperationMode(
     IN PRTMP_ADAPTER pAd);
-#endif /* DOT11_N_SUPPORT */
+#endif // DOT11_N_SUPPORT //
 
 VOID APUpdateCapabilityAndErpIe(
 	IN PRTMP_ADAPTER pAd);
@@ -433,7 +425,7 @@ VOID ApEnqueueNullFrame(
     IN BOOLEAN       bEOSP,
     IN UCHAR         OldUP);
 
-/* ap_sanity.c */
+// ap_sanity.c
 
 
 BOOLEAN PeerAssocReqCmmSanity(
@@ -489,15 +481,15 @@ BOOLEAN APPeerAuthSanity(
 
 #ifdef DOT1X_SUPPORT
 /* ap_cfg.h */
-int	Set_OwnIPAddr_Proc(
+INT	Set_OwnIPAddr_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-int	Set_EAPIfName_Proc(
+INT	Set_EAPIfName_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-int	Set_PreAuthIfName_Proc(
+INT	Set_PreAuthIfName_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
@@ -510,14 +502,16 @@ BOOLEAN DOT1X_InternalCmdAction(
 BOOLEAN DOT1X_EapTriggerAction(
     IN  PRTMP_ADAPTER	pAd,
     IN  MAC_TABLE_ENTRY *pEntry);
-#endif /* DOT1X_SUPPORT */
-#endif  /* __AP_H__ */
+#endif // DOT1X_SUPPORT //
 
-VOID AP_E2PROM_IOCTL_PostCtrl(
-	IN	RTMP_IOCTL_INPUT_STRUCT	*wrq,
-	IN	PSTRING					msg);
+#ifdef DOT11_N_SUPPORT
+#ifdef GREENAP_SUPPORT
+VOID EnableAPMIMOPS(
+    IN PRTMP_ADAPTER pAd);
 
-VOID IAPP_L2_UpdatePostCtrl(
-	IN PRTMP_ADAPTER	pAd,
-    IN UINT8 *mac_p,
-    IN int  bssid);
+VOID DisableAPMIMOPS(
+    IN PRTMP_ADAPTER pAd);
+#endif // GREENAP_SUPPORT //
+#endif // DOT11_N_SUPPORT //
+#endif  // __AP_H__
+

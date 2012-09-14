@@ -3,7 +3,7 @@
  *  @brief This file contains the initialization for FW
  *  and HW. 
  * 
- *  Copyright (C) 2008-2010, Marvell International Ltd. 
+ *  Copyright (C) 2008-2011, Marvell International Ltd. 
  *  All Rights Reserved
  */
 
@@ -168,6 +168,7 @@ wlan_init_priv(pmlan_private priv)
     priv->curr_bcn_size = 0;
 #endif /* STA_SUPPORT */
 
+    priv->tx_bf_cap = 0;
     for (i = 0; i < MAX_NUM_TID; i++)
         priv->addba_reject[i] = ADDBA_RSP_STATUS_ACCEPT;
 
@@ -211,6 +212,17 @@ wlan_allocate_adapter(pmlan_adapter pmadapter)
         return MLAN_STATUS_FAILURE;
     }
     pmadapter->pscan_table = ptemp_scan_table;
+    ret =
+        pmadapter->callbacks.moal_malloc(pmadapter->pmoal_handle,
+                                         DEFAULT_SCAN_BEACON_BUFFER,
+                                         MLAN_MEM_DEF,
+                                         (t_u8 **) & pmadapter->bcn_buf);
+    if (ret != MLAN_STATUS_SUCCESS || !pmadapter->bcn_buf) {
+        PRINTM(MERROR, "Failed to allocate bcn buf\n");
+        LEAVE();
+        return MLAN_STATUS_FAILURE;
+    }
+    pmadapter->bcn_buf_size = DEFAULT_SCAN_BEACON_BUFFER;
 #endif
 
     /* Allocate command buffer */
@@ -223,7 +235,7 @@ wlan_allocate_adapter(pmlan_adapter pmadapter)
 
     ret =
         pmadapter->callbacks.moal_malloc(pmadapter->pmoal_handle,
-                                         MAX_MP_REGS + HEADER_ALIGNMENT,
+                                         MAX_MP_REGS + DMA_ALIGNMENT,
                                          MLAN_MEM_DEF | MLAN_MEM_DMA,
                                          (t_u8 **) & pmadapter->mp_regs_buf);
     if (ret != MLAN_STATUS_SUCCESS || !pmadapter->mp_regs_buf) {
@@ -232,7 +244,7 @@ wlan_allocate_adapter(pmlan_adapter pmadapter)
         return MLAN_STATUS_FAILURE;
     }
     pmadapter->mp_regs =
-        (t_u8 *) ALIGN_ADDR(pmadapter->mp_regs_buf, HEADER_ALIGNMENT);
+        (t_u8 *) ALIGN_ADDR(pmadapter->mp_regs_buf, DMA_ALIGNMENT);
 
 #if defined(SDIO_MULTI_PORT_TX_AGGR) || defined(SDIO_MULTI_PORT_RX_AGGR)
     ret = wlan_alloc_sdio_mpa_buffers(pmadapter, SDIO_MP_TX_AGGR_DEF_BUF_SIZE,
@@ -361,7 +373,7 @@ wlan_init_adapter(pmlan_adapter pmadapter)
            (sizeof(BSSDescriptor_t) * MRVDRV_MAX_BSSID_LIST));
     pmadapter->scan_probes = DEFAULT_PROBES;
 
-    memset(pmadapter, pmadapter->bcn_buf, 0, sizeof(pmadapter->bcn_buf));
+    memset(pmadapter, pmadapter->bcn_buf, 0, pmadapter->bcn_buf_size);
     pmadapter->pbcn_buf_end = pmadapter->bcn_buf;
 
     pmadapter->radio_on = RADIO_ON;
@@ -859,6 +871,10 @@ wlan_free_adapter(pmlan_adapter pmadapter)
         pcb->moal_mfree(pmadapter->pmoal_handle,
                         (t_u8 *) pmadapter->pscan_table);
         pmadapter->pscan_table = MNULL;
+    }
+    if (pmadapter->bcn_buf) {
+        pcb->moal_mfree(pmadapter->pmoal_handle, (t_u8 *) pmadapter->bcn_buf);
+        pmadapter->bcn_buf = MNULL;
     }
 #endif
 

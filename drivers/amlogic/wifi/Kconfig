@@ -65,6 +65,38 @@ config BCM4329_NVRAM_PATH
 	---help---
 	  Path to nvram file.
 
+config SAMSUNG_WIFI_4329
+	bool "Samsung 4329 wireless cards support"
+	depends on SD_MMC
+	select WIRELESS_EXT
+	select WEXT_PRIV
+---help---
+	  This module adds support for wireless adapters based on
+	  Samsung Bcm 4329 chipset.
+
+	  This driver uses the kernel's wireless extensions subsystem.
+	  You should add bcm4329 firmware and nvram file in directory drivers/amlogic/wifi/
+	  
+          & assure to set these config in 
+	  Device Drivers  ---> Generic Driver Options  ---> 
+
+	  [*]   Include in-kernel firmware blobs in kernel binary  
+          (bcm4329/nvram.txt bcm4329/fw_bcm4329.bin) External firmware blobs to build into 
+	  
+config SAMSUNG_BCM4329_FW_PATH
+	depends on SAMSUNG_WIFI_4329
+	string "SAMSUNG BCM4329 Firmware path"
+	default "bcm4329/fw_bcm4329.bin"
+	---help---
+	  Path to the firmware file.
+
+config SAMSUNG_BCM4329_NVRAM_PATH
+	depends on SAMSUNG_WIFI_4329
+	string "SAMSUNG BCM4329 NVRAM path"
+	default "bcm4329/nvram.txt"
+	---help---
+	  Path to nvram file.
+	  
 config RTL8XXX_SU_USB_WIFI
 	tristate "Realtek SU series (8712 8188 8191 8192SU) Wireless USB Dongle support"
 	default n
@@ -88,7 +120,7 @@ config RTL8XXX_CU_EXT_POWER_CTRL
 	  This config adds support for controlling power of Realtek 8xxxCU series,need define function extern_usb_wifi_power() in bsp first.
 	  
 config SDIO_ATHEROS_6302_WIFI
-	bool "ATHEROS 6302 wireless cards support"
+	tristate "ATHEROS 6302 wireless cards support"
 	depends on SD_MMC
 	select WIRELESS_EXT
 	select WEXT_PRIV
@@ -171,7 +203,8 @@ config AR6102_BOARD_DATA_FILE
 	  Path to the bdata file.
 	  
 menuconfig SDIO_MARVELL_NH387_WIFI
-	bool "Marvell nh387 wireless cards support"
+	tristate "Marvell nh387 wireless cards support"
+	default n
 	depends on SD_MMC
 	select WIRELESS_EXT
 	select WEXT_PRIV
@@ -278,37 +311,6 @@ config SDIO_TI_WIFI_WGT7310
 	  This module adds support for wireless adapters based on
 	  Ti wgt7310 chipset.
 
-          & assure to set these config in 
-	  Device Drivers  ---> Generic Driver Options  ---> 
-
-config RALINK_3070_USB_WIFI
-	tristate "Ralink RT3070 wireless USB Dongle support"
-	depends on USB
-	---help---
-	This module adds support for wireless USB dongle based on ralink 3070 chipset.
-	
-#	This driver uses the kernel's wireless extensions subsystem.
-#	You should add RALINK 3070 configuration file in directory firmware/ralink/3070/
-#	
-#	    & assure to set these config in 
-#	Device Drivers  ---> Generic Driver Options  ---> 
-#	
-#	[*]   Include in-kernel firmware blobs in kernel binary  
-#	    (ralink/3070/RT2870STA.dat) External firmware blobs to build into 	  
-	
-#config RALINK_3070_PROFILE_FILE
-#	depends on RALINK_3070_USB_WIFI
-#	string "RALINK_3070 PROFILE_FILE path"
-#	default "ralink/3070/RT2870STA.dat"
-#	---help---
-#	  Path to the configuration file.
-
-config RALINK_3070_USB_WIFI_AP
-	tristate "Ralink RT3070 wireless USB Dongle Soft AP support"
-	depends on USB
-	---help---
-	This module adds soft AP support for wireless USB dongle based on ralink 3070 chipset.
-   
 config SDIO_DHD_CDC_WIFI_4319_MODULE
 	tristate "Broadcom 4319 wireless cards support"
 	depends on SD_MMC
@@ -359,20 +361,17 @@ config BCM4329_OOB_INTR_ONLY
 	default n
 	---help---
 	   Use out of band interrupt for all interrupts(including SDIO interrupts).
+	   
+source "drivers/amlogic/wifi/broadcm_40181/Kconfig"
 
-config SDIO_BCM4330_WIFI
-	tristate "Broadcom 4330 wireless cards support"
-	depends on SD_MMC
-	select WIRELESS_EXT
-	select WEXT_PRIV
-	default n
-	---help---
-	  This module adds support for wireless adapters based on
-	  Broadcom 4330 chipset(include huawei43326 wifi only).
-
-	  This driver uses the kernel's wireless extensions subsystem.
-
-	  If you choose to build a module, it'll be called dhd. Say M if
-	  unsure.
+config SDIO_NRX600
+        tristate "NANO NRX600 wireless card support"
+        depends on SD_MMC
+	select SDIO_HARD_IRQ
+        select WIRELESS_EXT
+        select WEXT_PRIV
+        select SDIO_HARD_IRQ
+        ---help---
+           SUMSANG NRX600
 	      
 endmenu

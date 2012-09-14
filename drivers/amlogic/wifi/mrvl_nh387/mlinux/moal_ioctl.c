@@ -25,6 +25,7 @@ Change log:
 ********************************************************/
 
 #include        "moal_main.h"
+#include 	"moal_sdio.h"
 
 /********************************************************
                 Local Variables
@@ -193,8 +194,7 @@ woal_request_open(moal_private * priv)
 mlan_status
 woal_request_close(moal_private * priv)
 {
-    if (!netif_queue_stopped(priv->netdev))
-        netif_stop_queue(priv->netdev);
+    woal_stop_queue(priv->netdev);
     if (netif_carrier_ok(priv->netdev))
         netif_carrier_off(priv->netdev);
     return MLAN_STATUS_SUCCESS;
@@ -437,8 +437,7 @@ woal_bss_start(moal_private * priv, t_u8 wait_option,
     ENTER();
 
     /* Stop the O.S. TX queue if needed */
-    if (!netif_queue_stopped(priv->netdev))
-        netif_stop_queue(priv->netdev);
+    woal_stop_queue(priv->netdev);
 
     /* Allocate an IOCTL request buffer */
     req = (mlan_ioctl_req *) woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_bss));
@@ -1033,6 +1032,10 @@ woal_enable_hs(moal_private * priv)
     mlan_ds_hs_cfg hscfg;
     moal_handle *handle = NULL;
     int hs_actived = MFALSE;
+    int timeout = 0;
+#ifdef SDIO_SUSPEND_RESUME
+    mlan_ds_ps_info pm_info;
+#endif
 
     ENTER();
 
@@ -1051,16 +1054,49 @@ woal_enable_hs(moal_private * priv)
     handle->hs_activate_wait_q_woken = MFALSE;
     memset(&hscfg, 0, sizeof(mlan_ds_hs_cfg));
     hscfg.is_invoke_hostcmd = MTRUE;
-    if (woal_set_get_hs_params(priv, MLAN_ACT_SET, MOAL_IOCTL_WAIT, &hscfg) !=
-        MLAN_STATUS_SUCCESS) {
+    if (woal_set_get_hs_params(priv, MLAN_ACT_SET, MOAL_NO_WAIT, &hscfg) ==
+        MLAN_STATUS_FAILURE) {
         PRINTM(MIOCTL, "IOCTL request HS enable failed\n");
         goto done;
     }
-
-    wait_event_interruptible(handle->hs_activate_wait_q,
-                             handle->hs_activate_wait_q_woken);
-    hs_actived = MTRUE;
-
+    timeout = wait_event_interruptible_timeout(handle->hs_activate_wait_q,
+                                               handle->hs_activate_wait_q_woken,
+                                               HS_ACTIVE_TIMEOUT);
+    sdio_claim_host(((struct sdio_mmc_card *) handle->card)->func);
+    if ((handle->hs_activated == MTRUE) || (handle->is_suspended == MTRUE)) {
+        PRINTM(MCMND, "suspend success! force=%lu skip=%lu\n",
+               handle->hs_force_count, handle->hs_skip_count);
+        hs_actived = MTRUE;
+    }
+#ifdef SDIO_SUSPEND_RESUME
+    else {
+        handle->suspend_fail = MTRUE;
+        woal_get_pm_info(priv, &pm_info);
+        if (pm_info.is_suspend_allowed == MTRUE) {
+#ifdef MMC_PM_FUNC_SUSPENDED
+            woal_wlan_is_suspended(priv->phandle);
+#endif
+            handle->hs_force_count++;
+            PRINTM(MCMND, "suspend allowed! force=%lu skip=%lu\n",
+                   handle->hs_force_count, handle->hs_skip_count);
+            hs_actived = MTRUE;
+        }
+    }
+#endif /* SDIO_SUSPEND_RESUME */
+    sdio_release_host(((struct sdio_mmc_card *) handle->card)->func);
+    if (hs_actived != MTRUE) {
+        handle->hs_skip_count++;
+#ifdef SDIO_SUSPEND_RESUME
+        PRINTM(MCMND,
+               "suspend skipped! timeout=%d allow=%d force=%lu skip=%lu\n",
+               timeout, (int) pm_info.is_suspend_allowed,
+               handle->hs_force_count, handle->hs_skip_count);
+#else
+        PRINTM(MCMND, "suspend skipped! timeout=%d skip=%lu\n",
+               timeout, handle->hs_skip_count);
+#endif
+        woal_cancel_hs(priv, MOAL_NO_WAIT);
+    }
   done:
     LEAVE();
     return hs_actived;
@@ -1139,4 +1175,104 @@ woal_set_wapi_enable(moal_private * priv, t_u8 wait_option, t_u32 enable)
         kfree(req);
     LEAVE();
     return status;
+}
+
+/** 
+ *  @brief Get PM info
+ *
+ *  @param priv                 A pointer to moal_private structure
+ *
+ *  @return                     MLAN_STATUS_SUCCESS -- success, otherwise fail          
+ */
+mlan_status
+woal_get_pm_info(moal_private * priv, mlan_ds_ps_info * pm_info)
+{
+    mlan_status ret = MLAN_STATUS_SUCCESS;
+    mlan_ds_pm_cfg *pmcfg = NULL;
+    mlan_ioctl_req *req = NULL;
+
+    ENTER();
+
+    /* Allocate an IOCTL request buffer */
+    req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_pm_cfg));
+    if (req == NULL) {
+        PRINTM(MERROR, "Fail to alloc mlan_ds_pm_cfg buffer\n");
+        ret = MLAN_STATUS_FAILURE;
+        goto done;
+    }
+
+    /* Fill request buffer */
+    pmcfg = (mlan_ds_pm_cfg *) req->pbuf;
+    pmcfg->sub_command = MLAN_OID_PM_INFO;
+    req->req_id = MLAN_IOCTL_PM_CFG;
+    req->action = MLAN_ACT_GET;
+
+    /* Send IOCTL request to MLAN */
+    ret = woal_request_ioctl(priv, req, MOAL_CMD_WAIT);
+    if (ret == MLAN_STATUS_SUCCESS) {
+        if (pm_info) {
+            memcpy(pm_info, &pmcfg->param.ps_info, sizeof(mlan_ds_ps_info));
+        }
+    }
+  done:
+    if (req && (ret != MLAN_STATUS_PENDING))
+        kfree(req);
+    LEAVE();
+    return ret;
+}
+
+/**
+ *  @brief Set Deep Sleep
+ *
+ *  @param priv         Pointer to the moal_private driver data struct
+ *  @param wait_option  wait option
+ *  @param bdeep_sleep  TRUE--enalbe deepsleep, FALSE--disable deepsleep
+ *  @param idletime     Idle time for optimized PS API
+ *
+ *  @return             0 --success, otherwise fail
+ */
+int
+woal_set_deep_sleep(moal_private * priv, t_u8 wait_option, BOOLEAN bdeep_sleep,
+                    t_u16 idletime)
+{
+    int ret = 0;
+    mlan_ioctl_req *req = NULL;
+    mlan_ds_pm_cfg *pm = NULL;
+
+    ENTER();
+
+    req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_pm_cfg));
+    if (req == NULL) {
+        LEAVE();
+        return -ENOMEM;
+    }
+    pm = (mlan_ds_pm_cfg *) req->pbuf;
+    pm->sub_command = MLAN_OID_PM_CFG_DEEP_SLEEP;
+    req->req_id = MLAN_IOCTL_PM_CFG;
+
+    req->action = MLAN_ACT_SET;
+    if (bdeep_sleep == MTRUE) {
+        PRINTM(MIOCTL, "Deep Sleep: sleep\n");
+        pm->param.auto_deep_sleep.auto_ds = DEEP_SLEEP_ON;
+        if (idletime) {
+            pm->param.auto_deep_sleep.idletime = idletime;
+        }
+        if (MLAN_STATUS_SUCCESS != woal_request_ioctl(priv, req, wait_option)) {
+            ret = -EFAULT;
+            goto done;
+        }
+    } else {
+        PRINTM(MIOCTL, "%lu : Deep Sleep: wakeup\n", jiffies);
+        pm->param.auto_deep_sleep.auto_ds = DEEP_SLEEP_OFF;
+        if (MLAN_STATUS_SUCCESS != woal_request_ioctl(priv, req, wait_option)) {
+            ret = -EFAULT;
+            goto done;
+        }
+    }
+  done:
+    if (req)
+        kfree(req);
+
+    LEAVE();
+    return ret;
 }

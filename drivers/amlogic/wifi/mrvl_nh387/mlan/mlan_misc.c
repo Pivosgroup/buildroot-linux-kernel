@@ -4,7 +4,7 @@
  *  @brief This file include Miscellaneous functions for MLAN module
  *
  *
- *  Copyright (C) 2009-2010, Marvell International Ltd. 
+ *  Copyright (C) 2009-2011, Marvell International Ltd. 
  *  All Rights Reserved
  *   
  */
@@ -145,6 +145,12 @@ wlan_get_info_debug_info(IN pmlan_adapter pmadapter,
         memcpy(pmadapter, pmpriv->wmm.packets_out,
                info->param.debug_info.packets_out,
                sizeof(pmpriv->wmm.packets_out));
+        memcpy(pmadapter, pmpriv->wmm.packets_in,
+               info->param.debug_info.packets_in,
+               sizeof(pmpriv->wmm.packets_in));
+        memcpy(pmadapter, pmpriv->wmm.pkts_queued,
+               info->param.debug_info.pkts_queued,
+               sizeof(pmpriv->wmm.pkts_queued));
         pmadapter->max_tx_buf_size =
             (t_u16) info->param.debug_info.max_tx_buf_size;
         pmadapter->tx_buf_size = (t_u16) info->param.debug_info.tx_buf_size;
@@ -160,6 +166,12 @@ wlan_get_info_debug_info(IN pmlan_adapter pmadapter,
         pmadapter->pm_wakeup_fw_try = info->param.debug_info.pm_wakeup_fw_try;
         pmadapter->is_hs_configured = info->param.debug_info.is_hs_configured;
         pmadapter->hs_activated = info->param.debug_info.hs_activated;
+        pmadapter->pps_uapsd_mode = info->param.debug_info.pps_uapsd_mode;
+        pmadapter->sleep_period.period = info->param.debug_info.sleep_pd;
+        pmpriv->wmm_qosinfo = info->param.debug_info.qos_cfg;
+        pmadapter->tx_lock_flag = info->param.debug_info.tx_lock_flag;
+        pmpriv->port_open = info->param.debug_info.port_open;
+        pmadapter->scan_processing = info->param.debug_info.scan_processing;
 
         pmadapter->dbg.num_cmd_host_to_card_failure =
             info->param.debug_info.num_cmd_host_to_card_failure;
@@ -167,6 +179,13 @@ wlan_get_info_debug_info(IN pmlan_adapter pmadapter,
             info->param.debug_info.num_cmd_sleep_cfm_host_to_card_failure;
         pmadapter->dbg.num_tx_host_to_card_failure =
             info->param.debug_info.num_tx_host_to_card_failure;
+        pmadapter->dbg.num_cmdevt_card_to_host_failure =
+            info->param.debug_info.num_cmdevt_card_to_host_failure;
+        pmadapter->dbg.num_rx_card_to_host_failure =
+            info->param.debug_info.num_rx_card_to_host_failure;
+        pmadapter->dbg.num_int_read_failure =
+            info->param.debug_info.num_int_read_failure;
+        pmadapter->dbg.last_int_status = info->param.debug_info.last_int_status;
         pmadapter->dbg.num_event_deauth =
             info->param.debug_info.num_event_deauth;
         pmadapter->dbg.num_event_disassoc =
@@ -206,10 +225,20 @@ wlan_get_info_debug_info(IN pmlan_adapter pmadapter,
         pmadapter->mp_wr_bitmap = info->param.debug_info.mp_wr_bitmap;
         pmadapter->curr_rd_port = info->param.debug_info.curr_rd_port;
         pmadapter->curr_wr_port = info->param.debug_info.curr_wr_port;
+#ifdef SDIO_MULTI_PORT_RX_AGGR
+        pmadapter->mpa_rx.enabled = info->param.debug_info.mpa_rx_enable;
+#endif
+#ifdef SDIO_MULTI_PORT_TX_AGGR
+        pmadapter->mpa_tx.enabled = info->param.debug_info.mpa_tx_enable;
+#endif
         pmadapter->cmd_resp_received = info->param.debug_info.cmd_resp_received;
     } else {                    /* MLAN_ACT_GET */
         memcpy(pmadapter, info->param.debug_info.packets_out,
                pmpriv->wmm.packets_out, sizeof(pmpriv->wmm.packets_out));
+        memcpy(pmadapter, info->param.debug_info.packets_in,
+               pmpriv->wmm.packets_in, sizeof(pmpriv->wmm.packets_in));
+        memcpy(pmadapter, info->param.debug_info.pkts_queued,
+               pmpriv->wmm.pkts_queued, sizeof(pmpriv->wmm.pkts_queued));
         info->param.debug_info.max_tx_buf_size =
             (t_u32) pmadapter->max_tx_buf_size;
         info->param.debug_info.tx_buf_size = (t_u32) pmadapter->tx_buf_size;
@@ -224,12 +253,17 @@ wlan_get_info_debug_info(IN pmlan_adapter pmadapter,
 #ifdef STA_SUPPORT
         info->param.debug_info.is_deep_sleep = pmadapter->is_deep_sleep;
 #endif /* STA_SUPPORT */
-
         info->param.debug_info.pm_wakeup_card_req =
             pmadapter->pm_wakeup_card_req;
         info->param.debug_info.pm_wakeup_fw_try = pmadapter->pm_wakeup_fw_try;
         info->param.debug_info.is_hs_configured = pmadapter->is_hs_configured;
         info->param.debug_info.hs_activated = pmadapter->hs_activated;
+        info->param.debug_info.pps_uapsd_mode = pmadapter->pps_uapsd_mode;
+        info->param.debug_info.sleep_pd = pmadapter->sleep_period.period;
+        info->param.debug_info.qos_cfg = pmpriv->wmm_qosinfo;
+        info->param.debug_info.tx_lock_flag = pmadapter->tx_lock_flag;
+        info->param.debug_info.port_open = pmpriv->port_open;
+        info->param.debug_info.scan_processing = pmadapter->scan_processing;
 
         info->param.debug_info.num_cmd_host_to_card_failure
             = pmadapter->dbg.num_cmd_host_to_card_failure;
@@ -237,6 +271,13 @@ wlan_get_info_debug_info(IN pmlan_adapter pmadapter,
             = pmadapter->dbg.num_cmd_sleep_cfm_host_to_card_failure;
         info->param.debug_info.num_tx_host_to_card_failure
             = pmadapter->dbg.num_tx_host_to_card_failure;
+        info->param.debug_info.num_cmdevt_card_to_host_failure
+            = pmadapter->dbg.num_cmdevt_card_to_host_failure;
+        info->param.debug_info.num_rx_card_to_host_failure
+            = pmadapter->dbg.num_rx_card_to_host_failure;
+        info->param.debug_info.num_int_read_failure =
+            pmadapter->dbg.num_int_read_failure;
+        info->param.debug_info.last_int_status = pmadapter->dbg.last_int_status;
         info->param.debug_info.num_event_deauth =
             pmadapter->dbg.num_event_deauth;
         info->param.debug_info.num_event_disassoc =
@@ -268,6 +309,12 @@ wlan_get_info_debug_info(IN pmlan_adapter pmadapter,
         info->param.debug_info.last_event_index =
             pmadapter->dbg.last_event_index;
 
+#ifdef SDIO_MULTI_PORT_RX_AGGR
+        info->param.debug_info.mpa_rx_enable = pmadapter->mpa_rx.enabled;
+#endif
+#ifdef SDIO_MULTI_PORT_TX_AGGR
+        info->param.debug_info.mpa_tx_enable = pmadapter->mpa_tx.enabled;
+#endif
         info->param.debug_info.mp_rd_bitmap = pmadapter->mp_rd_bitmap;
         info->param.debug_info.mp_wr_bitmap = pmadapter->mp_wr_bitmap;
         info->param.debug_info.curr_rd_port = pmadapter->curr_rd_port;
@@ -424,7 +471,7 @@ wlan_alloc_mlan_buffer(mlan_adapter * pmadapter, t_u32 data_len,
     ENTER();
     /* head_room is not implemented for malloc mlan buffer */
     if (malloc_flag == MTRUE) {
-        buf_size = sizeof(mlan_buffer) + data_len + HEADER_ALIGNMENT;
+        buf_size = sizeof(mlan_buffer) + data_len + DMA_ALIGNMENT;
         ret =
             pcb->moal_malloc(pmadapter->pmoal_handle, buf_size,
                              MLAN_MEM_DEF | MLAN_MEM_DMA, (t_u8 **) & pmbuf);
@@ -438,15 +485,15 @@ wlan_alloc_mlan_buffer(mlan_adapter * pmadapter, t_u32 data_len,
         /* Align address */
         pmbuf->pbuf =
             (t_u8 *) ALIGN_ADDR((t_u8 *) pmbuf + sizeof(mlan_buffer),
-                                HEADER_ALIGNMENT);
+                                DMA_ALIGNMENT);
         pmbuf->data_offset = 0;
         pmbuf->data_len = data_len;
         pmbuf->flags |= MLAN_BUF_FLAG_MALLOC_BUF;
     } else {
         /* use moal_alloc_mlan_buffer, head_room supported */
         ret = pcb->moal_alloc_mlan_buffer(pmadapter->pmoal_handle,
-                                          data_len + HEADER_ALIGNMENT +
-                                          head_room, &pmbuf);
+                                          data_len + DMA_ALIGNMENT + head_room,
+                                          &pmbuf);
         if ((ret != MLAN_STATUS_SUCCESS) || !pmbuf) {
             PRINTM(MERROR, "Failed to allocate 'mlan_buffer'\n");
             goto exit;
@@ -454,7 +501,7 @@ wlan_alloc_mlan_buffer(mlan_adapter * pmadapter, t_u32 data_len,
         pmbuf->data_offset = head_room;
         tmp_buf =
             (t_u8 *) ALIGN_ADDR(pmbuf->pbuf + pmbuf->data_offset,
-                                HEADER_ALIGNMENT);
+                                DMA_ALIGNMENT);
         pmbuf->data_offset += tmp_buf - (pmbuf->pbuf + pmbuf->data_offset);
         pmbuf->data_len = data_len;
         pmbuf->flags = 0;
@@ -908,3 +955,98 @@ wlan_misc_ioctl_custom_ie_list(IN pmlan_adapter pmadapter,
     LEAVE();
     return ret;
 }
+
+/**
+ *  @brief Get pm info
+ *
+ *  @param pmadapter	A pointer to mlan_adapter structure
+ *  @param pioctl_req	A pointer to ioctl request buffer
+ *
+ *  @return		        MLAN_STATUS_PENDING --success, otherwise fail
+ */
+mlan_status
+wlan_get_pm_info(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
+{
+    mlan_status ret = MLAN_STATUS_SUCCESS;
+    mlan_ds_pm_cfg *pm_cfg = MNULL;
+    pmlan_callbacks pcb = &pmadapter->callbacks;
+
+    ENTER();
+
+    pm_cfg = (mlan_ds_pm_cfg *) pioctl_req->pbuf;
+    pm_cfg->param.ps_info.is_suspend_allowed = MTRUE;
+    if (util_peek_list(pmadapter->pmoal_handle, &pmadapter->cmd_pending_q,
+                       pcb->moal_spin_lock, pcb->moal_spin_unlock)
+        || pmadapter->curr_cmd || !wlan_bypass_tx_list_empty(pmadapter)
+        || !wlan_wmm_lists_empty(pmadapter)
+        || pmadapter->sdio_ireg) {
+        pm_cfg->param.ps_info.is_suspend_allowed = MFALSE;
+        PRINTM(MIOCTL,
+               "PM: cmd_pending_q=%p,curr_cmd=%p,wmm_list_empty=%d, by_pass=%d sdio_ireg=0x%x\n",
+               util_peek_list(pmadapter->pmoal_handle,
+                              &pmadapter->cmd_pending_q, pcb->moal_spin_lock,
+                              pcb->moal_spin_unlock), pmadapter->curr_cmd,
+               wlan_wmm_lists_empty(pmadapter),
+               wlan_bypass_tx_list_empty(pmadapter), pmadapter->sdio_ireg);
+    }
+    LEAVE();
+    return ret;
+}
+
+#ifdef UAP_SUPPORT
+/**
+ *   @brief This function processes the 802.11 mgmt Frame
+ *     
+ *   @param priv      A pointer to mlan_private
+ *   @param payload   A pointer to the received buffer
+ *   @param payload_len Length of the received buffer
+ *
+ *   @return        MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ */
+mlan_status
+wlan_process_802dot11_mgmt_pkt(IN mlan_private * priv,
+                               IN t_u8 * payload, IN t_u32 payload_len)
+{
+    pmlan_adapter pmadapter = priv->adapter;
+    pmlan_callbacks pcb = &pmadapter->callbacks;
+    mlan_status ret = MLAN_STATUS_SUCCESS;
+    wlan_802_11_header *pieee_pkt_hdr = MNULL;
+    t_u16 sub_type = 0;
+    t_u8 *event_buf = MNULL;
+    mlan_event *pevent = MNULL;
+
+    ENTER();
+    /* Check packet type-subtype and compare with mgmt_passthru_mask If event
+       is needed to host, just eventify it */
+    pieee_pkt_hdr = (wlan_802_11_header *) payload;
+    sub_type = IEEE80211_GET_FC_MGMT_FRAME_SUBTYPE(pieee_pkt_hdr->frm_ctl);
+    if (((1 << sub_type) & priv->mgmt_frame_passthru_mask) == 0) {
+        PRINTM(MINFO, "Dropping mgmt frame for subtype %d.\n", sub_type);
+        LEAVE();
+        return ret;
+    }
+
+    /* Allocate memory for event buffer */
+    ret =
+        pcb->moal_malloc(pmadapter->pmoal_handle, MAX_EVENT_SIZE, MLAN_MEM_DEF,
+                         &event_buf);
+    if ((ret != MLAN_STATUS_SUCCESS) || !event_buf) {
+        PRINTM(MERROR, "Could not allocate buffer for event buf\n");
+        return MLAN_STATUS_FAILURE;
+    }
+    pevent = (pmlan_event) event_buf;
+    pevent->bss_num = priv->bss_index;
+    pevent->event_id = MLAN_EVENT_ID_DRV_MGMT_FRAME;
+    pevent->event_len = payload_len + sizeof(pevent->event_id);
+    memcpy(pmadapter, (t_u8 *) pevent->event_buf,
+           (t_u8 *) & pevent->event_id, sizeof(pevent->event_id));
+    memcpy(pmadapter, (t_u8 *) (pevent->event_buf + sizeof(pevent->event_id)),
+           payload, payload_len);
+    wlan_recv_event(priv, MLAN_EVENT_ID_DRV_MGMT_FRAME, pevent);
+
+    if (event_buf)
+        pcb->moal_mfree(pmadapter->pmoal_handle, event_buf);
+    LEAVE();
+    return MLAN_STATUS_SUCCESS;
+}
+#endif

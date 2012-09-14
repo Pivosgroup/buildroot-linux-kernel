@@ -100,6 +100,9 @@ int dhd_customer_oob_irq_map(unsigned long *irq_flags_ptr)
 }
 #endif /* defined(OOB_INTR_ONLY) */
 
+extern void extern_wifi_power(int is_power);
+extern void extern_wifi_reset(int is_on);
+
 /* Customer function to control hw specific wlan gpios */
 void
 dhd_customer_gpio_wlan_ctrl(int onoff)
@@ -114,6 +117,9 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 #ifdef CUSTOMER_HW2
 			wifi_set_power(0, 0);
 #endif
+#ifndef ENABLE_DEEP_SLEEP
+			extern_wifi_power(0);
+#endif
 			WL_ERROR(("=========== WLAN placed in RESET ========\n"));
 		break;
 
@@ -125,6 +131,14 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 #endif /* CUSTOMER_HW */
 #ifdef CUSTOMER_HW2
 			wifi_set_power(1, 0);
+#endif
+#ifndef ENABLE_DEEP_SLEEP
+			extern_wifi_power(1);
+			msleep(10);
+			extern_wifi_reset(0);
+			msleep(10);
+			extern_wifi_reset(1);
+			msleep(10);
 #endif
 			WL_ERROR(("=========== WLAN going back to live  ========\n"));
 		break;

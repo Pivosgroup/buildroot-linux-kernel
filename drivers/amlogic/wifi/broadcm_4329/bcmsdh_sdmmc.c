@@ -1194,6 +1194,8 @@ sdioh_sdmmc_card_regwrite(sdioh_info_t *sd, int func, uint32 regaddr, int regsiz
 }
 #endif /* NOTUSED */
 
+extern void sdio_reinit(void);
+
 int
 sdioh_start(sdioh_info_t *si, int stage)
 {
@@ -1217,7 +1219,10 @@ sdioh_start(sdioh_info_t *si, int stage)
 		*/
 	//	if ((ret = sdio_reset_comm(gInstance->func[0]->card)))
 	//		sd_err(("%s Failed, error = %d\n", __FUNCTION__, ret));
-	//	else 
+	//	else
+#ifndef ENABLE_DEEP_SLEEP
+		sdio_reinit();
+#endif
 		{
 			sd->num_funcs = 2;
 			sd->sd_blockmode = TRUE;

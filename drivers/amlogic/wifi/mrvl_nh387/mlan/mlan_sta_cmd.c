@@ -4,7 +4,7 @@
  *  it prepares command and sends it to firmware when
  *  it is ready.
  * 
- *  Copyright (C) 2008-2010, Marvell International Ltd. 
+ *  Copyright (C) 2008-2011, Marvell International Ltd. 
  *  All Rights Reserved
  * 
  */
@@ -259,14 +259,15 @@ wlan_cmd_802_11_get_log(IN pmlan_private pmpriv, IN HostCmd_DS_COMMAND * cmd)
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param cmd          A pointer to HostCmd_DS_COMMAND structure
  *  @param cmd_action   The action: GET or SET
+ *  @param pdata_buf    A pointer to data buffer
  *
  *  @return             MLAN_STATUS_SUCCESS
  */
 static mlan_status
 wlan_cmd_802_11_radio_control(IN pmlan_private pmpriv,
-                              IN HostCmd_DS_COMMAND * cmd, IN t_u16 cmd_action)
+                              IN HostCmd_DS_COMMAND * cmd,
+                              IN t_u16 cmd_action, IN t_void * pdata_buf)
 {
-    mlan_adapter *pmadapter = pmpriv->adapter;
     HostCmd_DS_802_11_RADIO_CONTROL *pradio_control = &cmd->params.radio;
 
     ENTER();
@@ -274,7 +275,7 @@ wlan_cmd_802_11_radio_control(IN pmlan_private pmpriv,
                                  + S_DS_GEN);
     cmd->command = wlan_cpu_to_le16(HostCmd_CMD_802_11_RADIO_CONTROL);
     pradio_control->action = wlan_cpu_to_le16(cmd_action);
-    pradio_control->control = wlan_cpu_to_le16(pmadapter->radio_on);
+    pradio_control->control = wlan_cpu_to_le16(*(t_u16 *) pdata_buf);
     LEAVE();
     return MLAN_STATUS_SUCCESS;
 }
@@ -400,6 +401,48 @@ wlan_cmd_tx_power_cfg(IN pmlan_private pmpriv,
         break;
     }
 
+    LEAVE();
+    return MLAN_STATUS_SUCCESS;
+}
+
+/** 
+ *  @brief This function prepares command of rf_tx_power.
+ *    
+ *  @param pmpriv     A pointer to wlan_private structure
+ *  @param cmd        A pointer to HostCmd_DS_COMMAND structure
+ *  @param cmd_action the action: GET or SET
+ *  @param pdata_buf  A pointer to data buffer
+ *  @return           MLAN_STATUS_SUCCESS
+ */
+static mlan_status
+wlan_cmd_802_11_rf_tx_power(IN pmlan_private pmpriv,
+                            IN HostCmd_DS_COMMAND * cmd,
+                            IN t_u16 cmd_action, IN t_void * pdata_buf)
+{
+
+    HostCmd_DS_802_11_RF_TX_POWER *prtp = &cmd->params.txp;
+
+    ENTER();
+
+    cmd->size =
+        wlan_cpu_to_le16((sizeof(HostCmd_DS_802_11_RF_TX_POWER)) + S_DS_GEN);
+    cmd->command = wlan_cpu_to_le16(HostCmd_CMD_802_11_RF_TX_POWER);
+    prtp->action = cmd_action;
+
+    PRINTM(MINFO, "RF_TX_POWER_CMD: Size:%d Cmd:0x%x Act:%d\n", cmd->size,
+           cmd->command, prtp->action);
+
+    switch (cmd_action) {
+    case HostCmd_ACT_GEN_GET:
+        prtp->action = wlan_cpu_to_le16(HostCmd_ACT_GEN_GET);
+        prtp->current_level = 0;
+        break;
+
+    case HostCmd_ACT_GEN_SET:
+        prtp->action = wlan_cpu_to_le16(HostCmd_ACT_GEN_SET);
+        prtp->current_level = wlan_cpu_to_le16(*((t_u16 *) pdata_buf));
+        break;
+    }
     LEAVE();
     return MLAN_STATUS_SUCCESS;
 }
@@ -1500,6 +1543,9 @@ mlan_sta_prepare_cmd(IN t_void * priv,
     case HostCmd_CMD_GET_HW_SPEC:
         ret = wlan_cmd_get_hw_spec(pmpriv, cmd_ptr);
         break;
+    case HostCmd_CMD_CFG_DATA:
+        ret = wlan_cmd_cfg_data(pmpriv, cmd_ptr, cmd_action, pdata_buf);
+        break;
     case HostCmd_CMD_MAC_CONTROL:
         ret = wlan_cmd_mac_control(pmpriv, cmd_ptr, cmd_action, pdata_buf);
         break;
@@ -1519,6 +1565,10 @@ mlan_sta_prepare_cmd(IN t_void * priv,
         break;
     case HostCmd_CMD_TXPWR_CFG:
         ret = wlan_cmd_tx_power_cfg(pmpriv, cmd_ptr, cmd_action, pdata_buf);
+        break;
+    case HostCmd_CMD_802_11_RF_TX_POWER:
+        ret = wlan_cmd_802_11_rf_tx_power(pmpriv, cmd_ptr,
+                                          cmd_action, pdata_buf);
         break;
     case HostCmd_CMD_802_11_PS_MODE_ENH:
         ret =
@@ -1571,7 +1621,9 @@ mlan_sta_prepare_cmd(IN t_void * priv,
                                      pdata_buf);
         break;
     case HostCmd_CMD_802_11_RADIO_CONTROL:
-        ret = wlan_cmd_802_11_radio_control(pmpriv, cmd_ptr, cmd_action);
+        ret =
+            wlan_cmd_802_11_radio_control(pmpriv, cmd_ptr, cmd_action,
+                                          pdata_buf);
         break;
     case HostCmd_CMD_802_11_TX_RATE_QUERY:
         cmd_ptr->command = wlan_cpu_to_le16(HostCmd_CMD_802_11_TX_RATE_QUERY);
@@ -1746,6 +1798,8 @@ mlan_sta_init_cmd(IN t_void * priv, IN t_u8 first_sta)
     mlan_ds_11n_amsdu_aggr_ctrl amsdu_aggr_ctrl;
     mlan_ds_auto_ds auto_ds;
 
+    pmlan_adapter pmadapter = pmpriv->adapter;
+
     ENTER();
 
     if (first_sta == MTRUE) {
@@ -1764,6 +1818,20 @@ mlan_sta_init_cmd(IN t_void * priv, IN t_u8 first_sta)
             ret = MLAN_STATUS_FAILURE;
             goto done;
         }
+
+    /** Cal data dnld cmd prepare */
+        if ((pmadapter->pcal_data) && (pmadapter->cal_data_len > 0)) {
+            ret =
+                wlan_prepare_cmd(pmpriv, HostCmd_CMD_CFG_DATA,
+                                 HostCmd_ACT_GEN_SET, 0, MNULL, MNULL);
+            if (ret) {
+                ret = MLAN_STATUS_FAILURE;
+                goto done;
+            }
+            pmadapter->pcal_data = MNULL;
+            pmadapter->cal_data_len = 0;
+        }
+
         /* 
          * Read MAC address from HW
          */
@@ -1821,7 +1889,7 @@ mlan_sta_init_cmd(IN t_void * priv, IN t_u8 first_sta)
 
     /* get tx power */
     ret = wlan_prepare_cmd(pmpriv,
-                           HostCmd_CMD_TXPWR_CFG,
+                           HostCmd_CMD_802_11_RF_TX_POWER,
                            HostCmd_ACT_GEN_GET, 0, MNULL, MNULL);
     if (ret) {
         ret = MLAN_STATUS_FAILURE;

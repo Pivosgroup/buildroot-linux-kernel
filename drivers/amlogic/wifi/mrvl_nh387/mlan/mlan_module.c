@@ -19,15 +19,19 @@ Change log:
 EXPORT_SYMBOL(mlan_register);
 EXPORT_SYMBOL(mlan_unregister);
 EXPORT_SYMBOL(mlan_init_fw);
+EXPORT_SYMBOL(mlan_set_init_param);
 EXPORT_SYMBOL(mlan_dnld_fw);
 EXPORT_SYMBOL(mlan_shutdown_fw);
 EXPORT_SYMBOL(mlan_send_packet);
 EXPORT_SYMBOL(mlan_ioctl);
 EXPORT_SYMBOL(mlan_main_process);
+EXPORT_SYMBOL(mlan_select_wmm_queue);
 EXPORT_SYMBOL(mlan_interrupt);
 
+/*
 MODULE_DESCRIPTION("M-WLAN MLAN Driver");
 MODULE_AUTHOR("Marvell International Ltd.");
 MODULE_VERSION(MLAN_RELEASE_VERSION);
-MODULE_LICENSE("GPL");
+MODULE_LICENSE("Marvell Proprietary");
+*/
 #endif /* LINUX */
