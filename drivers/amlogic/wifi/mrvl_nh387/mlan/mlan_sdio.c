@@ -2,7 +2,7 @@
  *
  *  @brief This file contains SDIO specific code
  * 
- *  Copyright (C) 2008-2011, Marvell International Ltd. 
+ *  Copyright (C) 2008-2010, Marvell International Ltd. 
  *  All Rights Reserved
  */
 
@@ -26,15 +26,6 @@ Change log:
 /********************************************************
 		Local Variables
 ********************************************************/
-
-/** FW header length for CRC check disable */
-#define FW_CRC_HEADER   24
-/** FW header for CRC check disable */
-t_u8 fw_crc_header[FW_CRC_HEADER] =
-    { 0x01, 0x00, 0x00, 0x00, 0x04, 0xfd, 0x00, 0x04,
-    0x08, 0x00, 0x00, 0x00, 0x26, 0x52, 0x2a, 0x7b,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-};
 
 /********************************************************
 		Global Variables
@@ -375,7 +366,6 @@ wlan_prog_fw_w_helper(IN pmlan_adapter pmadapter, IN pmlan_fw_image pmfw)
     t_u16 len = 0;
     t_u32 txlen = 0, tx_blocks = 0, tries = 0;
     t_u32 i = 0;
-    t_u8 crc_buffer = 0;
 
     ENTER();
 
@@ -387,7 +377,7 @@ wlan_prog_fw_w_helper(IN pmlan_adapter pmadapter, IN pmlan_fw_image pmfw)
 
     PRINTM(MINFO, "Downloading FW image (%d bytes)\n", firmwarelen);
 
-    tmpfwbufsz = ALIGN_SZ(WLAN_UPLD_SIZE, DMA_ALIGNMENT);
+    tmpfwbufsz = ALIGN_SZ(WLAN_UPLD_SIZE, HEADER_ALIGNMENT);
     ret =
         pcb->moal_malloc(pmadapter->pmoal_handle, tmpfwbufsz,
                          MLAN_MEM_DEF | MLAN_MEM_DMA, (t_u8 **) & tmpfwbuf);
@@ -399,14 +389,7 @@ wlan_prog_fw_w_helper(IN pmlan_adapter pmadapter, IN pmlan_fw_image pmfw)
     }
     memset(pmadapter, tmpfwbuf, 0, tmpfwbufsz);
     /* Ensure 8-byte aligned firmware buffer */
-    fwbuf = (t_u8 *) ALIGN_ADDR(tmpfwbuf, DMA_ALIGNMENT);
-
-    if (!pmadapter->init_para.fw_crc_check) {
-        /* CRC check not required, use custom header first */
-        firmware = fw_crc_header;
-        firmwarelen = FW_CRC_HEADER;
-        crc_buffer = 1;
-    }
+    fwbuf = (t_u8 *) ALIGN_ADDR(tmpfwbuf, HEADER_ALIGNMENT);
 
     /* Perform firmware data transfer */
     do {
@@ -420,10 +403,9 @@ wlan_prog_fw_w_helper(IN pmlan_adapter pmadapter, IN pmlan_fw_image pmfw)
             goto done;
         }
 
-        if (!crc_buffer)
-            /* More data? */
-            if (firmwarelen && offset >= firmwarelen)
-                break;
+        /* More data? */
+        if (firmwarelen && offset >= firmwarelen)
+            break;
 
         for (tries = 0; tries < MAX_POLL_TRIES; tries++) {
             if ((ret = pcb->moal_read_reg(pmadapter->pmoal_handle,
@@ -518,13 +500,6 @@ wlan_prog_fw_w_helper(IN pmlan_adapter pmadapter, IN pmlan_fw_image pmfw)
         }
 
         offset += txlen;
-        if (crc_buffer && offset >= FW_CRC_HEADER) {
-            /* Custom header download complete, restore original FW */
-            offset = 0;
-            firmware = pmfw->pfw_buf;
-            firmwarelen = pmfw->fw_len;
-            crc_buffer = 0;
-        }
     } while (MTRUE);
 
     PRINTM(MINFO, "\nFW download over, size %d bytes\n", offset);
@@ -687,14 +662,12 @@ wlan_interrupt(pmlan_adapter pmadapter)
     if (MLAN_STATUS_SUCCESS !=
         pcb->moal_read_data_sync(pmadapter->pmoal_handle, &mbuf,
                                  REG_PORT | MLAN_SDIO_BYTE_MODE_MASK, 0)) {
-        PRINTM(MERROR, "moal_read_data_sync: read registers failed\n");
-        pmadapter->dbg.num_int_read_failure++;
+        PRINTM(MWARN, "moal_read_data_sync: read registers failed\n");
         goto done;
     }
 
     DBG_HEXDUMP(MDAT_D, "SDIO MP Registers", pmadapter->mp_regs, MAX_MP_REGS);
     sdio_ireg = pmadapter->mp_regs[HOST_INTSTATUS_REG];
-    pmadapter->dbg.last_int_status = pmadapter->sdio_ireg | sdio_ireg;
     if (sdio_ireg) {
         /* 
          * DN_LD_HOST_INT_STATUS and/or UP_LD_HOST_INT_STATUS
@@ -765,7 +738,6 @@ wlan_decode_rx_packet(mlan_adapter * pmadapter, mlan_buffer * pmbuf,
         pmbuf->data_len = (pmadapter->upld_len - INTF_HEADER_LEN);
         pmbuf->data_offset += INTF_HEADER_LEN;
         wlan_handle_rx_packet(pmadapter, pmbuf);
-        pmadapter->data_received = MTRUE;
         break;
 
     case MLAN_TYPE_CMD:
@@ -916,6 +888,7 @@ wlan_sdio_card_to_host_mp_aggr(mlan_adapter * pmadapter, mlan_buffer
             /* No more pkts allowed in Aggr buf, rx it */
             f_do_rx_aggr = 1;
         }
+
     }
 
     if (f_do_rx_aggr) {
@@ -980,35 +953,12 @@ wlan_sdio_card_to_host_mp_aggr(mlan_adapter * pmadapter, mlan_buffer
             ret = MLAN_STATUS_FAILURE;
             goto done;
         }
-        if ((port == CTRL_PORT) && ((pkt_type != MLAN_TYPE_EVENT) &&
-                                    (pkt_type != MLAN_TYPE_CMD))) {
-            PRINTM(MERROR, "Wrong pkt from CTRL PORT: type=%d, len=%dd\n",
-                   pkt_type, pmbuf->data_len);
-            pmbuf->status_code = MLAN_ERROR_DATA_RX_FAIL;
-            ret = MLAN_STATUS_FAILURE;
-            goto done;
-        }
+
         wlan_decode_rx_packet(pmadapter, pmbuf, pkt_type);
+
     }
 
   done:
-    if (ret == MLAN_STATUS_FAILURE) {
-        if (MP_RX_AGGR_IN_PROGRESS(pmadapter)) {
-            /* MP-A transfer failed - cleanup */
-            for (pind = 0; pind < pmadapter->mpa_rx.pkt_cnt; pind++) {
-                wlan_free_mlan_buffer(pmadapter,
-                                      pmadapter->mpa_rx.mbuf_arr[pind]);
-            }
-            MP_RX_AGGR_BUF_RESET(pmadapter);
-        }
-
-        if (f_do_rx_cur) {
-            /* Single Transfer pending */
-            /* Free curr buff also */
-            wlan_free_mlan_buffer(pmadapter, pmbuf);
-        }
-    }
-
     LEAVE();
     return ret;
 
@@ -1030,7 +980,6 @@ wlan_process_int_status(mlan_adapter * pmadapter)
     t_u8 port = CTRL_PORT;
     t_u32 len_reg_l, len_reg_u;
     t_u32 rx_blocks;
-    t_u32 ps_state = pmadapter->ps_state;
     t_u16 rx_len;
 #ifndef SDIO_MULTI_PORT_RX_AGGR
     t_u32 upld_typ = 0;
@@ -1122,12 +1071,8 @@ wlan_process_int_status(mlan_adapter * pmadapter)
                                        (t_u32 *) & pmadapter->upld_len, pmbuf,
                                        rx_len, pmadapter->ioport + port)) {
 #endif /* SDIO_MULTI_PORT_RX_AGGR */
-                t_u32 cr = 0;
 
-                if (port == CTRL_PORT)
-                    pmadapter->dbg.num_cmdevt_card_to_host_failure++;
-                else
-                    pmadapter->dbg.num_rx_card_to_host_failure++;
+                t_u32 cr = 0;
 
                 PRINTM(MERROR, "Card to host failed: int status=0x%x\n",
                        sdio_ireg);
@@ -1150,9 +1095,7 @@ wlan_process_int_status(mlan_adapter * pmadapter)
 
                 PRINTM(MINFO, "Config reg val =%x\n", cr);
                 ret = MLAN_STATUS_FAILURE;
-#ifndef SDIO_MULTI_PORT_RX_AGGR
                 wlan_free_mlan_buffer(pmadapter, pmbuf);
-#endif
                 goto done;
             }
 #ifndef SDIO_MULTI_PORT_RX_AGGR
@@ -1160,12 +1103,8 @@ wlan_process_int_status(mlan_adapter * pmadapter)
 #endif
 
         }
-        /* We might receive data/sleep_cfm at the same time */
-        /* reset data_receive flag to avoid ps_state change */
-        if ((ps_state == PS_STATE_SLEEP_CFM) &&
-            (pmadapter->ps_state == PS_STATE_SLEEP))
-            pmadapter->data_received = MFALSE;
     }
+
     ret = MLAN_STATUS_SUCCESS;
   done:
     LEAVE();
@@ -1214,8 +1153,6 @@ wlan_sdio_host_to_card(mlan_adapter * pmadapter, t_u8 type, mlan_buffer * pmbuf,
         }
     } else {
         pmadapter->cmd_sent = MTRUE;
-        /* clear CTRL PORT */
-        pmadapter->mp_wr_bitmap &= (t_u16) (~(1 << CTRL_PORT));
         /* Type must be MLAN_TYPE_CMD */
 
         if (pmbuf->data_len <= INTF_HEADER_LEN ||
@@ -1429,7 +1366,7 @@ wlan_alloc_sdio_mpa_buffers(IN mlan_adapter * pmadapter,
 #ifdef SDIO_MULTI_PORT_TX_AGGR
     ret =
         pcb->moal_malloc(pmadapter->pmoal_handle,
-                         mpa_tx_buf_size + DMA_ALIGNMENT,
+                         mpa_tx_buf_size + HEADER_ALIGNMENT,
                          MLAN_MEM_DEF | MLAN_MEM_DMA,
                          (t_u8 **) & pmadapter->mpa_tx.head_ptr);
     if (ret != MLAN_STATUS_SUCCESS || !pmadapter->mpa_tx.head_ptr) {
@@ -1438,14 +1375,14 @@ wlan_alloc_sdio_mpa_buffers(IN mlan_adapter * pmadapter,
         goto error;
     }
     pmadapter->mpa_tx.buf =
-        (t_u8 *) ALIGN_ADDR(pmadapter->mpa_tx.head_ptr, DMA_ALIGNMENT);
+        (t_u8 *) ALIGN_ADDR(pmadapter->mpa_tx.head_ptr, HEADER_ALIGNMENT);
     pmadapter->mpa_tx.buf_size = mpa_tx_buf_size;
 #endif /* SDIO_MULTI_PORT_TX_AGGR */
 
 #ifdef SDIO_MULTI_PORT_RX_AGGR
     ret =
         pcb->moal_malloc(pmadapter->pmoal_handle,
-                         mpa_rx_buf_size + DMA_ALIGNMENT,
+                         mpa_rx_buf_size + HEADER_ALIGNMENT,
                          MLAN_MEM_DEF | MLAN_MEM_DMA,
                          (t_u8 **) & pmadapter->mpa_rx.head_ptr);
     if (ret != MLAN_STATUS_SUCCESS || !pmadapter->mpa_rx.head_ptr) {
@@ -1454,7 +1391,7 @@ wlan_alloc_sdio_mpa_buffers(IN mlan_adapter * pmadapter,
         goto error;
     }
     pmadapter->mpa_rx.buf =
-        (t_u8 *) ALIGN_ADDR(pmadapter->mpa_rx.head_ptr, DMA_ALIGNMENT);
+        (t_u8 *) ALIGN_ADDR(pmadapter->mpa_rx.head_ptr, HEADER_ALIGNMENT);
     pmadapter->mpa_rx.buf_size = mpa_rx_buf_size;
 #endif /* SDIO_MULTI_PORT_RX_AGGR */
   error:

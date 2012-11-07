@@ -5,35 +5,26 @@
  * Hsinchu County 302,
  * Taiwan, R.O.C.
  *
- * (c) Copyright 2002-2007, Ralink Technology, Inc.
+ * (c) Copyright 2002-2010, Ralink Technology, Inc.
  *
- * This program is free software; you can redistribute it and/or modify  * 
- * it under the terms of the GNU General Public License as published by  * 
- * the Free Software Foundation; either version 2 of the License, or     * 
- * (at your option) any later version.                                   * 
- *                                                                       * 
- * This program is distributed in the hope that it will be useful,       * 
- * but WITHOUT ANY WARRANTY; without even the implied warranty of        * 
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         * 
- * GNU General Public License for more details.                          * 
- *                                                                       * 
- * You should have received a copy of the GNU General Public License     * 
- * along with this program; if not, write to the                         * 
- * Free Software Foundation, Inc.,                                       * 
- * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             * 
- *                                                                       * 
- *************************************************************************
+ * This program is free software; you can redistribute it and/or modify  *
+ * it under the terms of the GNU General Public License as published by  *
+ * the Free Software Foundation; either version 2 of the License, or     *
+ * (at your option) any later version.                                   *
+ *                                                                       *
+ * This program is distributed in the hope that it will be useful,       *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+ * GNU General Public License for more details.                          *
+ *                                                                       *
+ * You should have received a copy of the GNU General Public License     *
+ * along with this program; if not, write to the                         *
+ * Free Software Foundation, Inc.,                                       *
+ * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
+ *                                                                       *
+ *************************************************************************/
 
-	Module Name:
-	rtmp_ckipmic.c
 
-	Abstract:
-
-	Revision History:
-	Who			When			What
-	--------	----------		----------------------------------------------
-	Name		Date			Modification logs
-*/
 #include "rt_config.h"
 #include "rtmp_ckipmic.h"
 
@@ -189,9 +180,9 @@ VOID RTMPCkipMicInit(
 VOID RTMPMicUpdate(
     IN  PMIC_CONTEXT        pContext,
     IN  PUCHAR              pOctets,
-    IN  INT                 len)
+    IN  int                 len)
 {
-    INT     byte_position;
+    int     byte_position;
     ULONG   val;
 
     byte_position = (pContext->position & 3);
@@ -214,7 +205,7 @@ ULONG RTMPMicGetCoefficient(
     IN  PMIC_CONTEXT         pContext)
 {
     UCHAR   aes_counter[16];
-    INT     coeff_position;
+    int     coeff_position;
     UCHAR   *p;
 
     coeff_position = (pContext->position - 1) >> 2;
@@ -245,7 +236,7 @@ VOID xor_128(
     IN  PUCHAR  b,
     OUT PUCHAR  out)
 {
-    INT i;
+    int i;
 
     for (i=0;i<16; i++)
     {
@@ -264,7 +255,7 @@ VOID xor_32(
     IN  PUCHAR  b,
     OUT PUCHAR  out)
 {
-    INT i;
+    int i;
 
     for (i=0;i<4; i++)
     {
@@ -274,7 +265,7 @@ VOID xor_32(
 
 VOID next_key(
     IN  PUCHAR  key,
-    IN  INT     round)
+    IN  int     round)
 {
     UCHAR       rcon;
     UCHAR       sbox_key[4];
@@ -303,7 +294,7 @@ VOID byte_sub(
     IN  PUCHAR  in,
     OUT PUCHAR  out)
 {
-    INT i;
+    int i;
 
     for (i=0; i< 16; i++)
     {
@@ -337,7 +328,7 @@ VOID mix_column(
     IN  PUCHAR  in,
     OUT PUCHAR  out)
 {
-    INT         i;
+    int         i;
     UCHAR       add1b[4];
     UCHAR       add1bf7[4];
     UCHAR       rotl[4];
@@ -401,8 +392,8 @@ VOID RTMPAesEncrypt(
     IN  PUCHAR  data,
     IN  PUCHAR  ciphertext)
 {
-    INT             round;
-    INT             i;
+    int             round;
+    int             i;
     UCHAR           intermediatea[16];
     UCHAR           intermediateb[16];
     UCHAR           round_key[16];
@@ -442,7 +433,7 @@ VOID RTMPMicFinal(
     IN  PMIC_CONTEXT    pContext,
     OUT UCHAR           digest[4])
 {
-    INT             byte_position;
+    int             byte_position;
     ULONG           val;
     ULONGLONG       sum, utmp;
     LONGLONG        stmp;
@@ -523,14 +514,14 @@ VOID RTMPCkipInsertCMIC(
         return;
 
     pProto = pSrcBufVA + 12;
-    payloadlen = PacketInfo.TotalPacketLength - LENGTH_802_3 + 18; // CKIP_LLC(8)+CMIC(4)+TxSEQ(4)+PROTO(2)=18
+    payloadlen = PacketInfo.TotalPacketLength - LENGTH_802_3 + 18; /* CKIP_LLC(8)+CMIC(4)+TxSEQ(4)+PROTO(2)=18 */
     
     bigethlen[0] = (unsigned char)(payloadlen >> 8);
     bigethlen[1] = (unsigned char)payloadlen;
 
-	//
-	// Encryption Key expansion to form the CKIP Key (CKIP_CK).
-	//
+	/* */
+	/* Encryption Key expansion to form the CKIP Key (CKIP_CK). */
+	/* */
 	if (pKey->KeyLen < 16)
 	{
 		for(i = 0; i < (16 / pKey->KeyLen); i++)
@@ -548,17 +539,17 @@ VOID RTMPCkipInsertCMIC(
 		NdisMoveMemory(ckip_ck, pKey->Key, pKey->KeyLen);
 	}	
     RTMPCkipMicInit(&mic_ctx, ckip_ck);
-    RTMPMicUpdate(&mic_ctx, pDA, MAC_ADDR_LEN);            // MIC <-- DA
-    RTMPMicUpdate(&mic_ctx, pSA, MAC_ADDR_LEN);            // MIC <-- SA
-    RTMPMicUpdate(&mic_ctx, bigethlen, 2);                 // MIC <-- payload length starting from CKIP SNAP
-    RTMPMicUpdate(&mic_ctx, mic_snap, 8);                  // MIC <-- snap header 
-    RTMPMicUpdate(&mic_ctx, pAd->StaCfg.TxSEQ, 4);   // MIC <-- TxSEQ
-    RTMPMicUpdate(&mic_ctx, pProto, 2);                    // MIC <-- Protocol
+    RTMPMicUpdate(&mic_ctx, pDA, MAC_ADDR_LEN);            /* MIC <-- DA */
+    RTMPMicUpdate(&mic_ctx, pSA, MAC_ADDR_LEN);            /* MIC <-- SA */
+    RTMPMicUpdate(&mic_ctx, bigethlen, 2);                 /* MIC <-- payload length starting from CKIP SNAP */
+    RTMPMicUpdate(&mic_ctx, mic_snap, 8);                  /* MIC <-- snap header */
+    RTMPMicUpdate(&mic_ctx, pAd->StaCfg.TxSEQ, 4);   /* MIC <-- TxSEQ */
+    RTMPMicUpdate(&mic_ctx, pProto, 2);                    /* MIC <-- Protocol */
 
     pSrcBufVA += LENGTH_802_3;
     SrcBufLen -= LENGTH_802_3;
 
-    // Mic <-- original payload. loop until all payload processed
+    /* Mic <-- original payload. loop until all payload processed */
     do
     {
         if (SrcBufLen > 0)
@@ -573,6 +564,6 @@ VOID RTMPCkipInsertCMIC(
             break;
     } while (TRUE);
     
-    RTMPMicFinal(&mic_ctx, pMIC);                          // update MIC
+    RTMPMicFinal(&mic_ctx, pMIC);                          /* update MIC */
 }
 

@@ -143,6 +143,12 @@ config MACH_MESON_8726M_REFC09
         bool "Support M1 8726(refc09) platform(machid=2957)"
         help
           Include support for the AMLOGIC M1 8726M refc09 platform. 
+config MACH_MESON_8726M_REFC09_ICS
+        select GENERIC_ALLOCATOR
+        bool "Support M1 8726 ICS(MBOX_8726M1_V2.1) platform(machid=2957)"
+        help
+	      Include support for the AMLOGIC M1 8726M refc09 platform. 
+
 config MACH_MESON_8726M_REFB10
 	select GENERIC_ALLOCATOR
 	bool "Support M1 8726(G7) platform(machid=2956)"
@@ -178,25 +184,19 @@ config MACH_MESON_8726M_REFB18
 	bool "Support M1 8726(P10) platform(machid=2956)"
 	help
 	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
-
+	
 config MACH_MESON_8726M_REFB19
 	select GENERIC_ALLOCATOR
 	bool "Support M1 8726(REFB19) platform(machid=2956)"
 	help
 	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
-	  	  
-config MACH_MESON_8726M_REFB14
+
+config MACH_MESON_STV_MBX_M3
 	select GENERIC_ALLOCATOR
-	bool "Support M1 8726(refb14) platform(machid=2956)"
+	bool "Support M1 8726(stv mbx m3) platform(machid=2957)"
 	help
 	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
-	  
-config MACH_MESON_8726M_REFB16
-	select GENERIC_ALLOCATOR
-	bool "Support M1 8726(refb16) platform(machid=2956)"
-	help
-	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.	  
-	  	  
+
 config STV
 	bool "support STV mod"
 	help
@@ -212,11 +212,6 @@ config STV_RECOVERY
 	help
 		Just for M3 Recovery system build. not config for system.
 
-config MACH_MESON_STV_MBX_M3
-	select GENERIC_ALLOCATOR
-	bool "Support M1 8726(stv mbx m3) platform(machid=2957)"
-	help
-	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
 
 config MACH_MESON_STV_MBX_REF
 	select GENERIC_ALLOCATOR
@@ -224,11 +219,6 @@ config MACH_MESON_STV_MBX_REF
 	help
 	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
 
-config MACH_MESON_STV_MID_REF
-	select GENERIC_ALLOCATOR
-	bool "Support M1 8726(stv mid ref) platform(machid=2956)"
-	help
-	  Include support for the AMLOGIC M1 8726M mid refa01.
 
 config MESON_CLOCK_TICK_RATE
     int "Clock Tick Rate"

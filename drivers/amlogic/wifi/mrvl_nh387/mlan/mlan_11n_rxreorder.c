@@ -391,7 +391,7 @@ wlan_11n_create_rxreorder_tbl(mlan_private * priv, t_u8 * ta, int tid,
         } else {
             last_seq = priv->rx_seq[tid];
         }
-        if ((last_seq != DEFAULT_SEQ_NUM) && (last_seq >= new_node->start_win)) {
+        if (last_seq >= new_node->start_win) {
             PRINTM(MDAT_D, "Update start_win: last_seq=%d, start_win=%d\n",
                    last_seq, new_node->start_win);
             new_node->start_win = last_seq + 1;
@@ -858,7 +858,7 @@ wlan_11n_cleanup_reorder_tbl(mlan_private * priv)
 
     util_init_list((pmlan_linked_list) & priv->rx_reorder_tbl_ptr);
 
-    memset(priv->adapter, priv->rx_seq, 0xff, sizeof(priv->rx_seq));
+    memset(priv->adapter, priv->rx_seq, 0, sizeof(priv->rx_seq));
     LEAVE();
 }
 

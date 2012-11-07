@@ -75,21 +75,5 @@ extern int vout_resume(void);
 #define VOUT_EVENT_OSD_DISP_AXIS			0x00030000
 #define  VOUT_EVENT_OSD_PREBLEND_ENABLE		0x00040000
 
-/* vout2 */
-extern int vout2_register_client(struct notifier_block * ) ;
-extern int vout2_unregister_client(struct notifier_block *) ;
-extern int vout2_register_server(vout_server_t *);
-extern int vout2_unregister_server(vout_server_t*  );
-extern int vout2_notifier_call_chain(unsigned long, void *) ;
-
-extern const vinfo_t *get_current_vinfo2(void);
-extern vmode_t get_current_vmode2(void);
-extern int set_current_vmode2(vmode_t);
-extern vmode_t validate_vmode2(char *);
-extern void  set_vout2_mode_internal(char * name);
-
-extern int vout2_suspend(void); 
-extern int vout2_resume(void);
-/**/
 
 #endif /* VOUT_NOTIFY_H */

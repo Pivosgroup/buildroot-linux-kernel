@@ -46,6 +46,7 @@ int wifi_get_mac_addr(unsigned char *buf);
 
 extern int dhd_preinit_ioctls(dhd_pub_t *dhd);
 
+#define ENABLE_DEEP_SLEEP
 /* Packet alignment for most efficient SDIO (can change based on platform) */
 #ifndef DHD_SDALIGN
 #define DHD_SDALIGN	32

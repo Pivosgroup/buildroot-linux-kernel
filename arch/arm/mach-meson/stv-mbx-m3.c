@@ -292,6 +292,34 @@ static struct platform_device amlogic_spi_nor_device = {
 #endif
 
 #ifdef CONFIG_USB_DWC_OTG_HCD
+#ifdef CONFIG_USB_DPLINE_PULLUP_DISABLE
+static set_vbus_valid_ext_fun(unsigned int id,char val)
+{
+	unsigned int  reg = (PREI_USB_PHY_A_REG1 + id);
+	if(val == 1)
+	{
+		SET_CBUS_REG_MASK(reg,1<<0);
+	}
+	else
+	{
+		CLEAR_CBUS_REG_MASK(reg,1<<0);
+	}
+}
+#endif
+static void set_usb_a_vbus_power(char is_power_on)
+{
+#define USB_A_POW_GPIO_BIT	20
+	if(is_power_on){
+		printk(KERN_INFO "set usb port power on (board gpio %d)!\n",USB_A_POW_GPIO_BIT);
+		set_gpio_mode(PREG_HGPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
+		set_gpio_val(PREG_HGPIO,USB_A_POW_GPIO_BIT,1);
+	}
+	else	{
+		printk(KERN_INFO "set usb port power off (board gpio %d)!\n",USB_A_POW_GPIO_BIT);		
+		set_gpio_mode(PREG_HGPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
+		set_gpio_val(PREG_HGPIO,USB_A_POW_GPIO_BIT,0);		
+	}
+}
 //usb_a is OTG port
 static struct lm_device usb_ld_a = {
 	.type = LM_DEVICE_TYPE_USB,
@@ -300,10 +328,13 @@ static struct lm_device usb_ld_a = {
 	.resource.start = IO_USB_A_BASE,
 	.resource.end = -1,
 	.dma_mask_room = DMA_BIT_MASK(32),
-	.port_type = USB_PORT_TYPE_OTG,
+	.port_type = USB_PORT_TYPE_OTG,//USB_PORT_TYPE_OTG,
 	.port_speed = USB_PORT_SPEED_DEFAULT,
-	.dma_config = USB_DMA_BURST_DEFAULT,
-	.set_vbus_power = 0,
+	.dma_config = USB_DMA_BURST_SINGLE,
+	.set_vbus_power = set_usb_a_vbus_power,
+#ifdef CONFIG_USB_DPLINE_PULLUP_DISABLE	
+	.set_vbus_valid_ext = set_vbus_valid_ext_fun,
+#endif
 };
 static struct lm_device usb_ld_b = {
 	.type = LM_DEVICE_TYPE_USB,
@@ -314,8 +345,11 @@ static struct lm_device usb_ld_b = {
 	.dma_mask_room = DMA_BIT_MASK(32),
 	.port_type = USB_PORT_TYPE_HOST,
 	.port_speed = USB_PORT_SPEED_DEFAULT,
-	.dma_config = USB_DMA_BURST_DEFAULT,
+	.dma_config = USB_DMA_BURST_SINGLE,
 	.set_vbus_power = 0,
+#ifdef CONFIG_USB_DPLINE_PULLUP_DISABLE	
+	.set_vbus_valid_ext = set_vbus_valid_ext_fun,
+#endif	
 };
 #endif
 #ifdef CONFIG_SATA_DWC_AHCI
@@ -518,6 +552,28 @@ static struct aml_card_info  amlogic_card_info[] = {
 		.card_extern_init = 0,
 #endif
 	},
+
+#ifdef CONFIG_MS_MSPRO
+	[1] = {
+		.name = "ms_card",
+		.work_mode = CARD_HW_MODE,
+		.io_pad_type = SDIO_GPIOA_9_14,
+		.card_ins_en_reg = EGPIO_GPIOC_ENABLE,
+		.card_ins_en_mask = PREG_IO_25_MASK,
+		.card_ins_input_reg = EGPIO_GPIOC_INPUT,
+		.card_ins_input_mask = PREG_IO_25_MASK,
+		.card_power_en_reg = EGPIO_GPIOC_ENABLE,
+		.card_power_en_mask = PREG_IO_26_MASK,
+		.card_power_output_reg = EGPIO_GPIOC_OUTPUT,
+		.card_power_output_mask = PREG_IO_26_MASK,
+		.card_power_en_lev = 0,
+		.card_wp_en_reg = EGPIO_GPIOC_ENABLE,
+		.card_wp_en_mask = PREG_IO_23_MASK,
+		.card_wp_input_reg = EGPIO_GPIOC_INPUT,
+		.card_wp_input_mask = PREG_IO_23_MASK,
+		.card_extern_init = 0,
+	},
+#endif
 };
 
 static struct aml_card_platform amlogic_card_platform = {
@@ -1498,10 +1554,10 @@ static struct platform_device aml_pm_device = {
     .id             = -1,
 };
 #endif
-#ifdef CONFIG_POST_PROCESS_MANAGER
+ #ifdef CONFIG_POST_PROCESS_MANAGER
 static struct resource ppmgr_resources[] = {
     [0] = {
-        .start = PPMGR_ADDR_START,
+        .start =  PPMGR_ADDR_START,
         .end   = PPMGR_ADDR_END,
         .flags = IORESOURCE_MEM,
     },
@@ -1513,6 +1569,24 @@ static struct platform_device ppmgr_device = {
     .resource      = ppmgr_resources,
 };
 #endif
+#ifdef CONFIG_FREE_SCALE
+static struct resource freescale_resources[] = {
+    [0] = {
+        .start = FREESCALE_ADDR_START,
+        .end   = FREESCALE_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
+
+static struct platform_device freescale_device =
+{
+    .name           = "freescale",
+    .id             = 0,
+    .num_resources  = ARRAY_SIZE(freescale_resources),
+    .resource       = freescale_resources,
+};
+#endif
+
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AM_UART_WITH_S_CORE)
         &aml_uart_device,
@@ -1590,7 +1664,7 @@ static struct platform_device __initdata *platform_devs[] = {
     
     #ifdef CONFIG_USB_ANDROID
 		&android_usb_device,
-    #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
+      #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
 		&usb_mass_storage_device,
       #endif
     #endif	
@@ -1601,13 +1675,14 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_PM)
         &aml_eth_pm,
     #endif
-
-    #ifdef CONFIG_POST_PROCESS_MANAGER
-        &ppmgr_device,
-    #endif
-
+#ifdef CONFIG_POST_PROCESS_MANAGER
+    &ppmgr_device,
+#endif
+#ifdef CONFIG_FREE_SCALE
+        &freescale_device,
+#endif        
     #ifdef CONFIG_EFUSE
-    &aml_efuse_device,
+	&aml_efuse_device,
     #endif
 	
     #if defined(CONFIG_CRYPTO_DEVICE_DRIVER)
@@ -1802,11 +1877,11 @@ static void disable_unused_model(void)
 	video_dac_disable();
 	//audio_internal_dac_disable();
      //disable wifi
-    SET_CBUS_REG_MASK(HHI_GCLK_MPEG2, (1<<5));
+    SET_CBUS_REG_MASK(HHI_GCLK_MPEG2, (1<<5)); 
     SET_CBUS_REG_MASK(HHI_WIFI_CLK_CNTL, (1<<0));
     __raw_writel(0xCFF,0xC9320ED8);
     __raw_writel((__raw_readl(0xC9320EF0))&0xF9FFFFFF,0xC9320EF0);
-    CLEAR_CBUS_REG_MASK(HHI_GCLK_MPEG2, (1<<5));
+    CLEAR_CBUS_REG_MASK(HHI_GCLK_MPEG2, (1<<5)); 
     CLEAR_CBUS_REG_MASK(HHI_WIFI_CLK_CNTL, (1<<0));
 }
 
@@ -1827,7 +1902,7 @@ static __init void m1_init_machine(void)
 	set_sata_phy_clk(SATA_PHY_CLOCK_SEL_DEMOD_PLL);
 	lm_device_register(&sata_ld);
 #endif
-	disable_unused_model();
+    disable_unused_model();
 }
 
 /*VIDEO MEMORY MAPING*/

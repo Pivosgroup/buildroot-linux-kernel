@@ -194,7 +194,7 @@ static irqreturn_t audiodsp_mailbox_irq(int irq, void *data)
             SYS_CLEAR_IRQ(M1B_IRQ8_IEC958_INFO);
             get_mailbox_data(priv, M1B_IRQ8_IEC958_INFO, &msg);
             info = (void*)msg.data;
-
+#if 1
             IEC958_bpf = info->bpf;
             IEC958_brst = info->brst;
             IEC958_length = info->length;
@@ -210,10 +210,11 @@ static irqreturn_t audiodsp_mailbox_irq(int irq, void *data)
             IEC958_chstat0_r = info->chstat0_r;
             IEC958_chstat1_l = info->chstat1_l;
             IEC958_chstat1_r = info->chstat1_r;
+#endif			
   //          IEC958_mode_codec = info->can_bypass;
             
-            strcpy(audiodsp_work.buf, "MAILBOX: got IEC958 info\n");
-            schedule_work(&audiodsp_work.audiodsp_workqueue);		
+            DSP_PRNT( "MAILBOX: got IEC958 info\n");
+            //schedule_work(&audiodsp_work.audiodsp_workqueue);		
         }
 
     	if(status& (1<<M1B_IRQ5_STREAM_RD_WD_TEST)){

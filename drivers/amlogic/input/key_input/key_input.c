@@ -111,7 +111,6 @@ void key_input_polling(unsigned long data)
                     print_dbg("key %d pressed.\n", ki_data->pdata->key_code_list[i]);
 #endif                    
                     input_report_key(ki_data->input, ki_data->pdata->key_code_list[i], 1);
-                    input_sync(ki_data->input);
                     ki_data->key_state_list_1[i] = 1;
                     ki_data->key_hold_time_list[i] = 0;
                 }
@@ -124,7 +123,6 @@ void key_input_polling(unsigned long data)
                     print_dbg("key %d released.\n", ki_data->pdata->key_code_list[i]);
 #endif                    
                     input_report_key(ki_data->input, ki_data->pdata->key_code_list[i], 0);
-                    input_sync(ki_data->input);
                     ki_data->key_state_list_1[i] = 0;
                     ki_data->key_hold_time_list[i] = 0;
                 }
@@ -179,12 +177,10 @@ static void keyinput_tasklet(unsigned long data)
 {
     if (KeyInput->status){
         input_report_key(KeyInput->input, KeyInput->pdata->key_code_list[0], 0);
-        input_sync(KeyInput->input);
         printk(KERN_INFO "=== key %d up ===\n", KeyInput->pdata->key_code_list[0]);
     }
     else{
         input_report_key(KeyInput->input, KeyInput->pdata->key_code_list[0], 1);
-        input_sync(KeyInput->input);
         printk(KERN_INFO "=== key %d down ===\n", KeyInput->pdata->key_code_list[0]);
     }
 }

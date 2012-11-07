@@ -77,6 +77,10 @@ void vf_put(struct vframe_s *vf, const char *receiver);
 
 unsigned int get_post_canvas(void);
 unsigned int vf_keep_current(void);
+vframe_t* get_cur_dispbuf(void);
+int query_video_status(int type , int* value);
+
+void get_video_keep_buffer(unsigned long *addr, unsigned long *phys_addr);
 
 void v4l_reg_provider(const vframe_provider_t *p);
 void v4l_unreg_provider(void);

@@ -1027,21 +1027,18 @@ wl_control_wl_start(struct net_device *dev)
 	MUTEX_LOCK(iw->pub);
 
 	if (g_onoff == G_WLAN_SET_OFF) {
-#ifdef ENABLE_DEEP_SLEEP
-		dhd_deep_sleep(FALSE);
-#else
-		dhd_customer_gpio_wlan_ctrl(WLAN_RESET_ON);
+//		dhd_customer_gpio_wlan_ctrl(WLAN_RESET_ON);
+	dhd_deep_sleep(FALSE);
+//#if defined(BCMLXSDMMC)
+//		sdioh_start(NULL, 0);
+//#endif
+//
+//		dhd_dev_reset(dev, 0);
+//
+//#if defined(BCMLXSDMMC)
+//		sdioh_start(NULL, 1);
+//#endif
 
-#if defined(BCMLXSDMMC)
-		sdioh_start(NULL, 0);
-#endif
-
-		dhd_dev_reset(dev, 0);
-
-#if defined(BCMLXSDMMC)
-		sdioh_start(NULL, 1);
-#endif
-#endif
 		dhd_dev_init_ioctl(dev);
 
 		g_onoff = G_WLAN_SET_ON;
@@ -1082,9 +1079,7 @@ wl_iw_control_wl_off(
 		g_iscan->iscan_state = ISCAN_STATE_IDLE;
 #endif 
 
-#ifndef ENABLE_DEEP_SLEEP
-		dhd_dev_reset(dev, 1);
-#endif
+//		dhd_dev_reset(dev, 1);
 
 #if defined(WL_IW_USE_ISCAN)
 #if !defined(CSCAN)
@@ -1100,14 +1095,12 @@ wl_iw_control_wl_off(
 		g_first_broadcast_scan = BROADCAST_SCAN_FIRST_IDLE;
 #endif 
 
-#ifdef ENABLE_DEEP_SLEEP
-		dhd_deep_sleep(TRUE);
-#else
-#if defined(BCMLXSDMMC)
-		sdioh_stop(NULL);
-#endif
-		dhd_customer_gpio_wlan_ctrl(WLAN_RESET_OFF);
-#endif
+//#if defined(BCMLXSDMMC)
+//		sdioh_stop(NULL);
+//#endif
+   dhd_deep_sleep(TRUE);
+		//dhd_customer_gpio_wlan_ctrl(WLAN_RESET_OFF);
+
 		wl_iw_send_priv_event(dev, "STOP");
 
 	}

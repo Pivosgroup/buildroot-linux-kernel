@@ -66,6 +66,8 @@
 #define USB_VID_EVOLUTEPC			0x1e59
 #define USB_VID_AZUREWAVE			0x13d3
 #define USB_VID_TECHNISAT			0x14f7
+//yfeng-2011-10-25
+#define USB_VID_612                             0x1f4d
 
 /* Product IDs */
 #define USB_PID_ADSTECH_USB2_COLD			0xa333
@@ -298,4 +300,6 @@
 #define USB_PID_AZUREWAVE_AZ6027			0x3275
 #define USB_PID_TERRATEC_DVBS2CI			0x3275
 #define USB_PID_TECHNISAT_USB2_HDCI			0x0002
+//yfeng                 
+#define USB_PID_612                                     0xd220
 #endif

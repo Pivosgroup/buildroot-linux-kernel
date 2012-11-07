@@ -61,7 +61,6 @@ static int battery_capacity = 100;
 static int new_battery_capacity = 100;
 static int charge_status = -1;
 static int new_charge_status = -1;
-static char fw_ver[10] = {0};
 
 /* If the system has several batteries we need a different name for each
  * of them...
@@ -110,7 +109,6 @@ static enum power_supply_property bq27x00_battery_props[] = {
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_TEMP,
-	POWER_SUPPLY_PROP_MANUFACTURER,
 //	POWER_SUPPLY_PROP_TIME_TO_EMPTY_NOW,
 //	POWER_SUPPLY_PROP_TIME_TO_EMPTY_AVG,
 //	POWER_SUPPLY_PROP_TIME_TO_FULL_NOW,
@@ -119,10 +117,7 @@ static enum power_supply_property bq27x00_battery_props[] = {
 /*
  * Common code for BQ27x00 devices
  */
-#ifdef SUPPORT_DFI_WRITE
-static int _bq27x00_read_i2c(struct bq27x00_device_info *di,u16 slave_addr, u8 reg, u8 len, u8 *data);
-static int _bq27x00_write_i2c(struct bq27x00_device_info *di,u16 slave_addr, u8 reg, u8 len, u8 *data);
-#endif
+
 static int bq27x00_read(u8 reg, int *rt_value, int b_single,
 			struct bq27x00_device_info *di)
 {
@@ -221,43 +216,42 @@ static int bq27x00_battery_rsoc(struct bq27x00_device_info *di)
 		dev_err(di->dev, "error reading relative State-of-Charge\n");
 		return ret;
 	}
-	
-	//drop wrong capacity value
-    if(rsoc > 100){
-        dev_err(di->dev, "error reading rsoc\n");
-        rsoc = battery_capacity;
-    }
-    
+
 	return rsoc;
 }
-static int bq27x00_battery_status(struct bq27x00_device_info *di)
-{
-	int flags = 0;
-	int status;
-	int ret;
-
-	ret = bq27x00_read(BQ27x00_REG_FLAGS, &flags, 0, di);
-	if (ret < 0) {
-		dev_err(di->dev, "error reading flags\n");
-		return ret;
-	}
-
-	if (di->chip == BQ27500) {
-		if (flags & BQ27500_FLAG_FC)
-			status = POWER_SUPPLY_STATUS_FULL;
-		else if (flags & BQ27500_FLAG_DSC)
-			status = POWER_SUPPLY_STATUS_DISCHARGING;
-		else
-			status = POWER_SUPPLY_STATUS_CHARGING;
-	} else {
-		if (flags & BQ27000_FLAG_CHGS)
-			status = POWER_SUPPLY_STATUS_CHARGING;
-		else
-			status = POWER_SUPPLY_STATUS_DISCHARGING;
-	}
-
-	return status;
-}
+//
+//static int bq27x00_battery_status(struct bq27x00_device_info *di)
+//{
+//	int flags = 0;
+//	int status;
+//	int ret;
+//
+//	ret = bq27x00_read(BQ27x00_REG_FLAGS, &flags, 0, di);
+//	if (ret < 0) {
+//		dev_err(di->dev, "error reading flags\n");
+//		return ret;
+//	}
+//
+//	if (di->chip == BQ27500) {
+//		if (flags & BQ27500_FLAG_FC)
+//			status = POWER_SUPPLY_STATUS_FULL;
+//		else if (flags & BQ27500_FLAG_DSC)
+//			status = POWER_SUPPLY_STATUS_DISCHARGING;
+//		else
+//			status = POWER_SUPPLY_STATUS_CHARGING;
+//	} else {
+//	    if(pdata->is_ac_online()){
+//    		if (flags & BQ27000_FLAG_CHGS)
+//    			status = POWER_SUPPLY_STATUS_CHARGING;
+//    		else
+//    		    status = POWER_SUPPLY_STATUS_FULL;
+//		}
+//		else
+//			status = POWER_SUPPLY_STATUS_DISCHARGING;		    
+//	}
+//
+//	return status;
+//}
 
 /*
  * Read a time register.
@@ -281,34 +275,16 @@ static int bq27x00_battery_time(struct bq27x00_device_info *di, int reg,
 	val->intval = tval * 60;
 	return 0;
 }
-#ifdef SUPPORT_DFI_WRITE
-static int bq27x00_battery_get_version(struct bq27x00_device_info *di)
-{
-    u8 data[2];
-    
-    mdelay(200);	    
-    data[1] = 0x00;
-    data[0] = 0x02;	
-        
-	_bq27x00_write_i2c(di,0x55,0x00,2,data);
-    mdelay(10);	
-    _bq27x00_read_i2c(di,0x55,0x00,2,data);
-    printk("FW version = %x.%x\n", data[1],data[0]);	
-    sprintf(fw_ver,"BQ%x.%x",data[1],data[0]);
-    
-    return 0;
-}
-#endif
+
 #ifdef CONFIG_USB_ANDROID
 int pc_connect(int status) 
 {
     new_usb_status = status; 
     if(new_usb_status == usb_status)
         return 1;
-    if(device_info){
-        usb_status = new_usb_status;        
-        power_supply_changed(&device_info->usb);
-    }
+    usb_status = new_usb_status;
+    power_supply_changed(&device_info->usb);
+    
     return 0;
 } 
 static int gadget_is_usb_online(void)
@@ -342,16 +318,15 @@ static int bq27x00_battery_get_property(struct power_supply *psy,
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_STATUS:
-//		if(pdata->is_ac_online())
-//		{
-//			if(pdata->get_charge_status())
-//				val->intval = POWER_SUPPLY_STATUS_FULL;
-//			else
-//				val->intval = POWER_SUPPLY_STATUS_CHARGING;
-//		}
-//		else
-//			val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
-        val->intval = new_charge_status;
+		if(pdata->is_ac_online())
+		{
+			if(pdata->get_charge_status())
+				val->intval = POWER_SUPPLY_STATUS_FULL;
+			else
+				val->intval = POWER_SUPPLY_STATUS_CHARGING;
+		}
+		else
+			val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 	case POWER_SUPPLY_PROP_PRESENT:
@@ -367,11 +342,6 @@ static int bq27x00_battery_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
 		val->intval = bq27x00_battery_temperature(di);
-		break;
-	case POWER_SUPPLY_PROP_MANUFACTURER:
-#ifdef SUPPORT_DFI_WRITE	 
-        val->strval = fw_ver;   
-#endif		
 		break;
 //	case POWER_SUPPLY_PROP_TIME_TO_EMPTY_NOW:
 //		ret = bq27x00_battery_time(di, BQ27x00_REG_TTE, val);
@@ -468,7 +438,6 @@ static int bq27x00_read_i2c(u8 reg, int *rt_value, int b_single,
 static void battery_work_func(struct work_struct *work)
 {
     bool ac_changed,bat_changed;
-    static  int led_flash=1;
     
     ac_changed = false;
     bat_changed = false;
@@ -477,47 +446,15 @@ static void battery_work_func(struct work_struct *work)
         polling_count = 0;
         new_battery_capacity = bq27x00_battery_rsoc(device_info);
     }
- if((pdata->set_lcd_off)&&(pdata->set_lcd_on)&&(new_battery_capacity>=0))
- 	{
-        if((new_battery_capacity<=15)&&(pdata->is_ac_online()==0))
-        	{
-                if(led_flash==1)
-                 	{
-                    led_flash=0;
-                    pdata->set_lcd_off();
-			        //printk(KERN_ERR " set_lcd_off\n");
-                 	}
-		        else
-		   	        {
-                    led_flash=1;
-                    pdata->set_lcd_on();
-			        //printk(KERN_ERR " set_lcd_on\n");
-		   	        }
-        	}
-		else if(pdata->is_ac_online()==1)
-	 	    {
-                    led_flash=0;
-                    pdata->set_lcd_on();
-		            //printk(KERN_ERR " set_lcd_on\n");
-	 	    }
-        else
-	 	    {
-                    led_flash=1;
-                    pdata->set_lcd_off();
-		            //printk(KERN_ERR " set_lcd_off\n");
-	 	    }
- 	}
-
+    
     if(pdata->is_ac_online){
         if(ac_status != pdata->is_ac_online()){
             ac_status = pdata->is_ac_online();
             ac_changed = true;      
         }
     }
-    if (device_info->chip == BQ27500) {
-       new_charge_status = bq27x00_battery_status(device_info);        
-    }
-    else if (pdata->get_charge_status&&pdata->is_ac_online){
+    
+	if (pdata->get_charge_status&&pdata->is_ac_online){
 		if(pdata->is_ac_online())
 		{
 			if(pdata->get_charge_status())
@@ -528,7 +465,7 @@ static void battery_work_func(struct work_struct *work)
 		else
 			new_charge_status = POWER_SUPPLY_STATUS_DISCHARGING;	   
     }
-       
+        
     if(new_charge_status != charge_status||battery_capacity != new_battery_capacity){
         charge_status = new_charge_status;
         battery_capacity = new_battery_capacity;

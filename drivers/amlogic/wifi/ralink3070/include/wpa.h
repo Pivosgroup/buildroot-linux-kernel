@@ -5,35 +5,25 @@
  * Hsinchu County 302,
  * Taiwan, R.O.C.
  *
- * (c) Copyright 2002-2007, Ralink Technology, Inc.
+ * (c) Copyright 2002-2010, Ralink Technology, Inc.
  *
- * This program is free software; you can redistribute it and/or modify  * 
- * it under the terms of the GNU General Public License as published by  * 
- * the Free Software Foundation; either version 2 of the License, or     * 
- * (at your option) any later version.                                   * 
- *                                                                       * 
- * This program is distributed in the hope that it will be useful,       * 
- * but WITHOUT ANY WARRANTY; without even the implied warranty of        * 
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         * 
- * GNU General Public License for more details.                          * 
- *                                                                       * 
- * You should have received a copy of the GNU General Public License     * 
- * along with this program; if not, write to the                         * 
- * Free Software Foundation, Inc.,                                       * 
- * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             * 
- *                                                                       * 
- *************************************************************************
+ * This program is free software; you can redistribute it and/or modify  *
+ * it under the terms of the GNU General Public License as published by  *
+ * the Free Software Foundation; either version 2 of the License, or     *
+ * (at your option) any later version.                                   *
+ *                                                                       *
+ * This program is distributed in the hope that it will be useful,       *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+ * GNU General Public License for more details.                          *
+ *                                                                       *
+ * You should have received a copy of the GNU General Public License     *
+ * along with this program; if not, write to the                         *
+ * Free Software Foundation, Inc.,                                       *
+ * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
+ *                                                                       *
+ *************************************************************************/
 
-	Module Name:
-	wpa.h
-
-	Abstract:
-
-	Revision History:
-	Who			When			What
-	--------	----------		----------------------------------------------
-	Name		Date			Modification logs
-*/
 
 #ifndef	__WPA_H__
 #define	__WPA_H__
@@ -76,7 +66,7 @@
 
 #define INC_TX_TSC(_tsc, _cnt)                          \
 {                                                       \
-    INT i=0;                                            \
+    int i=0;                                            \
 	while (++_tsc[i] == 0x0)                            \
     {                                                   \
         i++;                                            \
@@ -93,8 +83,7 @@
  */
 #define IS_INVALID_HT_SECURITY(_mode)		\
 	(((_mode) == Ndis802_11Encryption1Enabled) || \
-	 ((_mode) == Ndis802_11Encryption2Enabled) || \
-	 ((_mode) == Ndis802_11Encryption4Enabled))
+	 ((_mode) == Ndis802_11Encryption2Enabled))
 
 #define MIX_CIPHER_WPA_TKIP_ON(x)       (((x) & 0x08) != 0)
 #define MIX_CIPHER_WPA_AES_ON(x)        (((x) & 0x04) != 0)
@@ -194,8 +183,7 @@
 		_cipher = (_pAd)->StaCfg.GroupCipher;						\
 	}
 #define WPA_BSSID(_pAd, _apidx) 	(_pAd)->CommonCfg.Bssid
-#endif // defined(CONFIG_STA_SUPPORT) //
-
+#endif /* defined(CONFIG_STA_SUPPORT) */
 
 #define WPA_OS_MALLOC(_p, _s)		\
 {									\
@@ -209,200 +197,205 @@
 
 #define WPA_GET_CURRENT_TIME(_time)		NdisGetSystemUpTime(_time);
 
-#endif // End of Driver Mode //
+#endif /* End of Driver Mode */
 
 
 /*========================================
 	The prototype is defined in cmm_wpa.c
   ========================================*/
 void inc_iv_byte(
-	UCHAR *iv, 
-	UINT len, 
+	UCHAR *iv,
+	UINT len,
 	UINT cnt);
 
 BOOLEAN WpaMsgTypeSubst(
-	IN  UCHAR   EAPType,
-	OUT INT		*MsgType);
+	IN UCHAR EAPType,
+	OUT int *MsgType);
 
-VOID    PRF(
-	IN  UCHAR   *key,
-	IN  INT     key_len,
-	IN  UCHAR   *prefix,
-	IN  INT     prefix_len,
-	IN  UCHAR   *data,
-	IN  INT     data_len,
-	OUT UCHAR   *output,
-	IN  INT     len);
+VOID PRF(
+	IN UCHAR *key,
+	IN int key_len,
+	IN UCHAR *prefix,
+	IN int prefix_len,
+	IN UCHAR *data,
+	IN int data_len,
+	OUT UCHAR *output,
+	IN int len);
 
 int RtmpPasswordHash(
-	char *password, 
-	unsigned char *ssid, 
-	int ssidlength, 
+	char *password,
+	unsigned char *ssid,
+	int ssidlength,
 	unsigned char *output);
 
-VOID	KDF(
-	IN	PUINT8	key,
-	IN	INT		key_len,
-	IN	PUINT8	label,
-	IN	INT		label_len,
-	IN	PUINT8	data,
-	IN	INT		data_len,
-	OUT	PUINT8	output,
-	IN	USHORT	len);
+	VOID KDF(
+	IN PUINT8 key,
+	IN int key_len,
+	IN PUINT8 label,
+	IN int label_len,
+	IN PUINT8 data,
+	IN int data_len,
+	OUT PUINT8 output,
+	IN USHORT len);
 
-PUINT8	WPA_ExtractSuiteFromRSNIE(
-		IN 	PUINT8	rsnie,
-		IN 	UINT	rsnie_len,
-		IN	UINT8	type,
-		OUT	UINT8	*count);
+PUINT8 WPA_ExtractSuiteFromRSNIE(
+	IN PUINT8 rsnie,
+	IN UINT rsnie_len,
+	IN UINT8 type,
+	OUT UINT8 *count);
 
 VOID WpaShowAllsuite(
-	IN 	PUINT8	rsnie,
-	IN 	UINT	rsnie_len);
+	IN PUINT8 rsnie,
+	IN UINT rsnie_len);
 
 VOID RTMPInsertRSNIE(
 	IN PUCHAR pFrameBuf,
 	OUT PULONG pFrameLen,
 	IN PUINT8 rsnie_ptr,
-	IN UINT8  rsnie_len,
+	IN UINT8 rsnie_len,
 	IN PUINT8 pmkid_ptr,
-	IN UINT8  pmkid_len);
+	IN UINT8 pmkid_len);
 
 /* 
  =====================================	
  	function prototype in cmm_wpa.c
  =====================================	
 */
-VOID	RTMPToWirelessSta(
-    IN  PRTMP_ADAPTER   	pAd,
-    IN  PMAC_TABLE_ENTRY 	pEntry,
-    IN  PUCHAR          	pHeader802_3,
-    IN  UINT            	HdrLen,
-    IN  PUCHAR          	pData,
-    IN  UINT            	DataLen,
-    IN	BOOLEAN				bClearFrame);
+VOID RTMPToWirelessSta(
+	IN PRTMP_ADAPTER pAd,
+	IN PMAC_TABLE_ENTRY pEntry,
+	IN PUCHAR pHeader802_3,
+	IN UINT HdrLen,
+	IN PUCHAR pData,
+	IN UINT DataLen,
+	IN BOOLEAN bClearFrame);
 
 VOID WpaDerivePTK(
-	IN  PRTMP_ADAPTER   pAd,
-	IN  UCHAR   *PMK,
-	IN  UCHAR   *ANonce,
-	IN  UCHAR   *AA,
-	IN  UCHAR   *SNonce,
-	IN  UCHAR   *SA,
-	OUT UCHAR   *output,
-	IN  UINT    len);
+	IN PRTMP_ADAPTER pAd,
+	IN UCHAR *PMK,
+	IN UCHAR *ANonce,
+	IN UCHAR *AA,
+	IN UCHAR *SNonce,
+	IN UCHAR *SA,
+	OUT UCHAR *output,
+	IN UINT len);
 
 VOID WpaDeriveGTK(
-	IN  UCHAR   *PMK,
-	IN  UCHAR   *GNonce,
-	IN  UCHAR   *AA,
-	OUT UCHAR   *output,
-	IN  UINT    len);
+	IN UCHAR *PMK,
+	IN UCHAR *GNonce,
+	IN UCHAR *AA,
+	OUT UCHAR *output,
+	IN UINT len);
 
-VOID    GenRandom(
-	IN  PRTMP_ADAPTER   pAd, 
-	IN	UCHAR			*macAddr,
-	OUT	UCHAR			*random);
+VOID GenRandom(
+	IN PRTMP_ADAPTER pAd,
+	IN UCHAR *macAddr,
+	OUT UCHAR *random);
 
 BOOLEAN RTMPCheckWPAframe(
 	IN PRTMP_ADAPTER pAd,
-	IN PMAC_TABLE_ENTRY	pEntry,
-	IN PUCHAR 			pData,
-	IN ULONG 			DataByteCount,	
-	IN UCHAR			FromWhichBSSID);
+	IN PMAC_TABLE_ENTRY pEntry,
+	IN PUCHAR pData,
+	IN ULONG DataByteCount,
+	IN UCHAR FromWhichBSSID);
 
 BOOLEAN RTMPParseEapolKeyData(
-	IN  PRTMP_ADAPTER   pAd,
-	IN  PUCHAR          pKeyData,
-	IN  UCHAR           KeyDataLen,
-	IN	UCHAR			GroupKeyIndex,
-	IN	UCHAR			MsgType,
-	IN	BOOLEAN			bWPA2,
-	IN  MAC_TABLE_ENTRY *pEntry);
+	IN PRTMP_ADAPTER pAd,
+	IN PUCHAR pKeyData,
+	IN UCHAR KeyDataLen,
+	IN UCHAR GroupKeyIndex,
+	IN UCHAR MsgType,
+	IN BOOLEAN bWPA2,
+	IN MAC_TABLE_ENTRY *pEntry);
 
 VOID WPA_ConstructKdeHdr(
-	IN 	UINT8	data_type,	
-	IN 	UINT8 	data_len,
-	OUT PUCHAR 	pBuf);
+	IN UINT8 data_type,
+	IN UINT8 data_len,
+	OUT PUCHAR pBuf);
 
-VOID	ConstructEapolMsg(
-	IN 	PMAC_TABLE_ENTRY	pEntry,
-    IN 	UCHAR				GroupKeyWepStatus,
-    IN 	UCHAR				MsgType,  
-    IN	UCHAR				DefaultKeyIdx,
-	IN 	UCHAR				*KeyNonce,
-	IN	UCHAR				*TxRSC,
-	IN	UCHAR				*GTK,
-	IN	UCHAR				*RSNIE,
-	IN	UCHAR				RSNIE_Len,
-    OUT PEAPOL_PACKET       pMsg);
+VOID ConstructEapolMsg(
+	IN PMAC_TABLE_ENTRY pEntry,
+	IN UCHAR GroupKeyWepStatus,
+	IN UCHAR MsgType,
+	IN UCHAR DefaultKeyIdx,
+	IN UCHAR *KeyNonce,
+	IN UCHAR *TxRSC,
+	IN UCHAR *GTK,
+	IN UCHAR *RSNIE,
+	IN UCHAR RSNIE_Len,
+	OUT PEAPOL_PACKET pMsg);
 
 PCIPHER_KEY RTMPSwCipherKeySelection(
-	IN 	PRTMP_ADAPTER 		pAd,
-	IN	PUCHAR				pIV,
-	IN	RX_BLK				*pRxBlk,
-	IN	PMAC_TABLE_ENTRY 	pEntry);
+	IN PRTMP_ADAPTER pAd,
+	IN PUCHAR pIV,
+	IN RX_BLK *pRxBlk,
+	IN PMAC_TABLE_ENTRY pEntry);
 
-NDIS_STATUS	RTMPSoftDecryptionAction(
-	IN 		PRTMP_ADAPTER 	pAd,
-	IN 		PUCHAR			pHdr,
-	IN 		UCHAR    		UserPriority,
-	IN 		PCIPHER_KEY		pKey,
-	INOUT 	PUCHAR			pData,
-	INOUT 	UINT16			*DataByteCnt);
+NDIS_STATUS RTMPSoftDecryptionAction(
+	IN PRTMP_ADAPTER pAd,
+	IN PUCHAR pHdr,
+	IN UCHAR UserPriority,
+	IN PCIPHER_KEY pKey,
+	INOUT PUCHAR pData,
+	INOUT UINT16 *DataByteCnt);
 
 VOID RTMPSoftConstructIVHdr(
-	IN	UCHAR			CipherAlg,
-	IN	UCHAR			key_id,
-	IN	PUCHAR			pTxIv,
-	OUT PUCHAR 			pHdrIv,
-	OUT	UINT8			*hdr_iv_len);
+	IN UCHAR CipherAlg,
+	IN UCHAR key_id,
+	IN PUCHAR pTxIv,
+	OUT PUCHAR pHdrIv,
+	OUT UINT8 *hdr_iv_len);
 
 VOID RTMPSoftEncryptionAction(
-	IN	PRTMP_ADAPTER	pAd,
-	IN	UCHAR			CipherAlg,
-	IN	PUCHAR			pHdr,
-	IN	PUCHAR			pSrcBufData,
-	IN	UINT32			SrcBufLen,
-	IN	UCHAR			KeyIdx,
-	IN	PCIPHER_KEY		pKey,
-	OUT	UINT8			*ext_len);
+	IN PRTMP_ADAPTER pAd,
+	IN UCHAR CipherAlg,
+	IN PUCHAR pHdr,
+	IN PUCHAR pSrcBufData,
+	IN UINT32 SrcBufLen,
+	IN UCHAR KeyIdx,
+	IN PCIPHER_KEY pKey,
+	OUT UINT8 *ext_len);
 
 VOID RTMPMakeRSNIE(
-	IN  PRTMP_ADAPTER   pAd,
-	IN  UINT            AuthMode,
-	IN  UINT            WepStatus,
-	IN	UCHAR			apidx);
+	IN PRTMP_ADAPTER pAd,
+	IN UINT AuthMode,
+	IN UINT WepStatus,
+	IN UCHAR apidx);
 
 VOID WPAInstallPairwiseKey(
-	PRTMP_ADAPTER		pAd,
-	UINT8				BssIdx,
-	PMAC_TABLE_ENTRY	pEntry,
-	BOOLEAN				bAE);
+	PRTMP_ADAPTER pAd,
+	UINT8 BssIdx,
+	PMAC_TABLE_ENTRY pEntry,
+	BOOLEAN bAE);
 
 VOID WPAInstallSharedKey(
-	PRTMP_ADAPTER		pAd,
-	UINT8				GroupCipher,
-	UINT8				BssIdx,
-	UINT8				KeyIdx,
-	UINT8				Wcid,
-	BOOLEAN				bAE,
-	PUINT8				pGtk);
+	PRTMP_ADAPTER pAd,
+	UINT8 GroupCipher,
+	UINT8 BssIdx,
+	UINT8 KeyIdx,
+	UINT8 Wcid,
+	BOOLEAN bAE,
+	PUINT8 pGtk,
+	UINT8 GtkLen);
 
 VOID RTMPSetWcidSecurityInfo(
-	PRTMP_ADAPTER		pAd,
-	UINT8				BssIdx,
-	UINT8				KeyIdx,
-	UINT8				CipherAlg,
-	UINT8				Wcid,
-	UINT8				KeyTabFlag);
+	PRTMP_ADAPTER pAd,
+	UINT8 BssIdx,
+	UINT8 KeyIdx,
+	UINT8 CipherAlg,
+	UINT8 Wcid,
+	UINT8 KeyTabFlag);
 
-VOID	CalculateMIC(
-	IN	UCHAR			KeyDescVer,	
-	IN	UCHAR			*PTK,
-	OUT PEAPOL_PACKET   pMsg);
+VOID CalculateMIC(
+	IN UCHAR KeyDescVer,
+	IN UCHAR *PTK,
+	OUT PEAPOL_PACKET pMsg);
 
-PSTRING GetEapolMsgType(CHAR msg);
+PSTRING GetEapolMsgType(
+	CHAR msg);
+
+#ifdef CONFIG_STA_SUPPORT
+#endif /* CONFIG_STA_SUPPORT */
 
 /* 
  =====================================	
@@ -410,27 +403,27 @@ PSTRING GetEapolMsgType(CHAR msg);
  =====================================	
 */
 UINT RTMP_CALC_FCS32(
-	IN  UINT   Fcs,
-	IN  PUCHAR  Cp,
-	IN  INT     Len);
+	IN UINT Fcs,
+	IN PUCHAR Cp,
+	IN int Len);
 
 VOID RTMPConstructWEPIVHdr(
-	IN	UINT8 			key_idx,
-	IN	UCHAR			*pn,	
-	OUT	UCHAR			*iv_hdr);
+	IN UINT8 key_idx,
+	IN UCHAR *pn,
+	OUT UCHAR *iv_hdr);
 
-BOOLEAN	RTMPSoftEncryptWEP(
-	IN 		PRTMP_ADAPTER 	pAd,
-	IN 		PUCHAR			pIvHdr,
-	IN 		PCIPHER_KEY		pKey,
-	INOUT 	PUCHAR			pData,
-	IN 		ULONG			DataByteCnt);
+BOOLEAN RTMPSoftEncryptWEP(
+	IN PRTMP_ADAPTER pAd,
+	IN PUCHAR pIvHdr,
+	IN PCIPHER_KEY pKey,
+	INOUT PUCHAR pData,
+	IN ULONG DataByteCnt);
 
-BOOLEAN	RTMPSoftDecryptWEP(
-	IN 		PRTMP_ADAPTER 	pAd,
-	IN 		PCIPHER_KEY		pKey,
-	INOUT 	PUCHAR			pData,
-	INOUT 	UINT16			*DataByteCnt);
+BOOLEAN RTMPSoftDecryptWEP(
+	IN PRTMP_ADAPTER pAd,
+	IN PCIPHER_KEY pKey,
+	INOUT PUCHAR pData,
+	INOUT UINT16 *DataByteCnt);
 
 /* 
  =====================================	
@@ -438,26 +431,26 @@ BOOLEAN	RTMPSoftDecryptWEP(
  =====================================	
 */
 BOOLEAN RTMPSoftDecryptTKIP(
-	IN 		PRTMP_ADAPTER 	pAd,
-	IN 		PUCHAR			pHdr,
-	IN 		UCHAR    		UserPriority,
-	IN 		PCIPHER_KEY		pKey,
-	INOUT 	PUCHAR			pData,
-	IN 		UINT16			*DataByteCnt);
+	IN PRTMP_ADAPTER pAd,
+	IN PUCHAR pHdr,
+	IN UCHAR UserPriority,
+	IN PCIPHER_KEY pKey,
+	INOUT PUCHAR pData,
+	IN UINT16 *DataByteCnt);
 
-VOID TKIP_GTK_KEY_WRAP( 
-    IN UCHAR    *key,
-    IN UCHAR	*iv,
-    IN UCHAR    *input_text,
-    IN UINT32    input_len,
-    OUT UCHAR   *output_text);
+VOID TKIP_GTK_KEY_WRAP(
+	IN UCHAR *key,
+	IN UCHAR *iv,
+	IN UCHAR *input_text,
+	IN UINT32 input_len,
+	OUT UCHAR *output_text);
 
-VOID TKIP_GTK_KEY_UNWRAP( 
-    IN UCHAR    *key,
-    IN UCHAR	*iv,
-    IN UCHAR    *input_text,
-    IN UINT32    input_len,
-    OUT UCHAR   *output_text);
+VOID TKIP_GTK_KEY_UNWRAP(
+	IN UCHAR *key,
+	IN UCHAR *iv,
+	IN UCHAR *input_text,
+	IN UINT32 input_len,
+	OUT UCHAR *output_text);
 
 /* 
  =====================================	
@@ -466,33 +459,32 @@ VOID TKIP_GTK_KEY_UNWRAP(
 */
 BOOLEAN RTMPSoftDecryptAES(
 	IN PRTMP_ADAPTER pAd,
-	IN PUCHAR	pData,
-	IN ULONG	DataByteCnt, 
-	IN PCIPHER_KEY	pWpaKey);
+	IN PUCHAR pData,
+	IN ULONG DataByteCnt,
+	IN PCIPHER_KEY pWpaKey);
 
 VOID RTMPConstructCCMPHdr(
-	IN	UINT8 			key_idx,
-	IN	UCHAR			*pn,		
-	OUT	UCHAR			*ccmp_hdr);
+	IN UINT8 key_idx,
+	IN UCHAR *pn,
+	OUT UCHAR *ccmp_hdr);
 
 BOOLEAN RTMPSoftEncryptCCMP(
-	IN  PRTMP_ADAPTER   pAd,
-	IN 	PUCHAR			pHdr,
-	IN	PUCHAR			pIV,
-	IN 	PUCHAR			pKey,
-	INOUT PUCHAR		pData,
-	IN 	UINT32			DataLen);
+	IN PRTMP_ADAPTER pAd,
+	IN PUCHAR pHdr,
+	IN PUCHAR pIV,
+	IN PUCHAR pKey,
+	INOUT PUCHAR pData,
+	IN UINT32 DataLen);
 
 BOOLEAN RTMPSoftDecryptCCMP(
-	IN 		PRTMP_ADAPTER 	pAd,
-	IN 		PUCHAR			pHdr,
-	IN 		PCIPHER_KEY		pKey,
-	INOUT 	PUCHAR			pData,
-	INOUT 	UINT16			*DataLen);
+	IN PRTMP_ADAPTER pAd,
+	IN PUCHAR pHdr,
+	IN PCIPHER_KEY pKey,
+	INOUT PUCHAR pData,
+	INOUT UINT16 *DataLen);
 
 VOID CCMP_test_vector(
-	IN 	PRTMP_ADAPTER 	pAd,
-	IN	INT 			input);
+	IN PRTMP_ADAPTER pAd,
+	IN int input);
 
 #endif
-

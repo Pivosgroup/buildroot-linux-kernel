@@ -115,6 +115,18 @@ static void aml_sw_bit_setscl(void *data, int val)
 		scl &= ~(1<<(i2c->sw_pins->scl_bit));
 	writel(scl, i2c->sw_pins->scl_reg_out);
 }
+// add by steven for AT88S010.
+static int aml_sw_bit_getscl(void *data)
+{
+	struct aml_sw_i2c* i2c = (struct aml_sw_i2c*)data;
+	unsigned int scl;
+	unsigned int oe;
+
+	scl = readl(i2c->sw_pins->scl_reg_in) & (1<<(i2c->sw_pins->scl_bit));
+	
+	return scl? 1 : 0;
+}
+
 
 static void aml_sw_bit_setsda(void *data, int val)
 {
@@ -200,6 +212,7 @@ static struct aml_sw_i2c aml_sw_i2cd = {
 		.setsda			= aml_sw_bit_setsda,
 		.setscl			= aml_sw_bit_setscl,
 		.getsda			= aml_sw_bit_getsda,
+		.getscl			= aml_sw_bit_getscl, // add by steven for AT88S010.
 		.pre_xfer			= NULL,
 		.post_xfer		= NULL,
 		.getscl			= NULL,

@@ -47,6 +47,7 @@
 #define DEBUG_PTS
 #define DROP_B_FRAME_FOR_1080P_50_60FPS
 
+static DEFINE_MUTEX(vh264_mutex);
 /* 12M for L41 */
 #define MAX_DPB_BUFF_SIZE       (12*1024*1024)
 #define DEFAULT_MEM_SIZE        (32*1024*1024)
@@ -108,11 +109,12 @@ static vframe_t *vh264_vf_peek(void*);
 static vframe_t *vh264_vf_get(void*);
 static void vh264_vf_put(vframe_t *, void*);
 static int  vh264_vf_states(vframe_states_t *states, void*);
-static int vh264_event_cb(int type, void *data, void *private_data);
 
 static void vh264_prot_init(void);
 static void vh264_local_init(void);
 static void vh264_put_timer_func(unsigned long arg);
+static void stream_switching_done(void);
+static int vh264_vfbuf_use(void);
 
 static const char vh264_dec_id[] = "vh264-dev";
 
@@ -122,13 +124,13 @@ static const struct vframe_operations_s vh264_vf_provider = {
     .peek = vh264_vf_peek,
     .get = vh264_vf_get,
     .put = vh264_vf_put,
-    .event_cb = vh264_event_cb,
     .vf_states = vh264_vf_states,
 };
 static struct vframe_provider_s vh264_vf_prov;
 
 static u32 frame_buffer_size;
 static u32 frame_width, frame_height, frame_dur, frame_prog;
+static u32 last_mb_width, last_mb_height;
 static struct vframe_s vfpool[VF_POOL_SIZE];
 static u32 vfpool_idx[VF_POOL_SIZE];
 static s32 vfbuf_use[VF_BUF_NUM];
@@ -165,10 +167,13 @@ static u32 vh264_no_disp_count;
 static u32 vh264_no_disp_wd_count;
 #endif
 static u32 vh264_running;
+static s32 vh264_stream_switching;
+static s32 vh264_stream_new;
 static struct vframe_s *p_last_vf;
 static s32 last_ptr;
 static u32 wait_buffer_counter;
 static uint error_recovery_mode = 0;
+static uint mb_total = 0, mb_width = 0,  mb_height=0;
 
 #ifdef DEBUG_PTS
 static unsigned long pts_missed, pts_hit;
@@ -176,6 +181,8 @@ static unsigned long pts_missed, pts_hit;
 
 static atomic_t vh264_active = ATOMIC_INIT(0);
 static struct work_struct error_wd_work;
+static struct work_struct stream_switching_work;
+
 
 static struct dec_sysinfo vh264_amstream_dec_info;
 extern u32 trickmode_i;
@@ -245,8 +252,19 @@ static vframe_t *vh264_vf_get(void* op_arg)
 
     vf = &vfpool[get_ptr];
 
-    INCPTR(get_ptr);
+    if (vfpool_idx[get_ptr] == -1) {
+        if (!vh264_stream_switching && !vh264_stream_new)	{
+            while (vfpool_idx[get_ptr] == -1) {
+                /* discard the switching frame */
+                INCPTR(get_ptr);
+                if (likely(get_ptr == fill_ptr))
+                    return NULL;
+            }
+            vf = &vfpool[get_ptr];
+        }
+    }
 
+    INCPTR(get_ptr);
     return vf;
 }
 
@@ -254,31 +272,6 @@ static void vh264_vf_put(vframe_t *vf, void* op_arg)
 {
     INCPTR(putting_ptr);
 }
-
-static int vh264_event_cb(int type, void *data, void *private_data)
-{
-#if 0  // currently for h264, disable it
-    if(type & VFRAME_EVENT_RECEIVER_RESET){
-        unsigned long flags;
-        amvdec_stop();
-#ifndef CONFIG_POST_PROCESS_MANAGER
-        vf_light_unreg_provider(&vh264_vf_provider);
-#endif
-        spin_lock_irqsave(&lock, flags);
-        const struct vframe_receiver_op_s *vf_receiver_bak = vf_receiver;
-        vh264_local_init();
-        vf_receiver = vf_receiver_bak;
-        vh264_prot_init();
-        spin_unlock_irqrestore(&lock, flags); 
-#ifndef CONFIG_POST_PROCESS_MANAGER
-        vf_reg_provider(&vh264_vf_provider);
-#endif              
-        amvdec_start();
-    }
-#endif
-    return 0;        
-}
-
 static int  vh264_vf_states(vframe_states_t *states, void* op_arg)
 {
     unsigned long flags;
@@ -304,21 +297,11 @@ static int  vh264_vf_states(vframe_states_t *states, void* op_arg)
 
 static void set_frame_info(vframe_t *vf)
 {
-    unsigned int ar = 0;
-
     vf->width = frame_width;
     vf->height = frame_height;
     vf->duration = frame_dur;
+    vf->ratio_control = (min(h264_ar, (u32)DISP_RATIO_ASPECT_RATIO_MAX)) << DISP_RATIO_ASPECT_RATIO_BIT;
     vf->orientation = vh264_rotation;
-
-    if (vh264_ratio == 0) {
-        vf->ratio_control |= (0x90 << DISP_RATIO_ASPECT_RATIO_BIT); // always stretch to 16:9
-    } else {
-        //h264_ar = ((float)frame_height/frame_width)*customer_ratio;
-        ar = min(h264_ar, (u32)DISP_RATIO_ASPECT_RATIO_MAX);
-
-        vf->ratio_control = (ar << DISP_RATIO_ASPECT_RATIO_BIT);
-    }
 
     return;
 }
@@ -336,48 +319,17 @@ static void vh264_ppmgr_reset(void)
 }
 #endif
 
-#ifdef HANDLE_H264_IRQ
-static irqreturn_t vh264_isr(int irq, void *dev_id)
-#else
-static void vh264_isr(void)
-#endif
+static void vh264_set_params(int switch_done)
 {
-    unsigned int buffer_index;
-    vframe_t *vf;
-    unsigned int cpu_cmd;
-    unsigned int pts, pts_valid = 0, pts_duration = 0;
-    bool force_interlaced_frame = false;
-
-    WRITE_MPEG_REG(ASSIST_MBOX1_CLR_REG, 1);
-
-    if (0 == (stat & STAT_VDEC_RUN)) {
-        printk("decoder is not running\n");
-#ifdef HANDLE_H264_IRQ
-        return IRQ_HANDLED;
-#else
-        return;
-#endif
-    }
-
-    cpu_cmd = READ_MPEG_REG(AV_SCRATCH_0);
-
-#ifdef DROP_B_FRAME_FOR_1080P_50_60FPS
-    if((frame_dur < 2000) && 
-       (frame_width >= 1400) &&
-       (frame_height >= 1000) &&
-       (last_interlaced == 0)) {
-        SET_MPEG_REG_MASK(AV_SCRATCH_F, 0x8);
-    }
-#endif
-
-    if ((cpu_cmd & 0xff) == 1) {
         int timing_info_present_flag, aspect_ratio_info_present_flag, aspect_ratio_idc;
-        int mb_width, mb_total, max_dpb_size, actual_dpb_size, max_reference_size;
-        int i, mb_height, mb_mv_byte;
+        int max_dpb_size, actual_dpb_size, max_reference_size;
+        int i, mb_mv_byte;
         unsigned addr;
         unsigned int post_canvas;
-
+	ulong videoKeepBuf[3];
+	
         if (vh264_running) {
+/*
 #ifdef CONFIG_POST_PROCESS_MANAGER
             vh264_ppmgr_reset();
 #else 
@@ -389,6 +341,16 @@ static void vh264_isr(void)
             WRITE_MPEG_REG(AV_SCRATCH_8, 0);
             WRITE_MPEG_REG(AV_SCRATCH_9, 0);
             vh264_running = 0;
+*/
+		if (!vh264_stream_switching) {
+			if (!vh264_stream_new && !switch_done) {
+				if (vh264_vfbuf_use()) {
+					vh264_stream_new = 1;
+					schedule_work(&stream_switching_work);
+					return;
+				}
+			}
+		}
         }
 
         h264_first_pts_ready = 0;
@@ -408,6 +370,16 @@ static void vh264_isr(void)
         mb_mv_byte = (mb_width & 0x80000000) ? 24 : 96;
         mb_width = mb_width & 0xff;
         mb_height = mb_total / mb_width;
+
+        /* if width or height from outside is not equal to mb, then use mb */
+        if (last_mb_width && (last_mb_width != mb_width)) {
+            frame_width = 0;
+        }
+        if (last_mb_height && (last_mb_height != mb_height)) {
+            frame_height = 0;
+        }
+        last_mb_width = mb_width;
+        last_mb_height = mb_height;
 
         if (frame_width == 0 || frame_height == 0) {
             frame_width = mb_width << 4;
@@ -510,13 +482,13 @@ static void vh264_isr(void)
                 }
 
                 for (i = 21 ; i < actual_dpb_size ; i++) {
-                    buffer_spec[i].y_canvas_index = 3 * (i - 21) + 0;
+                    buffer_spec[i].y_canvas_index = 3 * (i - 21) + 3;
                     buffer_spec[i].y_addr = addr;
                     addr += mb_total << 8;
-                    buffer_spec[i].u_canvas_index = 3 * (i - 21) + 1;
+                    buffer_spec[i].u_canvas_index = 3 * (i - 21) + 4;
                     buffer_spec[i].u_addr = addr;
                     addr += mb_total << 6;
-                    buffer_spec[i].v_canvas_index = 3 * (i - 21) + 2;
+                    buffer_spec[i].v_canvas_index = 3 * (i - 21) + 5;
                     buffer_spec[i].v_addr = addr;
                     addr += mb_total << 6;
                     vfbuf_use[i] = 0;
@@ -542,7 +514,7 @@ static void vh264_isr(void)
         if (aspect_ratio_info_present_flag) {
             if (aspect_ratio_idc == EXTEND_SAR) {
                 printk("v264dec: aspect_ratio_idc = EXTEND_SAR, aspect_ratio_info = 0x%x\n", aspect_ratio_info);
-                h264_ar = 0x100 * (aspect_ratio_info >> 16) * frame_height / ((aspect_ratio_info & 0xffff) * frame_width);
+                h264_ar = div_u64(256ULL * (aspect_ratio_info >> 16) * frame_height, (aspect_ratio_info & 0xffff) * frame_width);
             } else {
                 printk("v264dec: aspect_ratio_idc = %d\n", aspect_ratio_idc);
 
@@ -596,13 +568,22 @@ static void vh264_isr(void)
                     h264_ar = 0x100 * frame_height * 1 / (frame_width * 2);
                     break;
                 default:
-                    h264_ar = frame_height * vh264_ratio / frame_width;
+                    if (vh264_ratio>>16) {
+                        h264_ar = (frame_height * (vh264_ratio&0xffff)  *0x100 + ((vh264_ratio>>16) *  frame_width/2))/((vh264_ratio>>16) *  frame_width);
+                    } else {
+                        h264_ar = frame_height * 0x100 / frame_width;
+                    }
                     break;
                 }
             }
         } else {
             printk("v264dec: aspect_ratio not available from source\n");
-            h264_ar = frame_height * vh264_ratio / frame_width;
+            if (vh264_ratio>>16) {
+                /* high 16 bit is width, low 16 bit is height */
+                h264_ar = ((vh264_ratio&0xffff) * frame_height* 0x100 + (vh264_ratio>>16)*frame_width/2) /( (vh264_ratio>>16) * frame_width);
+            } else {
+                h264_ar = frame_height * 0x100 / frame_width;
+            }
         }
 
         WRITE_MPEG_REG(AV_SCRATCH_1, addr);
@@ -611,6 +592,45 @@ static void vh264_isr(void)
         addr += mb_total * mb_mv_byte * max_reference_size;
         WRITE_MPEG_REG(AV_SCRATCH_4, addr);
         WRITE_MPEG_REG(AV_SCRATCH_0, (max_reference_size << 24) | (actual_dpb_size << 16) | (max_dpb_size << 8));
+}
+
+
+#ifdef HANDLE_H264_IRQ
+static irqreturn_t vh264_isr(int irq, void *dev_id)
+#else
+static void vh264_isr(void)
+#endif
+{
+    unsigned int buffer_index;
+    vframe_t *vf;
+    unsigned int cpu_cmd;
+    unsigned int pts, pts_valid = 0, pts_duration = 0;
+    bool force_interlaced_frame = false;
+
+    WRITE_MPEG_REG(ASSIST_MBOX1_CLR_REG, 1);
+
+    if (0 == (stat & STAT_VDEC_RUN)) {
+        printk("decoder is not running\n");
+#ifdef HANDLE_H264_IRQ
+        return IRQ_HANDLED;
+#else
+        return;
+#endif
+    }
+
+    cpu_cmd = READ_MPEG_REG(AV_SCRATCH_0);
+
+#ifdef DROP_B_FRAME_FOR_1080P_50_60FPS
+    if((frame_dur < 2000) && 
+       (frame_width >= 1400) &&
+       (frame_height >= 1000) &&
+       (last_interlaced == 0)) {
+        SET_MPEG_REG_MASK(AV_SCRATCH_F, 0x8);
+    }
+#endif
+
+    if ((cpu_cmd & 0xff) == 1) {
+		vh264_set_params(0);
     } else if ((cpu_cmd & 0xff) == 2) {
         int pic_struct_present, pic_struct, prog_frame, poc_sel, idr_flag, neg_poc;
         int i, status, num_frame, b_offset;
@@ -832,7 +852,14 @@ static void vh264_isr(void)
     } else if ((cpu_cmd & 0xff) == 3) {
         vh264_running = 1;
         // check all picture displayed then black screen
-        WRITE_MPEG_REG(AV_SCRATCH_0, 0);
+			if (vh264_vfbuf_use()) {
+				vh264_stream_switching = 1;
+				schedule_work(&stream_switching_work);
+			}
+		
+        //do not clear AV_SCRATCH_0 to make ucode pending on finish of the command
+        //until stream_switching_done is called.
+        //WRITE_MPEG_REG(AV_SCRATCH_0, 0);
     } else if ((cpu_cmd & 0xff) == 4) {
         vh264_running = 1;
         // reserved for slice group
@@ -855,6 +882,16 @@ static void vh264_isr(void)
 #endif
 }
 
+static int vh264_vfbuf_use(void)
+{
+	int i, j;
+	for (i=0, j=0; i<VF_BUF_NUM; i++) {
+		if (vfbuf_use[i] != 0) {
+			j++;
+		}
+	}
+	return j;
+}
 static void vh264_put_timer_func(unsigned long arg)
 {
     struct timer_list *timer = (struct timer_list *)arg;
@@ -875,6 +912,9 @@ static void vh264_put_timer_func(unsigned long arg)
     vh264_isr();
 #endif
 
+	if (vh264_stream_switching || vh264_stream_new) {
+		wait_buffer_counter = 0;
+	} else {
     reg_val = READ_MPEG_REG(AV_SCRATCH_9);
     wait_buffer_status = reg_val & (1 << 31);
     wait_i_pass_frames = reg_val & 0xff;
@@ -911,7 +951,7 @@ static void vh264_put_timer_func(unsigned long arg)
         vh264_prot_init();
         amvdec_start();
     }
-
+	}
 #if 0
     if (!wait_buffer_status) {
         if (vh264_no_disp_count++ > NO_DISP_WD_COUNT) {
@@ -920,7 +960,7 @@ static void vh264_put_timer_func(unsigned long arg)
 #ifdef CONFIG_POST_PROCESS_MANAGER
             vh264_ppmgr_reset();
 #else
-            vf_light_unreg_provider(&vh264_vf_prov);
+            vf_light_unreg_provider(PROVIDER_NAME);
             vh264_local_init();
             vf_reg_provider(vh264_vf_prov);
 #endif
@@ -933,21 +973,43 @@ static void vh264_put_timer_func(unsigned long arg)
     }
 #endif
 
-    if (putting_ptr != put_ptr) {
+    while (putting_ptr != put_ptr) {
         u32 index = vfpool_idx[put_ptr];
 
-        if (index >= VF_BUF_NUM) {
+        if (index != -1 && index >= VF_BUF_NUM) {
             printk("index %d\n", index);
+	         amvdec_stop();
+	#ifdef CONFIG_POST_PROCESS_MANAGER
+	        vh264_ppmgr_reset();
+	#else 
+	        vf_light_unreg_provider(&vh264_vf_prov);
+	        vh264_local_init();
+	        vf_reg_provider(&vh264_vf_prov);
+	#endif
+	        vh264_prot_init();
+	        amvdec_start();           
+          goto restart;  
         }
 
-        if (--vfbuf_use[index] == 0) {
-            buffer_for_recycle[buffer_for_recycle_wr++] = index + 1;
-            if (buffer_for_recycle_wr == VF_BUF_NUM) {
-                buffer_for_recycle_wr = 0;
+        if (index != -1) {
+            if (--vfbuf_use[index] == 0) {
+                if (!vh264_stream_switching && !vh264_stream_new) {
+                    buffer_for_recycle[buffer_for_recycle_wr++] = index + 1;
+                    if (buffer_for_recycle_wr == VF_BUF_NUM) {
+                        buffer_for_recycle_wr = 0;
+                    }
+                } else {
+				if (vh264_vfbuf_use() == 0) {
+
+                        stream_switching_done();
+					buffer_for_recycle_rd = buffer_for_recycle_wr;
+                    }
+                }
             }
         }
-
         INCPTR(put_ptr);
+	if (!vh264_stream_switching && !vh264_stream_new)
+		break;
     }
 
     if (buffer_for_recycle_rd != buffer_for_recycle_wr) {
@@ -965,7 +1027,7 @@ static void vh264_put_timer_func(unsigned long arg)
             }
         }
     }
-
+restart:
     timer->expires = jiffies + PUT_INTERVAL;
 
     add_timer(timer);
@@ -1023,7 +1085,7 @@ static void vh264_prot_init(void)
     WRITE_MPEG_REG(AV_SCRATCH_7, 0);
     WRITE_MPEG_REG(AV_SCRATCH_8, 0);
     WRITE_MPEG_REG(AV_SCRATCH_9, 0);
-    WRITE_MPEG_REG(AV_SCRATCH_F, (READ_MPEG_REG(AV_SCRATCH_F) & 0xffffffcf) | ((error_recovery_mode & 0x3) << 4));
+    WRITE_MPEG_REG(AV_SCRATCH_F, (READ_MPEG_REG(AV_SCRATCH_F) & 0xffffffc3) | ((error_recovery_mode & 0x3) << 4));
 
     /* clear mailbox interrupt */
     WRITE_MPEG_REG(ASSIST_MBOX1_CLR_REG, 1);
@@ -1036,8 +1098,8 @@ static void vh264_local_init(void)
 {
     int i;
 
-    //vh264_ratio = vh264_amstream_dec_info.ratio;
-    vh264_ratio = 0x100;
+    vh264_ratio = vh264_amstream_dec_info.ratio;
+    //vh264_ratio = 0x100;
 
     vh264_rotation = (((u32)vh264_amstream_dec_info.param) >> 16) & 0xffff;
 
@@ -1053,6 +1115,11 @@ static void vh264_local_init(void)
 
     buffer_for_recycle_rd = 0;
     buffer_for_recycle_wr = 0;
+
+    if (!vh264_running) {
+        last_mb_width = 0;
+        last_mb_height = 0;
+    }
 
     for (i = 0; i < VF_BUF_NUM; i++) {
         vfbuf_use[i] = 0;
@@ -1161,6 +1228,8 @@ static s32 vh264_init(void)
 
     stat |= STAT_TIMER_ARM;
 	vh264_running = 0;
+	vh264_stream_switching = 0;
+	vh264_stream_new = 0;
     amvdec_start();
 
     stat |= STAT_VDEC_RUN;
@@ -1206,20 +1275,145 @@ static int vh264_stop(void)
 
 static void error_do_work(struct work_struct *work)
 {
+    mutex_lock(&vh264_mutex);
+
+    /*
+     * we need to lock vh264_stop/vh264_init.
+     * because we will call amvdec_h264_remove on this step;
+     * then we may call more than once on free_irq/deltimer/..and some other.
+     */
     if (atomic_read(&vh264_active)) {
         vh264_stop();
         vh264_init();
     }
+
+    mutex_unlock(&vh264_mutex);
+}
+
+static void stream_switching_done(void)
+{
+    unsigned long flags;
+
+	if (vh264_stream_switching) {
+    spin_lock_irqsave(&lock, flags);
+    vh264_stream_switching = 0;
+    spin_unlock_irqrestore(&lock, flags);
+
+            WRITE_MPEG_REG(AV_SCRATCH_7, 0);
+            WRITE_MPEG_REG(AV_SCRATCH_8, 0);
+            WRITE_MPEG_REG(AV_SCRATCH_9, 0);
+    WRITE_MPEG_REG(AV_SCRATCH_0, 0);
+	} else if (vh264_stream_new) {
+    spin_lock_irqsave(&lock, flags);
+		vh264_stream_new = 0;
+    spin_unlock_irqrestore(&lock, flags);
+            WRITE_MPEG_REG(AV_SCRATCH_7, 0);
+            WRITE_MPEG_REG(AV_SCRATCH_8, 0);
+            WRITE_MPEG_REG(AV_SCRATCH_9, 0);
+		vh264_set_params(1);
+	}
+}
+
+static int canvas_dup(u8 *dst, ulong src_paddr, ulong size)
+{
+    void __iomem *p = ioremap_wc(src_paddr, size);
+    if (p) {
+        memcpy(dst, p, size);
+        iounmap(p);
+        return 1;
+    }
+    return 0;
+}
+
+static void stream_switching_do(struct work_struct *work)
+{
+	vframe_t *vf_prev, *vf_curr;	
+	unsigned int buffer_index;
+    bool do_copy = true;
+    int mb_total_num, mb_width_num, mb_height_num;
+
+    mutex_lock(&vh264_mutex);
+
+    if (atomic_read(&vh264_active)) {
+        unsigned long flags;
+        ulong videoKeepBuf[3], videoKeepBufPhys[3];
+
+        get_video_keep_buffer(videoKeepBuf, videoKeepBufPhys);
+
+        if (!videoKeepBuf[0] || !videoKeepBuf[1] || !videoKeepBuf[2]) {
+            do_copy = false;
+        }
+
+        spin_lock_irqsave(&lock, flags);
+
+        /* lock to make sure last_ptr is valid when vh264_stream_switching is 1 */
+        if (unlikely(!vh264_stream_switching) && unlikely(!vh264_stream_new)) {
+            /* a fast path when last frame of previous session is already recycled */
+            spin_unlock_irqrestore(&lock, flags);
+            mutex_unlock(&vh264_mutex);
+            return;
+        }
+
+        buffer_index = vfpool_idx[last_ptr];
+        mb_total_num = mb_total;
+        mb_width_num = mb_width;
+        mb_height_num = mb_height;
+
+        spin_unlock_irqrestore(&lock, flags);
+
+        /* construct a clone of the frame from last frame */
+        if (do_copy) {
+            /* construct a clone of the frame from last frame */
+                    canvas_config( 0, videoKeepBuf[0], mb_width << 4, mb_height << 4,
+                                  CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
+            canvas_dup((u8 *)videoKeepBuf[0], buffer_spec[buffer_index].y_addr, mb_total_num<<8);
+            canvas_dup((u8 *)videoKeepBuf[1], buffer_spec[buffer_index].u_addr, mb_total_num<<6);
+            canvas_dup((u8 *)videoKeepBuf[2], buffer_spec[buffer_index].v_addr, mb_total_num<<6);
+
+            canvas_config(0, videoKeepBufPhys[0], mb_width_num << 4, mb_height_num << 4,
+                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
+            canvas_config(1, videoKeepBufPhys[1], mb_width_num << 3, mb_height_num << 3,
+                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
+            canvas_config(2, videoKeepBufPhys[2], mb_width_num << 3, mb_height_num << 3,
+                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
+        }
+
+        /* lock again to make sure the insertion happens when vh264_stream_switching is true */
+        spin_lock_irqsave(&lock, flags);
+        if (unlikely(!vh264_stream_switching) && unlikely(!vh264_stream_new)) {
+            spin_unlock_irqrestore(&lock, flags);
+            mutex_unlock(&vh264_mutex);
+            return;
+        }
+
+        vf_prev = &vfpool[last_ptr];
+        vf_curr = &vfpool[fill_ptr];
+
+        *vf_curr = *vf_prev;
+        vf_curr->pts = 0;
+        vf_curr->duration = 1;
+        if (do_copy) {
+            vf_curr->canvas0Addr = vf_curr->canvas1Addr = 0x020100;
+        }
+
+        vfpool_idx[fill_ptr] = -1;
+        INCPTR(fill_ptr);
+
+        spin_unlock_irqrestore(&lock, flags);
+    }
+
+    mutex_unlock(&vh264_mutex);
 }
 
 static int amvdec_h264_probe(struct platform_device *pdev)
 {
     struct resource *mem;
-
+    mutex_lock(&vh264_mutex);
     printk("amvdec_h264 probe start.\n");
 
     if (!(mem = platform_get_resource(pdev, IORESOURCE_MEM, 0))) {
         printk("\namvdec_h264 memory resource undefined.\n");
+        mutex_unlock(&vh264_mutex);	
         return -EFAULT;
     }
 
@@ -1236,21 +1430,23 @@ static int amvdec_h264_probe(struct platform_device *pdev)
 
     if (vh264_init() < 0) {
         printk("\namvdec_h264 init failed.\n");
-
+        mutex_unlock(&vh264_mutex);
         return -ENODEV;
     }
 
     INIT_WORK(&error_wd_work, error_do_work);
+	INIT_WORK(&stream_switching_work, stream_switching_do);
 
     atomic_set(&vh264_active, 1);
 
     printk("amvdec_h264 probe end.\n");
-
+    mutex_unlock(&vh264_mutex);	
     return 0;
 }
 
 static int amvdec_h264_remove(struct platform_device *pdev)
 {
+    mutex_lock(&vh264_mutex);
     vh264_stop();
 
     atomic_set(&vh264_active, 0);
@@ -1259,7 +1455,7 @@ static int amvdec_h264_remove(struct platform_device *pdev)
     printk("pts missed %ld, pts hit %ld, pts_outside %d, duration %d, sync_outside %d\n",
            pts_missed, pts_hit, pts_outside, frame_dur, sync_outside);
 #endif
-
+    mutex_unlock(&vh264_mutex);
     return 0;
 }
 
@@ -1317,3 +1513,4 @@ module_exit(amvdec_h264_driver_remove_module);
 MODULE_DESCRIPTION("AMLOGIC H264 Video Decoder Driver");
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Chen Zhang <chen.zhang@amlogic.com>");
+

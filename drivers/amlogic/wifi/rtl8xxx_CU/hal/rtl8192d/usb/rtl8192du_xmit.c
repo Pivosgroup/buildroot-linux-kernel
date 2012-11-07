@@ -96,6 +96,19 @@ u32 rtw_get_ff_hwaddr(struct xmit_frame	*pxmitframe)
 
 }
 
+static void do_queue_select(_adapter	*padapter, struct pkt_attrib *pattrib)
+{
+	u8 qsel;
+		
+	qsel = pattrib->priority;
+#ifdef CONFIG_CONCURRENT_MODE	
+	if (check_fwstate(&padapter->mlmepriv, WIFI_AP_STATE) == _TRUE)
+		qsel = 7;//
+#endif //CONFIG_CONCURRENT_MODE
+	RT_TRACE(_module_rtl871x_xmit_c_,_drv_info_,("### do_queue_select priority=%d ,qsel = %d\n",pattrib->priority ,qsel));
+	pattrib->qsel = qsel;
+}
+
 int urb_zero_packet_chk(_adapter *padapter, int sz);
 int urb_zero_packet_chk(_adapter *padapter, int sz)
 {
@@ -353,7 +366,7 @@ static void _update_txdesc(struct xmit_frame *pxmitframe, u8 *pmem, int sz)
 		}
 
 #ifdef CONFIG_P2P
-		if(pregistrypriv->wifi_spec==1 && !rtw_p2p_chk_state(pwdinfo, P2P_STATE_NONE))
+		if(pregistrypriv->wifi_spec==1 && pwdinfo->p2p_state != P2P_STATE_NONE)
 		{
 			ptxdesc->txdw1 |= cpu_to_le32(BIT(6));//AGG BK
 			
@@ -560,7 +573,7 @@ static s32 update_txdesc(struct xmit_frame *pxmitframe, u8 *pmem, s32 sz)
 				//	Added by Albert 2011/06/09
 				//	In the P2P mode, the driver should not support the b mode.
 				//	So, the Tx packet shouldn't use the CCK rate
-				if(!rtw_p2p_chk_state(pwdinfo, P2P_STATE_NONE))
+				if ( pwdinfo->p2p_state != P2P_STATE_NONE )
 				{
 					ptxdesc->txdw5 |= cpu_to_le32(BIT(2));	//	Use the 6M data rate.
 				}
@@ -571,7 +584,7 @@ static s32 update_txdesc(struct xmit_frame *pxmitframe, u8 *pmem, s32 sz)
 		}
 		
 #ifdef CONFIG_P2P
-		if(pregistrypriv->wifi_spec==1 && !rtw_p2p_chk_state(pwdinfo, P2P_STATE_NONE))
+		if(pregistrypriv->wifi_spec==1 && pwdinfo->p2p_state != P2P_STATE_NONE)
 		{
 			ptxdesc->txdw1 |= cpu_to_le32(BIT(6));//AGG BK
 			
@@ -641,7 +654,7 @@ static s32 update_txdesc(struct xmit_frame *pxmitframe, u8 *pmem, s32 sz)
 			//	Added by Albert 2011/06/09
 			//	In the P2P mode, the driver should not support the b mode.
 			//	So, the Tx packet shouldn't use the CCK rate
-			if(!rtw_p2p_chk_state(pwdinfo, P2P_STATE_NONE))
+			if ( pwdinfo->p2p_state != P2P_STATE_NONE )
 			{
 				ptxdesc->txdw5 |= cpu_to_le32(BIT(2));	//	Use the 6M data rate.
 			}
@@ -930,6 +943,18 @@ s32 rtl8192du_xmitframe_complete(_adapter *padapter, struct xmit_priv *pxmitpriv
 
 				pxmitframe = LIST_CONTAINOR(xmitframe_plist, struct xmit_frame, list);
 
+#ifdef CONFIG_AP_MODE
+				if(xmitframe_enqueue_for_sleeping_sta(padapter, pxmitframe)==_TRUE)
+				{
+					//rtw_list_delete(&pxmitframe->list);
+			
+					ptxservq->qcnt--;
+
+					_exit_critical_bh(&pxmitpriv->lock, &irqL);
+			
+					continue;
+				}
+#endif
 
 				len = xmitframe_need_length(pxmitframe) + TXDESC_SIZE + ((USB_92D_DUMMY_OFFSET - 1) * PACKET_OFFSET_SZ);
 				if (pbuf + _RND8(len) > aggMaxLength)
@@ -1428,9 +1453,40 @@ static s32 pre_xmitframe(_adapter *padapter, struct xmit_frame *pxmitframe)
 	struct mlme_priv *pbuddy_mlmepriv = &(pbuddy_adapter->mlmepriv);
 #endif //CONFIG_CONCURRENT_MODE
 
+	do_queue_select(padapter, pattrib);
 	
 	_enter_critical_bh(&pxmitpriv->lock, &irqL);
 	
+#ifdef CONFIG_AP_MODE
+	if(xmitframe_enqueue_for_sleeping_sta(padapter, pxmitframe) == _TRUE)
+	{
+		struct sta_info *psta;
+		struct sta_priv *pstapriv = &padapter->stapriv;
+
+	
+		_exit_critical_bh(&pxmitpriv->lock, &irqL);
+
+		if(pattrib->psta)
+		{
+			psta = pattrib->psta;
+		}
+		else
+		{
+			psta=rtw_get_stainfo(pstapriv, pattrib->ra);
+		}
+
+		if(psta)
+		{
+			if(psta->sleepq_len > (NR_XMITFRAME>>3))
+			{
+				wakeup_sta_to_xmit(padapter, psta);
+			}	
+		}	
+
+		return _FALSE;
+	}
+#endif
+
 #ifdef PLATFORM_FREEBSD
 	//force tx to enqueue, and schedule tx task later.
 	goto enqueue;
@@ -1527,7 +1583,7 @@ s32 rtl8192du_hostap_mgnt_xmit_entry(_adapter *padapter, _pkt *pkt)
 	struct urb *urb;
 	unsigned char *pxmitbuf;
 	struct tx_desc *ptxdesc;
-	struct rtw_ieee80211_hdr *tx_hdr;
+	struct ieee80211_hdr *tx_hdr;
 	struct hostapd_priv *phostapdpriv = padapter->phostapdpriv;	
 	struct net_device *pnetdev = padapter->pnetdev;
 	HAL_DATA_TYPE *pHalData = GET_HAL_DATA(padapter);
@@ -1539,11 +1595,11 @@ s32 rtl8192du_hostap_mgnt_xmit_entry(_adapter *padapter, _pkt *pkt)
 	skb = pkt;
 	
 	len = skb->len;
-	tx_hdr = (struct rtw_ieee80211_hdr *)(skb->data);
+	tx_hdr = (struct ieee80211_hdr *)(skb->data);
 	fc = le16_to_cpu(tx_hdr->frame_ctl);
 	bmcst = IS_MCAST(tx_hdr->addr1);
 
-	if ((fc & RTW_IEEE80211_FCTL_FTYPE) != RTW_IEEE80211_FTYPE_MGMT)
+	if ((fc & IEEE80211_FCTL_FTYPE) != IEEE80211_FTYPE_MGMT)
 		goto _exit;
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,18)) // http://www.mail-archive.com/netdev@vger.kernel.org/msg17214.html

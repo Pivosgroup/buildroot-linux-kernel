@@ -288,7 +288,7 @@ static int atbm8830_set_fe(struct dvb_frontend *fe,
 
 	/* start auto lock */
 	for (i = 0; i < 10; i++) {
-		mdelay(100);
+		mdelay(200);//modifed by clei from yfeng 2012/05/25
 		dprintk("Try %d\n", i);
 		is_locked(priv, &locked);
 		if (locked != 0) {

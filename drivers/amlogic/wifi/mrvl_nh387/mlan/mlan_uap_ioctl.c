@@ -704,9 +704,6 @@ mlan_uap_ioctl(t_void * adapter, pmlan_ioctl_req pioctl_req)
         if (pm->sub_command == MLAN_OID_PM_CFG_HS_CFG) {
             status = wlan_pm_ioctl_hscfg(pmadapter, pioctl_req);
         }
-        if (pm->sub_command == MLAN_OID_PM_INFO) {
-            status = wlan_get_pm_info(pmadapter, pioctl_req);
-        }
         break;
 
     case MLAN_IOCTL_SEC_CFG:

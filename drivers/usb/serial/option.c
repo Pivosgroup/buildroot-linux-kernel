@@ -769,6 +769,14 @@ static const struct usb_device_id option_ids[] = {
 	{ USB_DEVICE(PIRELLI_VENDOR_ID, PIRELLI_PRODUCT_1012)},
 
 	{ USB_DEVICE(CINTERION_VENDOR_ID, 0x0047) },
+	
+	// 3G dongle add by steven.
+	{ USB_DEVICE(0x1C9E, 0x9800)}, // for SU-8650U, SU-8900U, SU-9800U
+	{ USB_DEVICE(0x1C9E, 0x9E00)}, // for SU-7300U.
+	{ USB_DEVICE(0x20A6, 0xF00E)}, 
+	{ USB_DEVICE(0x19F5, 0xF000)}, // Telechips request.
+	{ USB_DEVICE(0x19F5, 0x9013)}, // UW100 for Telechips.
+	
 	{ } /* Terminating entry */
 };
 MODULE_DEVICE_TABLE(usb, option_ids);

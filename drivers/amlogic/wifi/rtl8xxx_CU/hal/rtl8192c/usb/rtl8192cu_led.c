@@ -59,25 +59,6 @@ BlinkWorkItemCallback(
 	struct work_struct *work
 	);
 
-//
-//	Description:
-//		Reset blinking status of LED_871x object.
-//
-static void
-ResetLedStatus(PLED_871x	pLed) {
-	pLed->CurrLedState = LED_OFF; // Current LED state.
-	pLed->bLedOn = _FALSE; // true if LED is ON, false if LED is OFF.
-	
-	pLed->bLedBlinkInProgress = _FALSE; // true if it is blinking, false o.w..
-	pLed->bLedNoLinkBlinkInProgress = _FALSE;
-	pLed->bLedLinkBlinkInProgress = _FALSE;
-	pLed->bLedStartToLinkBlinkInProgress = _FALSE;
-	pLed->bLedScanBlinkInProgress = _FALSE;
-	pLed->bLedWPSBlinkInProgress = _FALSE;
-	pLed->BlinkTimes = 0; // Number of times to toggle led state for blinking.
-	pLed->BlinkingLedState = LED_UNKNOWN; // Next state for blinking, either LED_ON or LED_OFF are.
-}
-
 //================================================================================
 // LED_819xUsb routines. 
 //================================================================================
@@ -94,11 +75,18 @@ InitLed871x(
 	)
 {
 	pLed->padapter = padapter;
+
 	pLed->LedPin = LedPin;
 
-	ResetLedStatus(pLed);
+	pLed->CurrLedState = LED_OFF;
+	pLed->bLedOn = _FALSE;
+
+	pLed->bLedBlinkInProgress = _FALSE;
+	pLed->BlinkTimes = 0;
+	pLed->BlinkingLedState = LED_UNKNOWN;
 
 	_init_timer(&(pLed->BlinkTimer), padapter->pnetdev, BlinkTimerCallback, pLed);
+
 	_init_workitem(&(pLed->BlinkWorkItem), BlinkWorkItemCallback, pLed);
 }
 
@@ -113,7 +101,28 @@ DeInitLed871x(
 	)
 {
 	_cancel_timer_ex(&(pLed->BlinkTimer));
-	ResetLedStatus(pLed);
+
+	// We should reset bLedBlinkInProgress if we cancel the LedControlTimer, 2005.03.10, by rcnjko.
+	pLed->bLedBlinkInProgress = _FALSE;
+}
+
+//
+//	Description:
+//		Reset blinking status of LED_871x object.
+//
+static void
+ResetLedStatus(PLED_871x	pLed) {
+	pLed->CurrLedState = LED_OFF; // Current LED state.
+	pLed->bLedOn = _FALSE; // true if LED is ON, false if LED is OFF.
+	
+	pLed->bLedBlinkInProgress = _FALSE; // true if it is blinking, false o.w..
+	pLed->bLedNoLinkBlinkInProgress = _FALSE;
+	pLed->bLedLinkBlinkInProgress = _FALSE;
+	pLed->bLedStartToLinkBlinkInProgress = _FALSE;
+	pLed->bLedScanBlinkInProgress = _FALSE;
+	pLed->bLedWPSBlinkInProgress = _FALSE;
+	pLed->BlinkTimes = 0; // Number of times to toggle led state for blinking.
+	pLed->BlinkingLedState = LED_OFF; // Next state for blinking, either LED_ON or LED_OFF are.
 }
 
 //

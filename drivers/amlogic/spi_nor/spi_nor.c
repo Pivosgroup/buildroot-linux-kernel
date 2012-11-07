@@ -466,6 +466,7 @@ static struct flash_info spi_nor_data [] = {
 	{ "mx25l160", 0xC22015, 64 * 1024, 32, SECT_4K, },
 	{ "mx25l1605", 0xC22015, 64 * 1024, 32, SECT_4K,},
 	{ "mx25l3205d", 0xC22016, 64 * 1024, 64, BLOCK_64K, },
+	{ "mx25l1635d", 0xC22415, 64 * 1024, 64, BLOCK_64K,}, // add by steven for 25L1635 support.
 	{ "mx25l6445e", 0xC22017, 64 * 1024, 128, SECT_4K, },
 	{ "mx25l2805d", 0xC22018, 64 * 1024, 256, SECT_4K, },
 };

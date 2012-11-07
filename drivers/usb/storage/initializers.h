@@ -48,3 +48,6 @@ int usb_stor_ucr61s2b_init(struct us_data *us);
 
 /* This places the HUAWEI E220 devices in multi-port mode */
 int usb_stor_huawei_e220_init(struct us_data *us);
+
+/* This places The A-LINK 3G module for it init process */
+int usb_stor_alink_3g_init(struct us_data *us);

@@ -5,35 +5,25 @@
  * Hsinchu County 302,
  * Taiwan, R.O.C.
  *
- * (c) Copyright 2002-2007, Ralink Technology, Inc.
+ * (c) Copyright 2002-2010, Ralink Technology, Inc.
  *
- * This program is free software; you can redistribute it and/or modify  * 
- * it under the terms of the GNU General Public License as published by  * 
- * the Free Software Foundation; either version 2 of the License, or     * 
- * (at your option) any later version.                                   * 
- *                                                                       * 
- * This program is distributed in the hope that it will be useful,       * 
- * but WITHOUT ANY WARRANTY; without even the implied warranty of        * 
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         * 
- * GNU General Public License for more details.                          * 
- *                                                                       * 
- * You should have received a copy of the GNU General Public License     * 
- * along with this program; if not, write to the                         * 
- * Free Software Foundation, Inc.,                                       * 
- * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             * 
- *                                                                       * 
- *************************************************************************
+ * This program is free software; you can redistribute it and/or modify  *
+ * it under the terms of the GNU General Public License as published by  *
+ * the Free Software Foundation; either version 2 of the License, or     *
+ * (at your option) any later version.                                   *
+ *                                                                       *
+ * This program is distributed in the hope that it will be useful,       *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+ * GNU General Public License for more details.                          *
+ *                                                                       *
+ * You should have received a copy of the GNU General Public License     *
+ * along with this program; if not, write to the                         *
+ * Free Software Foundation, Inc.,                                       *
+ * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
+ *                                                                       *
+ *************************************************************************/
 
-	Module Name:
-	rtmp_wep.c
-
-	Abstract:
-
-	Revision History:
-	Who			When			What
-	--------	----------		----------------------------------------------
-	Paul Wu		10-28-02		Initial
-*/
 
 #include	"rt_config.h"
 
@@ -128,7 +118,7 @@ UINT FCSTAB_32[256] =
 UINT	RTMP_CALC_FCS32(
 	IN	UINT	Fcs,
 	IN	PUCHAR	Cp,
-	IN	INT		Len)
+	IN	int		Len)
 {
 	while (Len--)
 	   Fcs = (((Fcs) >> 8) ^ FCSTAB_32[((Fcs) ^ (*Cp++)) & 0xff]);
@@ -164,9 +154,17 @@ VOID	RTMPInitWepEngine(
 	IN	UCHAR			KeyLen,
 	OUT	ARC4_CTX_STRUC  *pARC4_CTX)
 {	
-	UCHAR   seed[16];
+/*	UCHAR   seed[16];*/
+	PUCHAR	seed = NULL;
 	UINT8	seed_len;
 		
+	os_alloc_mem(NULL, (UCHAR **)&seed, sizeof(UCHAR)*16);
+	if (seed == NULL)
+	{
+		DBGPRINT(RT_DEBUG_ERROR, ("%s: seed Allocate memory fail!!!\n", __FUNCTION__));
+		return;
+	}
+	
 	/* WEP seed construction */
 	NdisZeroMemory(seed, 16);
 	NdisMoveMemory(seed, pIv, 3);
@@ -176,6 +174,9 @@ VOID	RTMPInitWepEngine(
 	/* RC4 uses a pseudo-random number generator (PRNG) 
 	   to generate a key stream */
 	ARC4_INIT(pARC4_CTX, &seed[0], seed_len);    		
+
+	if (seed != NULL)
+		os_free_mem(NULL, seed);
 }
 
 /*
@@ -230,8 +231,15 @@ BOOLEAN	RTMPSoftEncryptWEP(
 	INOUT 	PUCHAR			pData,
 	IN 		ULONG			DataByteCnt)
 {
-	ARC4_CTX_STRUC ARC4_CTX; 
+	ARC4_CTX_STRUC *ARC4_CTX = NULL;
 	UINT 	FCSCRC32;
+
+	os_alloc_mem(NULL, (UCHAR **)&ARC4_CTX, sizeof(ARC4_CTX_STRUC));
+	if (ARC4_CTX == NULL)
+	{
+		DBGPRINT(RT_DEBUG_ERROR, ("%s: ARC4_CTX Allocate memory fail!!!\n", __FUNCTION__));
+		return FALSE;
+	}
 
 	if (pKey->KeyLen == 0)
 	{
@@ -243,7 +251,7 @@ BOOLEAN	RTMPSoftEncryptWEP(
 	RTMPInitWepEngine(pIvHdr, 
 					  pKey->Key, 					   
 					  pKey->KeyLen,
-					  &ARC4_CTX);
+					  ARC4_CTX);
 
 	/* WEP computes the ICV over the plaintext data */
 	FCSCRC32 = RTMP_CALC_FCS32(PPPINITFCS32, pData, DataByteCnt);
@@ -254,7 +262,10 @@ BOOLEAN	RTMPSoftEncryptWEP(
 	NdisMoveMemory(pData + DataByteCnt, (PUCHAR)&FCSCRC32, LEN_ICV);
 
 	/* Encrypt the MPDU plaintext data and ICV using ARC4 with a seed */
-	ARC4_Compute(&ARC4_CTX, pData, DataByteCnt + LEN_ICV, pData);
+	ARC4_Compute(ARC4_CTX, pData, DataByteCnt + LEN_ICV, pData);
+
+	if (ARC4_CTX != NULL)
+		os_free_mem(NULL, ARC4_CTX);
 
 	return TRUE;
 }
@@ -285,7 +296,8 @@ BOOLEAN	RTMPSoftDecryptWEP(
 	INOUT 	PUCHAR			pData,
 	INOUT 	UINT16			*DataByteCnt)
 {
-	ARC4_CTX_STRUC 	ARC4_CTX; 	
+	/*ARC4_CTX_STRUC 	ARC4_CTX;*/
+	ARC4_CTX_STRUC 	*ARC4_CTX = NULL;
 	PUCHAR			plaintext_ptr;
 	UINT16			plaintext_len;
 	PUCHAR			ciphertext_ptr;
@@ -293,6 +305,13 @@ BOOLEAN	RTMPSoftDecryptWEP(
 	UINT			trailfcs;
 	UINT    		crc32;
 	
+	os_alloc_mem(NULL, (UCHAR **)&ARC4_CTX, sizeof(ARC4_CTX_STRUC));
+	if (ARC4_CTX == NULL)
+	{
+		DBGPRINT(RT_DEBUG_ERROR, ("%s: ARC4_CTX Allocate memory fail!!!\n", __FUNCTION__));
+		return FALSE;
+	}
+
 	if (pKey->KeyLen == 0)
 	{
 		DBGPRINT(RT_DEBUG_ERROR, ("%s : The key is not available !\n", __FUNCTION__));
@@ -303,7 +322,7 @@ BOOLEAN	RTMPSoftDecryptWEP(
 	RTMPInitWepEngine(pData, 
 					  pKey->Key, 					   
 					  pKey->KeyLen,
-					  &ARC4_CTX);
+					  ARC4_CTX);
 
 	/* Skip the WEP IV header (4-bytes) */
 	ciphertext_ptr = pData + LEN_WEP_IV_HDR;
@@ -311,7 +330,7 @@ BOOLEAN	RTMPSoftDecryptWEP(
 	
 	/* Decrypt the WEP MPDU. It shall include plaintext and ICV.
 	   The result output would overwrite the original WEP IV header position */
-	ARC4_Compute(&ARC4_CTX, 
+	ARC4_Compute(ARC4_CTX, 
 				 ciphertext_ptr, 
 				 ciphertext_len, 
 				 pData);
@@ -330,13 +349,16 @@ BOOLEAN	RTMPSoftDecryptWEP(
 
     if(crc32 != cpu2le32(trailfcs))
     {
-		DBGPRINT(RT_DEBUG_ERROR, ("! WEP Data CRC Error !\n"));	 //CRC error.
+		DBGPRINT(RT_DEBUG_ERROR, ("! WEP Data CRC Error !\n"));	 /*CRC error.*/
 		return FALSE;
 	}
 
 	/* Update the total data length */
 	*DataByteCnt = plaintext_len;
 	
+	if (ARC4_CTX != NULL)
+		os_free_mem(NULL, ARC4_CTX);
+
 	return TRUE;
 }
 

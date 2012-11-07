@@ -2,7 +2,7 @@
  *
  *  @brief This file declares the IOCTL data structures and APIs.
  *
- *  Copyright (C) 2008-2011, Marvell International Ltd. 
+ *  Copyright (C) 2008-2010, Marvell International Ltd. 
  *  All Rights Reserved
  */
 
@@ -111,7 +111,6 @@ enum
 #ifdef UAP_SUPPORT
     MLAN_OID_PM_CFG_PS_MODE,
 #endif /* UAP_SUPPORT */
-    MLAN_OID_PM_INFO,
 
     /* WMM Configuration Group */
     MLAN_IOCTL_WMM_CFG = 0x000A0000,
@@ -137,7 +136,6 @@ enum
     MLAN_OID_11N_CFG_ADDBA_PARAM,
     MLAN_OID_11N_CFG_MAX_TX_BUF_SIZE,
     MLAN_OID_11N_CFG_AMSDU_AGGR_CTRL,
-    MLAN_OID_11N_CFG_TX_BF_CAP,
 
 #ifdef STA_SUPPORT
     /* 802.11d Configuration Group */
@@ -177,8 +175,6 @@ enum
     MLAN_OID_MISC_VS_IE,
     MLAN_OID_MISC_INIT_SHUTDOWN,
     MLAN_OID_MISC_CUSTOM_IE,
-    MLAN_OID_MISC_IP_ADDR,
-    MLAN_OID_MISC_MAC_CONTROL,
 };
 
 /** Sub command size */
@@ -347,8 +343,6 @@ typedef struct _mlan_scan_resp
     t_u32 num_in_scan_table;
     /** Scan table */
     t_u8 *pscan_table;
-    /* Age */
-    t_u32 age_in_secs;
 } mlan_scan_resp, *pmlan_scan_resp;
 
 /** Type definition of mlan_scan_cfg */
@@ -497,9 +491,6 @@ typedef struct _mlan_ssid_bssid
 
 /** Maximum group key timer */
 #define MAX_GRP_TIMER           86400
-
-/** Maximum value of 4 byte configuration */
-#define MAX_VALID_DWORD         0x7FFFFFFF      /* (1 << 31) - 1 */
 
 /** Band config ACS mode */
 #define BAND_CONFIG_ACS_MODE    0x40
@@ -690,23 +681,6 @@ typedef struct _mlan_uap_bss_param
     wep_param wep_cfg;
     /** wpa param */
     wpa_param wpa_cfg;
-    /** Mgmt IE passthru mask */
-    t_u32 mgmt_ie_passthru_mask;
-    /* 
-     * 11n HT Cap  HTCap_t  ht_cap
-     */
-    /** HT Capabilities Info field */
-    t_u16 ht_cap_info;
-    /** A-MPDU Parameters field */
-    t_u8 ampdu_param;
-    /** Supported MCS Set field */
-    t_u8 supported_mcs_set[16];
-    /** HT Extended Capabilities field */
-    t_u16 ht_ext_cap;
-    /** Transmit Beamforming Capabilities field */
-    t_u32 tx_bf_cap;
-    /** Antenna Selection Capability field */
-    t_u8 asel;
     /** BSS status */
     t_u16 bss_status;
     /** scan channel list in ACS mode */
@@ -789,8 +763,6 @@ typedef struct _mlan_ds_band_cfg
     t_u32 adhoc_channel;
     /** Ad-hoc secondary channel offset */
     t_u32 sec_chan_offset;
-    /** fw supportedd band */
-    t_u32 fw_bands;
 } mlan_ds_band_cfg;
 
 /** Type definition of mlan_ds_radio_cfg for MLAN_IOCTL_RADIO_CFG */
@@ -1083,12 +1055,10 @@ typedef struct
 /** mlan_debug_info data structure for MLAN_OID_GET_DEBUG_INFO */
 typedef struct _mlan_debug_info
 {
-    /** Corresponds to packets_out member of mlan_private.wmm */
+    /** Corresponds to IntCounter member of mlan_adapter */
+    t_u32 int_counter;
+    /** Corresponds to packets_out member of mlan_adapter.wmm */
     t_u32 packets_out[MAX_NUM_TID];
-    /** Corresponds to packets_in member of mlan_private.wmm */
-    t_u32 packets_in[MAX_NUM_TID];
-    /** Corresponds to pkts_queued member of mlan_private.wmm */
-    t_u32 pkts_queued[MAX_NUM_TID];
     /** Corresponds to max_tx_buf_size member of mlan_adapter*/
     t_u32 max_tx_buf_size;
      /** Corresponds to tx_buf_size member of mlan_adapter*/
@@ -1119,32 +1089,13 @@ typedef struct _mlan_debug_info
     t_u8 is_hs_configured;
     /** Corresponds to hs_activated member of mlan_adapter */
     t_u8 hs_activated;
-    /** Corresponds to pps_uapsd_mode member of mlan_adapter */
-    t_u16 pps_uapsd_mode;
-    /** Corresponds to sleep_period.period member of mlan_adapter */
-    t_u16 sleep_pd;
-    /** Corresponds to wmm_qosinfo member of mlan_private */
-    t_u8 qos_cfg;
-    /** Corresponds to tx_lock_flag member of mlan_adapter */
-    t_u8 tx_lock_flag;
-    /** Corresponds to port_open member of mlan_private */
-    t_u8 port_open;
-    /** Corresponds to scan_processing member of mlan_adapter */
-    t_u32 scan_processing;
+
     /** Number of host to card command failures */
     t_u32 num_cmd_host_to_card_failure;
     /** Number of host to card sleep confirm failures */
     t_u32 num_cmd_sleep_cfm_host_to_card_failure;
     /** Number of host to card Tx failures */
     t_u32 num_tx_host_to_card_failure;
-    /** Number of card to host command/event failures */
-    t_u32 num_cmdevt_card_to_host_failure;
-    /** Number of card to host Rx failures */
-    t_u32 num_rx_card_to_host_failure;
-    /** Number of interrupt read failures */
-    t_u32 num_int_read_failure;
-    /** Last interrupt status */
-    t_u32 last_int_status;
     /** Number of deauthentication events */
     t_u32 num_event_deauth;
     /** Number of disassosiation events */
@@ -1184,10 +1135,6 @@ typedef struct _mlan_debug_info
     t_u8 data_sent;
     /** Corresponds to cmd_sent member of mlan_adapter */
     t_u8 cmd_sent;
-    /** multiport tx aggr enable flag */
-    t_u8 mpa_tx_enable;
-    /** multiport rx aggr enable flag */
-    t_u8 mpa_rx_enable;
     /** SDIO multiple port read bitmap */
     t_u16 mp_rd_bitmap;
     /** SDIO multiple port write bitmap */
@@ -1311,8 +1258,6 @@ typedef struct _mlan_ds_encrypt_key
 {
     /** Key disable */
     t_u32 key_disable;
-    /** key removed flag, when this flag is set to MTRUE, only key_index will be check */
-    t_u32 key_remove;
     /** Key index */
     t_u32 key_index;
     /** Current WEP key flag */
@@ -1531,7 +1476,7 @@ typedef struct _mlan_ds_power_cfg
 /** Host sleep config GPIO : Default */
 #define HOST_SLEEP_DEF_GPIO     0xff
 /** Host sleep config gap : Default */
-#define HOST_SLEEP_DEF_GAP      200
+#define HOST_SLEEP_DEF_GAP      0
 
 /** Type definition of mlan_ds_hs_cfg for MLAN_OID_PM_CFG_HS_CFG */
 typedef struct _mlan_ds_hs_cfg
@@ -1721,13 +1666,6 @@ typedef struct _mlan_ds_ps_mgmt
     inact_sleep_param inact_param;
 } mlan_ds_ps_mgmt;
 
-/** mlan_ds_ps_info */
-typedef struct _mlan_ds_ps_info
-{
-    /** suspend allowed flag */
-    t_u32 is_suspend_allowed;
-} mlan_ds_ps_info;
-
 /** Type definition of mlan_ds_pm_cfg for MLAN_IOCTL_PM_CFG */
 typedef struct _mlan_ds_pm_cfg
 {
@@ -1752,8 +1690,6 @@ typedef struct _mlan_ds_pm_cfg
         mlan_ds_sleep_params sleep_params;
         /** PS configuration parameters for MLAN_OID_PM_CFG_PS_MODE */
         mlan_ds_ps_mgmt ps_mgmt;
-        /** power info for MLAN_OID_PM_INFO */
-        mlan_ds_ps_info ps_info;
     } param;
 } mlan_ds_pm_cfg, *pmlan_ds_pm_cfg;
 
@@ -2056,8 +1992,6 @@ typedef struct _mlan_ds_11n_cfg
         t_u32 htcap_cfg;
         /** Tx param for 11n for MLAN_OID_11N_AMSDU_AGGR_CTRL */
         mlan_ds_11n_amsdu_aggr_ctrl amsdu_aggr_ctrl;
-        /** Transmit Beamforming Capabilities field */
-        t_u32 tx_bf_cap;
     } param;
 } mlan_ds_11n_cfg, *pmlan_ds_11n_cfg;
 
@@ -2310,32 +2244,6 @@ enum
     MLAN_FUNC_SHUTDOWN,
 };
 
-/** IP address length */
-#define IPADDR_LEN                  (16)
-/** Max number of ip */
-#define MAX_IPADDR                  (4)
-/** IP address type - IPv4*/
-#define IPADDR_TYPE_IPV4            (1)
-/** IP operation remove */
-#define MLAN_IPADDR_OP_IP_REMOVE    (0)
-/** IP operation ARP filter */
-#define MLAN_IPADDR_OP_ARP_FILTER   MBIT(0)
-/** IP operation ARP response */
-#define MLAN_IPADDR_OP_AUTO_ARP_RESP    MBIT(1)
-
-/** Type definition of mlan_ds_misc_ipaddr_cfg for MLAN_OID_MISC_IP_ADDR */
-typedef struct _mlan_ds_misc_ipaddr_cfg
-{
-    /** Operation code */
-    t_u32 op_code;
-    /** IP address type */
-    t_u32 ip_addr_type;
-    /** Number of IP */
-    t_u32 ip_addr_num;
-    /** IP address */
-    t_u8 ip_addr[MAX_IPADDR][IPADDR_LEN];
-} mlan_ds_misc_ipaddr_cfg;
-
 /** Type definition of mlan_ds_misc_cfg for MLAN_IOCTL_MISC_CFG */
 typedef struct _mlan_ds_misc_cfg
 {
@@ -2366,10 +2274,6 @@ typedef struct _mlan_ds_misc_cfg
         t_u32 func_init_shutdown;
         /** Custom IE for MLAN_OID_MISC_CUSTOM_IE */
         mlan_ds_misc_custom_ie cust_ie;
-        /** IP address configuration */
-        mlan_ds_misc_ipaddr_cfg ipaddr_cfg;
-        /** MAC control for MLAN_OID_MISC_MAC_CONTROL */
-        t_u32 mac_ctrl;
     } param;
 } mlan_ds_misc_cfg, *pmlan_ds_misc_cfg;
 

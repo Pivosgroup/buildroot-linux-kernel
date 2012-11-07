@@ -5,35 +5,25 @@
  * Hsinchu County 302,
  * Taiwan, R.O.C.
  *
- * (c) Copyright 2002-2007, Ralink Technology, Inc.
+ * (c) Copyright 2002-2010, Ralink Technology, Inc.
  *
- * This program is free software; you can redistribute it and/or modify  * 
- * it under the terms of the GNU General Public License as published by  * 
- * the Free Software Foundation; either version 2 of the License, or     * 
- * (at your option) any later version.                                   * 
- *                                                                       * 
- * This program is distributed in the hope that it will be useful,       * 
- * but WITHOUT ANY WARRANTY; without even the implied warranty of        * 
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         * 
- * GNU General Public License for more details.                          * 
- *                                                                       * 
- * You should have received a copy of the GNU General Public License     * 
- * along with this program; if not, write to the                         * 
- * Free Software Foundation, Inc.,                                       * 
- * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             * 
- *                                                                       * 
- *************************************************************************
+ * This program is free software; you can redistribute it and/or modify  *
+ * it under the terms of the GNU General Public License as published by  *
+ * the Free Software Foundation; either version 2 of the License, or     *
+ * (at your option) any later version.                                   *
+ *                                                                       *
+ * This program is distributed in the hope that it will be useful,       *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+ * GNU General Public License for more details.                          *
+ *                                                                       *
+ * You should have received a copy of the GNU General Public License     *
+ * along with this program; if not, write to the                         *
+ * Free Software Foundation, Inc.,                                       *
+ * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
+ *                                                                       *
+ *************************************************************************/
 
-	Module Name:
-	cmm_aes.c
-
-	Abstract:
-
-	Revision History:
-	Who			When			What
-	--------	----------		----------------------------------------------
-	Paul Wu		02-25-02		Initial
-*/
 
 #include	"rt_config.h"
 
@@ -79,12 +69,12 @@ UCHAR SboxTable[256] =
 	0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16
 };
 
-VOID xor_32(
+static VOID xor_32(
 	IN  PUCHAR  a,
 	IN  PUCHAR  b,
 	OUT PUCHAR  out)
 {
-	INT i;
+	int i;
 
 	for (i=0;i<4; i++)
 	{
@@ -92,12 +82,12 @@ VOID xor_32(
 	}
 }
 
-VOID xor_128(
+static VOID xor_128(
 	IN  PUCHAR  a,
 	IN  PUCHAR  b,
 	OUT PUCHAR  out)
 {
-	INT i;
+	int i;
 
 	for (i=0;i<16; i++)
 	{
@@ -111,9 +101,9 @@ UCHAR RTMPCkipSbox(
 	return SboxTable[(int)a];
 }
 
-VOID next_key(
+static VOID next_key(
 	IN  PUCHAR  key,
-	IN  INT     round)
+	IN  int     round)
 {
 	UCHAR       rcon;
 	UCHAR       sbox_key[4];
@@ -138,11 +128,11 @@ VOID next_key(
 	xor_32(&key[12], &key[8], &key[12]);
 }
 
-VOID byte_sub(
+static VOID byte_sub(
 	IN  PUCHAR  in,
 	OUT PUCHAR  out)
 {
-	INT i;
+	int i;
 
 	for (i=0; i< 16; i++)
 	{
@@ -155,7 +145,7 @@ VOID byte_sub(
 /* A 128 bit, bitwise exclusive or  */
 /************************************/
 
-void bitwise_xor(unsigned char *ina, unsigned char *inb, unsigned char *out)
+static void bitwise_xor(unsigned char *ina, unsigned char *inb, unsigned char *out)
 {
 	int i;
 	for (i=0; i<16; i++)
@@ -164,7 +154,7 @@ void bitwise_xor(unsigned char *ina, unsigned char *inb, unsigned char *out)
 	}
 }
 
-VOID shift_row(
+static VOID shift_row(
 	IN  PUCHAR  in,
 	OUT PUCHAR  out)
 {
@@ -186,11 +176,11 @@ VOID shift_row(
 	out[15] = in[11];
 }
 
-VOID mix_column(
+static VOID mix_column(
 	IN  PUCHAR  in,
 	OUT PUCHAR  out)
 {
-	INT         i;
+	int         i;
 	UCHAR       add1b[4];
 	UCHAR       add1bf7[4];
 	UCHAR       rotl[4];
@@ -256,7 +246,7 @@ VOID mix_column(
 /* header fields.                               */
 /************************************************/
 
-void construct_mic_header1(
+static void construct_mic_header1(
 	unsigned char *mic_header1,
 	int header_length,
 	unsigned char *mpdu)
@@ -285,7 +275,7 @@ void construct_mic_header1(
 /* header fields.                               */
 /************************************************/
 
-void construct_mic_header2(
+static void construct_mic_header2(
 	unsigned char *mic_header2,
 	unsigned char *mpdu,
 	int a4_exists,
@@ -302,7 +292,7 @@ void construct_mic_header2(
 	mic_header2[4] = mpdu[20];
 	mic_header2[5] = mpdu[21];
 
-	// In Sequence Control field, mute sequence numer bits (12-bit) 
+	/* In Sequence Control field, mute sequence numer bits (12-bit) */
 	mic_header2[6] = mpdu[22] & 0x0f;   /* SC */
 	mic_header2[7] = 0x00; /* mpdu[23]; */
 
@@ -333,7 +323,7 @@ void construct_mic_header2(
 /* Builds the MIC IV from header fields and PN  */
 /************************************************/
 
-void construct_mic_iv(
+static void construct_mic_iv(
 	unsigned char *mic_iv,
 	int qc_exists,
 	int a4_exists,
@@ -371,7 +361,7 @@ void construct_mic_iv(
 /* Performs a 128 bit AES encrypt with  */
 /* 128 bit data.                        */
 /****************************************/
-void aes128k128d(unsigned char *key, unsigned char *data, unsigned char *ciphertext)
+static void aes128k128d(unsigned char *key, unsigned char *data, unsigned char *ciphertext)
 {
 	int round;
 	int i;
@@ -409,7 +399,7 @@ void aes128k128d(unsigned char *key, unsigned char *data, unsigned char *ciphert
 
 }
 
-void construct_ctr_preload(
+static void construct_ctr_preload(
 	unsigned char *ctr_preload,
 	int a4_exists,
 	int qc_exists,
@@ -435,7 +425,7 @@ void construct_ctr_preload(
 	  for (i = 8; i < 14; i++)
 			ctr_preload[i] =    pn_vector[13 - i];          /* ctr_preload[8:13] = PN[5:0] */
 #endif
-	ctr_preload[14] =  (unsigned char) (c / 256); // Ctr 
+	ctr_preload[14] =  (unsigned char) (c / 256); /* Ctr */
 	ctr_preload[15] =  (unsigned char) (c % 256);
 
 }
@@ -458,8 +448,8 @@ BOOLEAN RTMPSoftDecryptAES(
 	UINT			frame_subtype;
 	UINT			from_ds;
 	UINT			to_ds;
-	INT				a4_exists;
-	INT				qc_exists;
+	int				a4_exists;
+	int				qc_exists;
 	UCHAR			aes_out[16];
 	int 			payload_index;
 	UINT 			i;
@@ -515,14 +505,14 @@ BOOLEAN RTMPSoftDecryptAES(
 	PN[4] = *(pData+ HeaderLen + 6);
 	PN[5] = *(pData+ HeaderLen + 7);
 
-	payload_len = DataByteCnt - HeaderLen - 8 - 8;	// 8 bytes for CCMP header , 8 bytes for MIC
+	payload_len = DataByteCnt - HeaderLen - 8 - 8;	/* 8 bytes for CCMP header , 8 bytes for MIC*/
 	payload_remainder = (payload_len) % 16;
 	num_blocks = (payload_len) / 16; 
 	
 	
 
-	// Find start of payload
-	payload_index = HeaderLen + 8; //IV+EIV
+	/* Find start of payload*/
+	payload_index = HeaderLen + 8; /*IV+EIV*/
 
 	for (i=0; i< num_blocks; i++)	
 	{
@@ -540,10 +530,10 @@ BOOLEAN RTMPSoftDecryptAES(
 		payload_index += 16;
 	}
 
-	//
-	// If there is a short final block, then pad it
-	// encrypt it and copy the unpadded part back 
-	//
+	
+	/* If there is a short final block, then pad it*/
+	/* encrypt it and copy the unpadded part back */
+	
 	if (payload_remainder > 0)
 	{
 		construct_ctr_preload(ctr_preload,
@@ -563,9 +553,9 @@ BOOLEAN RTMPSoftDecryptAES(
 		payload_index += payload_remainder;
 	}
 
-	//
-	// Descrypt the MIC
-	// 
+	
+	/* Descrypt the MIC*/
+	/* */
 	construct_ctr_preload(ctr_preload,
 							a4_exists,
 							qc_exists,
@@ -582,15 +572,15 @@ BOOLEAN RTMPSoftDecryptAES(
 	NdisMoveMemory(TrailMIC, chain_buffer, 8);
 	
 	
-	//
-	// Calculate MIC
-	//
+	
+	/* Calculate MIC*/
+	
 
-	//Force the protected frame bit on
+	/*Force the protected frame bit on*/
 	*(pData + 1) = *(pData + 1) | 0x40;
 
-	// Find start of payload
-	// Because the CCMP header has been removed
+	/* Find start of payload*/
+	/* Because the CCMP header has been removed*/
 	payload_index = HeaderLen;
 
 	construct_mic_iv(
@@ -618,7 +608,7 @@ BOOLEAN RTMPSoftDecryptAES(
 	bitwise_xor(aes_out, mic_header2, chain_buffer);
 	aes128k128d(pWpaKey->Key, chain_buffer, aes_out);
 
-	// iterate through each 16 byte payload block
+	/* iterate through each 16 byte payload block*/
 	for (i = 0; i < num_blocks; i++)     
 	{
 		bitwise_xor(aes_out, pData + payload_index, chain_buffer);
@@ -626,7 +616,7 @@ BOOLEAN RTMPSoftDecryptAES(
 		aes128k128d(pWpaKey->Key, chain_buffer, aes_out);
 	}
 
-	// Add on the final payload block if it needs padding
+	/* Add on the final payload block if it needs padding*/
 	if (payload_remainder > 0)
 	{
 		NdisZeroMemory(padded_buffer, 16);
@@ -636,13 +626,13 @@ BOOLEAN RTMPSoftDecryptAES(
 		aes128k128d(pWpaKey->Key, chain_buffer, aes_out);		
 	}
 
-	// aes_out contains padded mic, discard most significant
-	// 8 bytes to generate 64 bit MIC
+	/* aes_out contains padded mic, discard most significant*/
+	/* 8 bytes to generate 64 bit MIC*/
 	for (i = 0 ; i < 8; i++) MIC[i] = aes_out[i];
 
 	if (!NdisEqualMemory(MIC, TrailMIC, 8))
 	{
-		DBGPRINT(RT_DEBUG_ERROR, ("RTMPSoftDecryptAES, MIC Error !\n"));	 //MIC error.	
+		DBGPRINT(RT_DEBUG_ERROR, ("RTMPSoftDecryptAES, MIC Error !\n"));	 /*MIC error.	*/
 		return FALSE;
 	}
 
@@ -721,13 +711,13 @@ VOID RTMPConstructCCMPAAD(
 		set to 0 for the AAD calculation (bits 4 to 15 are set to 0). */
 	if (qc_exists & a4_exists)
 	{
-		aad_hdr[len] = (*(pHdr + 30)) & 0x0f;   // Qos_TC
+		aad_hdr[len] = (*(pHdr + 30)) & 0x0f;   /* Qos_TC*/
 		aad_hdr[len + 1] = 0x00;
 		len += 2;
 	}
 	else if (qc_exists & !a4_exists)
 	{
-		aad_hdr[len] = (*(pHdr + 24)) & 0x0f;   // Qos_TC
+		aad_hdr[len] = (*(pHdr + 24)) & 0x0f;   /* Qos_TC*/
 		aad_hdr[len + 1] = 0x00;
 		len += 2;
 	}	
@@ -759,7 +749,7 @@ VOID RTMPConstructCCMPNonce(
 	OUT UINT			*nonce_hdr_len)
 {
 	UINT	n_offset = 0;
-	INT		i;
+	int		i;
 
 	/* 	Decide the Priority Octet 
 		The Priority sub-field of the Nonce Flags field shall 
@@ -1034,12 +1024,12 @@ BOOLEAN RTMPSoftDecryptCCMP(
 */
 VOID CCMP_test_vector(
 	IN 	PRTMP_ADAPTER 	pAd,
-	IN	INT 			input)
+	IN	int 			input)
 {
 	UINT8 Key_ID = 0;
-	//UINT8 A1[6] =  {0x0f, 0xd2, 0xe1, 0x28, 0xa5, 0x7c};
-	//UINT8 A2[6] =  {0x50, 0x30, 0xf1, 0x84, 0x44, 0x08};
-	//UINT8 A3[6] =  {0xab, 0xae, 0xa5, 0xb8, 0xfc, 0xba};
+	/*UINT8 A1[6] =  {0x0f, 0xd2, 0xe1, 0x28, 0xa5, 0x7c};*/
+	/*UINT8 A2[6] =  {0x50, 0x30, 0xf1, 0x84, 0x44, 0x08};*/
+	/*UINT8 A3[6] =  {0xab, 0xae, 0xa5, 0xb8, 0xfc, 0xba};*/
 	UINT8 TK[16] = {0xc9, 0x7c, 0x1f, 0x67, 0xce, 0x37, 0x11, 0x85, 
 				  	0x51, 0x4a, 0x8a, 0x19, 0xf2, 0xbd, 0xd5, 0x2f};
 	UINT8 PN[6] =  {0x0C, 0xE7, 0x76, 0x97, 0x03, 0xB5};					

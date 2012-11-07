@@ -57,6 +57,15 @@
 
 #define KEY_RELEASE_DELAY    200
 
+// 负责按键模式与鼠标模式之间的切换
+static bool key_pointer_switch = true;
+static unsigned int FN_KEY_SCANCODE = 0; 
+static unsigned int LEFT_KEY_SCANCODE = 0;
+static unsigned int RIGHT_KEY_SCANCODE = 0;
+static unsigned int UP_KEY_SCANCODE = 0;
+static unsigned int DOWN_KEY_SCANCODE = 0;
+static unsigned int OK_KEY_SCANCODE = 0;
+
 type_printk input_dbg;
 
 static DEFINE_MUTEX(kp_enable_mutex);
@@ -93,7 +102,7 @@ static  pin_config_t  pin_config[]={
 } ;
 
 static __u16 key_map[512];
-static __u16 mouse_map[10]; /*Left Right Up Down + middlewheel up &down + up/left, up/right, down/left, down/right*/
+static __u16 mouse_map[6]; /*Left Right Up Down + middlewheel up &down*/
 
 int remote_printk(const char *fmt, ...)
 {
@@ -112,9 +121,8 @@ static int kp_mouse_event(struct input_dev *dev, unsigned int scancode, unsigned
     __u16 mouse_code = REL_X;
     __s32 mouse_value = 0;
     static unsigned int repeat_count = 0;
-    static u32 timer_repeat = 0;
-
-    __s32 move_accelerate[] = {0, 1, 2, 2, 4, 4, 8, 8, 16, 32};
+    //__s32 move_accelerate[] = {0, 1, 1, 2, 2, 3, 4, 5, 6, 7, 8, 9};
+    __s32 move_accelerate[] = {0, 2, 2, 4, 4, 6, 8, 10, 12, 14, 16, 18};
     unsigned int i;
 		
     for(i = 0; i < ARRAY_SIZE(mouse_map); i++)
@@ -125,82 +133,95 @@ static int kp_mouse_event(struct input_dev *dev, unsigned int scancode, unsigned
     if(i>= ARRAY_SIZE(mouse_map)) return -1;
     switch(type){
         case 1 ://press
-            if (jiffies > timer_repeat){
-                repeat_count = 0;
-            } else if(repeat_count < ARRAY_SIZE(move_accelerate) - 2){
-                repeat_count++;
-            }
-            timer_repeat = jiffies + msecs_to_jiffies(250);
+            repeat_count = 0;
             break;
         case 2 ://repeat
-            if(repeat_count < ARRAY_SIZE(move_accelerate) - 2)
-                repeat_count++;
-            break;
-    }
+            if(repeat_count >= ARRAY_SIZE(move_accelerate) - 1)
+                repeat_count = ARRAY_SIZE(move_accelerate) - 1;
+            else
+                repeat_count ++;
+        }
     switch(i){
-        case 6 : /* up/left */
-        case 7 : /* up/down */
-            mouse_code = REL_Y;
-            mouse_value = (1 + move_accelerate[repeat_count]);
-            if (i == 6)
-              mouse_value = -mouse_value;
-            if(type){
-              input_event(dev, EV_REL, mouse_code, mouse_value);
-              input_sync(dev);
-            }
-        case 0 : /* up */
+        case 0 :
             mouse_code = REL_X;
             mouse_value = -(1 + move_accelerate[repeat_count]);
             break;
-        case 8 : /* down/left */
-        case 9 : /* down/down */
-            mouse_code = REL_Y;
-            mouse_value = (1 + move_accelerate[repeat_count]);
-            if (i == 8)
-              mouse_value = -mouse_value;
-            if(type){
-              input_event(dev, EV_REL, mouse_code, mouse_value);
-              input_sync(dev);
-            }
-        case 1 : /* down */
+        case 1 :
             mouse_code = REL_X;
             mouse_value = 1 + move_accelerate[repeat_count];
             break;
-        case 2 : /* left */
+        case 2 :
             mouse_code = REL_Y;
             mouse_value = -(1 + move_accelerate[repeat_count]);
             break;
-        case 3 : /* right */
+        case 3 :
             mouse_code = REL_Y;
             mouse_value = 1 + move_accelerate[repeat_count];
             break;
-        case 4: /* wheel up */
-             mouse_code= REL_WHEEL;
-             mouse_value=0x1;
-             break;
-        case 5: /* wheel down */
-             mouse_code= REL_WHEEL;
-             mouse_value=0xffffffff;
-             break;
-    }
+	case 4://up
+	     mouse_code= REL_WHEEL;
+	     mouse_value=0x1;	 
+	     break;
+	case 5:
+	     mouse_code= REL_WHEEL;
+	     mouse_value=0xffffffff;	
+	     break;
+		
+        }
     if(type){
         input_event(dev, EV_REL, mouse_code, mouse_value);
         input_sync(dev);
-        switch(mouse_code){
-            case REL_X:
-            case REL_Y:
-                input_dbg("mouse %d be %s moved %d.\n", type, mouse_code==REL_X?"horizontal":"vertical", mouse_value);
-            break;
-            case REL_WHEEL:
-                input_dbg("mouse wheel move %s .\n",mouse_value==0x1?"up":"down");
-            break;
-        }
+	 switch(mouse_code)
+	 {
+	 	case REL_X:
+		case REL_Y:
+		 input_dbg("mouse be %s moved %d.\n", mouse_code==REL_X?"horizontal":"vertical", mouse_value);	
+		break;
+		case REL_WHEEL:
+		input_dbg("mouse wheel move %s .\n",mouse_value==0x1?"up":"down");
+		break;
+	 }
+       
     }
     return 0;
 }
 
 void kp_send_key(struct input_dev *dev, unsigned int scancode, unsigned int type)
 {
+    if(scancode == FN_KEY_SCANCODE && type == 1)
+    {
+        // switch from key to pointer
+        if(key_pointer_switch)
+        {
+            mouse_map[0] = LEFT_KEY_SCANCODE;
+            mouse_map[1] = RIGHT_KEY_SCANCODE;
+            mouse_map[2] = UP_KEY_SCANCODE;
+            mouse_map[3] = DOWN_KEY_SCANCODE;
+
+            key_pointer_switch = false;
+        }
+        // switch from pointer to key
+        else
+        {
+            mouse_map[0] = mouse_map[1] = mouse_map[2] = mouse_map[3] = 0xFFFF;
+
+            key_pointer_switch = true;
+        }
+
+        input_event(dev, EV_KEY, key_map[scancode], type);
+        input_sync(dev);
+
+        return;
+    }
+
+    if(scancode == OK_KEY_SCANCODE && key_pointer_switch == false)
+    {
+        input_event(dev, EV_KEY, BTN_MOUSE, type);
+        input_sync(dev);
+
+        return;
+    } 
+
     if(kp_mouse_event(dev, scancode, type)){
         if(scancode > ARRAY_SIZE(key_map)){
             input_dbg("scancode is 0x%04x, out of key mapping.\n", scancode);
@@ -693,6 +714,31 @@ remote_config_ioctl(struct inode *inode, struct file *filp,
         case REMOTE_IOC_GET_TW_REPEATE_LEADER:
         val=kp->time_window[6]|(kp->time_window[7]<<16);
         break;
+
+        case REMOTE_IOC_SET_FN_KEY_SCANCODE:
+            FN_KEY_SCANCODE = val;
+        break;
+
+        case REMOTE_IOC_SET_LEFT_KEY_SCANCODE:
+            LEFT_KEY_SCANCODE = val;
+        break;
+
+        case REMOTE_IOC_SET_RIGHT_KEY_SCANCODE:
+            RIGHT_KEY_SCANCODE = val;
+        break;
+
+        case REMOTE_IOC_SET_UP_KEY_SCANCODE:
+            UP_KEY_SCANCODE = val;
+        break;
+
+        case REMOTE_IOC_SET_DOWN_KEY_SCANCODE:
+            DOWN_KEY_SCANCODE = val;
+        break;
+
+        case REMOTE_IOC_SET_OK_KEY_SCANCODE:
+            OK_KEY_SCANCODE = val;
+        break;
+
     }
     //output result
     switch(cmd)

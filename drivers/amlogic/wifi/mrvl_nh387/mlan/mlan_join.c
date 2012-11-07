@@ -6,7 +6,7 @@
  *  for sending adhoc start, adhoc join, and association commands
  *  to the firmware.
  *
- *  Copyright (C) 2008-2011, Marvell International Ltd. 
+ *  Copyright (C) 2008-2010, Marvell International Ltd. 
  *  All Rights Reserved
  *
  *  @sa mlan_join.h
@@ -647,23 +647,21 @@ wlan_cmd_802_11_associate(IN mlan_private * pmpriv,
  *     |  Header(4 * sizeof(t_u16)):  Standard command response hdr |
  *     .------------------------------------------------------------.
  *     |  cap_info/Error Return(t_u16):                             |
- *     |           0xFFFF(-1): Internal error for association       |
+ *     |           0xFFFF(-1): Internal error                       |
  *     |           0xFFFE(-2): Authentication unhandled message     |
  *     |           0xFFFD(-3): Authentication refused               |
  *     |           0xFFFC(-4): Timeout waiting for AP response      |
- *     |           0xFFFB(-5): Internal error for authentication    |
  *     .------------------------------------------------------------.
  *     |  status_code(t_u16):                                       |
  *     |        If cap_info is -1:                                  |
  *     |           An internal firmware failure prevented the       |
- *     |           command from being processed. The status code    |
- *     |           is 6 if associate response parameter invlaid,    |
- *     |           1 otherwise.                                     |
+ *     |           command from being processed.  The status_code   |
+ *     |           will be set to 1.                                |
  *     |                                                            |
  *     |        If cap_info is -2:                                  |
  *     |           An authentication frame was received but was     |
- *     |           not handled by the firmware. IEEE Status code    |
- *     |           for the failure is returned.                     |
+ *     |           not handled by the firmware.  IEEE Status        |
+ *     |           code for the failure is returned.                |
  *     |                                                            |
  *     |        If cap_info is -3:                                  |
  *     |           An authentication frame was received and the     |
@@ -673,12 +671,6 @@ wlan_cmd_802_11_associate(IN mlan_private * pmpriv,
  *     |        If cap_info is -4:                                  |
  *     |           (1) Association response timeout                 |
  *     |           (2) Authentication response timeout              |
- *     |                                                            |
- *     |        If cap_info is -5:                                  |
- *     |           An internal firmware failure prevented the       |
- *     |           command from being processed. The status code    |
- *     |           is 6 if authentication parameter invlaid,        |
- *     |           1 otherwise.                                     |
  *     .------------------------------------------------------------.
  *     |  a_id(t_u16): 0xFFFF                                       |
  *     .------------------------------------------------------------.
@@ -750,6 +742,7 @@ wlan_ret_802_11_associate(IN mlan_private * pmpriv,
     /* Send a Media Connected event, according to the Spec */
     pmpriv->media_connected = MTRUE;
 
+    pmpriv->adapter->ps_state = PS_STATE_AWAKE;
     pmpriv->adapter->pps_uapsd_mode = MFALSE;
     pmpriv->adapter->tx_lock_flag = MFALSE;
 
@@ -864,7 +857,7 @@ wlan_ret_802_11_associate(IN mlan_private * pmpriv,
                 pioctl_req->status_code =
                     wlan_le16_to_cpu(passoc_rsp->status_code);
             else
-                pioctl_req->status_code = MLAN_ERROR_CMD_ASSOC_FAIL;
+                pioctl_req->status_code = MLAN_ERROR_ASSOC_FAIL;
         } else {
             pioctl_req->status_code = MLAN_ERROR_NO_ERROR;
         }
@@ -1139,9 +1132,17 @@ wlan_cmd_802_11_ad_hoc_start(IN mlan_private * pmpriv,
             memset(pmadapter, pht_cap, 0, sizeof(MrvlIETypes_HTCap_t));
             pht_cap->header.type = wlan_cpu_to_le16(HT_CAPABILITY);
             pht_cap->header.len = sizeof(HTCap_t);
-            wlan_fill_cap_info(pmpriv, pht_cap);
-            pht_cap->ht_cap.ht_cap_info =
-                wlan_cpu_to_le16(pht_cap->ht_cap.ht_cap_info);
+
+            SETHT_SHORTGI20(pht_cap->ht_cap.ht_cap_info);
+            if (pmadapter->chan_offset) {
+                SETHT_SHORTGI40(pht_cap->ht_cap.ht_cap_info);
+                SETHT_DSSSCCK40(pht_cap->ht_cap.ht_cap_info);
+                SETHT_SUPPCHANWIDTH(pht_cap->ht_cap.ht_cap_info);
+                SETHT_MCS32(pht_cap->ht_cap.supported_mcs_set);
+            }
+
+            pht_cap->ht_cap.ampdu_param = MAX_RX_AMPDU_SIZE_64K;
+            pht_cap->ht_cap.supported_mcs_set[0] = 0xff;
             HEXDUMP("ADHOC_START: HT_CAPABILITIES IE", (t_u8 *) pht_cap,
                     sizeof(MrvlIETypes_HTCap_t));
             pos += sizeof(MrvlIETypes_HTCap_t);
@@ -1247,7 +1248,6 @@ wlan_cmd_802_11_ad_hoc_join(IN mlan_private * pmpriv,
 
     memcpy(pmadapter, &padhoc_join->bss_descriptor.ss_param_set,
            &pbss_desc->ss_param_set, sizeof(IEEEtypes_SsParamSet_t));
-    padhoc_join->bss_descriptor.ss_param_set.ibss_param_set.atim_window = 0;
 
     memcpy(pmadapter, &tmp_cap, &pbss_desc->cap_info,
            sizeof(IEEEtypes_CapInfo_t));
@@ -1534,7 +1534,7 @@ wlan_ret_802_11_ad_hoc(IN mlan_private * pmpriv,
     /* Need to indicate IOCTL complete */
     if (pioctl_req != MNULL) {
         if (ret != MLAN_STATUS_SUCCESS) {
-            pioctl_req->status_code = MLAN_ERROR_CMD_ASSOC_FAIL;
+            pioctl_req->status_code = MLAN_ERROR_ASSOC_FAIL;
         } else {
             pioctl_req->status_code = MLAN_ERROR_NO_ERROR;
         }

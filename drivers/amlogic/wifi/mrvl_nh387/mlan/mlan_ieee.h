@@ -36,20 +36,6 @@ typedef enum _WLAN_802_11_NETWORK_TYPE
 /** Maximum size of IEEE Information Elements */
 #define IEEE_MAX_IE_SIZE      256
 
-#ifdef UAP_SUPPORT
-#ifdef BIG_ENDIAN_SUPPORT
-/** Frame control: Type Mgmt frame */
-#define IEEE80211_FC_MGMT_FRAME_TYPE_MASK    0x3000
-/** Frame control: SubType Mgmt frame */
-#define IEEE80211_GET_FC_MGMT_FRAME_SUBTYPE(fc) (((fc) & 0x0F00) >> 8)
-#else
-/** Frame control: Type Mgmt frame */
-#define IEEE80211_FC_MGMT_FRAME_TYPE_MASK    0x000C
-/** Frame control: SubType Mgmt frame */
-#define IEEE80211_GET_FC_MGMT_FRAME_SUBTYPE(fc) (((fc) & 0x00F0) >> 4)
-#endif
-#endif
-
 #ifdef PRAGMA_PACK
 #pragma pack(push, 1)
 #endif
@@ -954,97 +940,6 @@ typedef struct
     IEEEtypes_IBSS_DFS_t ibss_dfs;                /**< IBSS DFS Element IE */
 
 } wlan_11h_bss_info_t;
-
-#ifdef STA_SUPPORT
-/** Maximum number of channels that can be sent in user scan config */
-#define WLAN_USER_SCAN_CHAN_MAX             50
-
-/** Maximum length of SSID list */
-#define MRVDRV_MAX_SSID_LIST_LENGTH         10
-
-/**
- *  IOCTL SSID List sub-structure sent in wlan_ioctl_user_scan_cfg
- * 
- *  Used to specify SSID specific filters as well as SSID pattern matching
- *    filters for scan result processing in firmware.
- */
-typedef MLAN_PACK_START struct _wlan_user_scan_ssid
-{
-    /** SSID */
-    t_u8 ssid[MLAN_MAX_SSID_LENGTH + 1];
-    /** Maximum length of SSID */
-    t_u8 max_len;
-} MLAN_PACK_END wlan_user_scan_ssid;
-
-/**
- *  @brief IOCTL channel sub-structure sent in wlan_ioctl_user_scan_cfg
- *
- *  Multiple instances of this structure are included in the IOCTL command
- *   to configure a instance of a scan on the specific channel.
- */
-typedef MLAN_PACK_START struct _wlan_user_scan_chan
-{
-    /** Channel Number to scan */
-    t_u8 chan_number;
-    /** Radio type: 'B/G' Band = 0, 'A' Band = 1 */
-    t_u8 radio_type;
-    /** Scan type: Active = 1, Passive = 2 */
-    t_u8 scan_type;
-    /** Reserved */
-    t_u8 reserved;
-    /** Scan duration in milliseconds; if 0 default used */
-    t_u32 scan_time;
-} MLAN_PACK_END wlan_user_scan_chan;
-
-/**
- *  Input structure to configure an immediate scan cmd to firmware
- *
- *  Specifies a number of parameters to be used in general for the scan 
- *    as well as a channel list (wlan_user_scan_chan) for each scan period
- *    desired.
- */
-typedef MLAN_PACK_START struct
-{
-    /**
-     *  Flag set to keep the previous scan table intact
-     *
-     *  If set, the scan results will accumulate, replacing any previous
-     *   matched entries for a BSS with the new scan data
-     */
-    t_u8 keep_previous_scan;
-    /**
-     *  BSS mode to be sent in the firmware command
-     *
-     *  Field can be used to restrict the types of networks returned in the
-     *    scan.  Valid settings are:
-     *
-     *   - MLAN_SCAN_MODE_BSS  (infrastructure)
-     *   - MLAN_SCAN_MODE_IBSS (adhoc)
-     *   - MLAN_SCAN_MODE_ANY  (unrestricted, adhoc and infrastructure)        
-     */
-    t_u8 bss_mode;
-    /**
-     *  Configure the number of probe requests for active chan scans
-     */
-    t_u8 num_probes;
-    /**
-     *  @brief Reserved
-     */
-    t_u8 reserved;
-    /**
-     *  @brief BSSID filter sent in the firmware command to limit the results
-     */
-    t_u8 specific_bssid[MLAN_MAC_ADDR_LENGTH];
-    /**
-     *  SSID filter list used in the to limit the scan results
-     */
-    wlan_user_scan_ssid ssid_list[MRVDRV_MAX_SSID_LIST_LENGTH];
-    /**
-     *  Variable number (fixed maximum) of channels to scan up
-     */
-    wlan_user_scan_chan chan_list[WLAN_USER_SCAN_CHAN_MAX];
-} MLAN_PACK_END wlan_user_scan_cfg;
-#endif /* STA_SUPPORT */
 
 #ifdef PRAGMA_PACK
 #pragma pack(pop)

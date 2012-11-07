@@ -723,48 +723,6 @@ wlan_ret_tx_power_cfg(IN pmlan_private pmpriv,
 }
 
 /** 
- *  @brief This function handles the command response of rf_tx_power
- *    
- *  @param pmpriv       A pointer to mlan_private structure
- *  @param resp         A pointer to HostCmd_DS_COMMAND
- *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
- *  @return             MLAN_STATUS_SUCCESS
- */
-static mlan_status
-wlan_ret_802_11_rf_tx_power(IN pmlan_private pmpriv,
-                            IN HostCmd_DS_COMMAND * resp,
-                            IN mlan_ioctl_req * pioctl_buf)
-{
-    HostCmd_DS_802_11_RF_TX_POWER *rtp = &resp->params.txp;
-    t_u16 action = wlan_le16_to_cpu(rtp->action);
-    mlan_ds_power_cfg *power = MNULL;
-
-    ENTER();
-
-    pmpriv->tx_power_level = wlan_le16_to_cpu(rtp->current_level);
-
-    if (action == HostCmd_ACT_GEN_GET) {
-        pmpriv->max_tx_power_level = rtp->max_power;
-        pmpriv->min_tx_power_level = rtp->min_power;
-        if (pioctl_buf) {
-            power = (mlan_ds_power_cfg *) pioctl_buf->pbuf;
-            if (power->sub_command == MLAN_OID_POWER_CFG) {
-                pioctl_buf->data_read_written =
-                    sizeof(mlan_power_cfg_t) + MLAN_SUB_COMMAND_SIZE;
-                power->param.power_cfg.power_level = pmpriv->tx_power_level;
-            }
-        }
-    }
-
-    PRINTM(MINFO, "Current TxPower Level = %d,Max Power=%d, Min Power=%d\n",
-           pmpriv->tx_power_level, pmpriv->max_tx_power_level,
-           pmpriv->min_tx_power_level);
-
-    LEAVE();
-    return MLAN_STATUS_SUCCESS;
-}
-
-/** 
  *  @brief This function handles the command response of sleep_period
  *    
  *  @param pmpriv       A pointer to mlan_private structure
@@ -1786,9 +1744,6 @@ mlan_process_sta_cmdresp(IN t_void * priv,
     case HostCmd_CMD_GET_HW_SPEC:
         ret = wlan_ret_get_hw_spec(pmpriv, resp, pioctl_buf);
         break;
-    case HostCmd_CMD_CFG_DATA:
-        ret = wlan_ret_cfg_data(pmpriv, resp, pioctl_buf);
-        break;
     case HostCmd_CMD_MAC_CONTROL:
         ret = wlan_ret_mac_control(pmpriv, resp, pioctl_buf);
         break;
@@ -1813,9 +1768,6 @@ mlan_process_sta_cmdresp(IN t_void * priv,
         break;
     case HostCmd_CMD_TXPWR_CFG:
         ret = wlan_ret_tx_power_cfg(pmpriv, resp, pioctl_buf);
-        break;
-    case HostCmd_CMD_802_11_RF_TX_POWER:
-        ret = wlan_ret_802_11_rf_tx_power(pmpriv, resp, pioctl_buf);
         break;
     case HostCmd_CMD_802_11_PS_MODE_ENH:
         ret = wlan_ret_enh_power_mode(pmpriv, resp, pioctl_buf);

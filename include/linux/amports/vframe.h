@@ -101,6 +101,13 @@ typedef struct vframe_prop_s
     struct vframe_meas_s meas;
 } vframe_prop_t;
 
+typedef enum vframe_source_type_e {
+    VFRAME_SOURCE_TYPE_OTHERS = 0,
+    VFRAME_SOURCE_TYPE_TUNER,
+    VFRAME_SOURCE_TYPE_CVBS,
+    VFRAME_SOURCE_TYPE_COMP,
+    VFRAME_SOURCE_TYPE_PPMGR,
+} vframe_source_type_t;
 typedef struct vframe_s {
     u32 index;
     u32 type;
@@ -119,6 +126,7 @@ typedef struct vframe_s {
     u32 ratio_control;
 
     u32 orientation;
+    enum vframe_source_type_e source_type;
 
     /* vframe extension */
     int (*early_process_fun)(void* arg);
@@ -135,7 +143,7 @@ typedef struct vframe_s {
 #if 0
 struct vframe_prop_s * vdin_get_vframe_prop(u32 index);
 #endif
-int get_curren_frame_para(int* top ,int* left , int* bottom, int* right);
+int get_curren_frame_para(int* top ,int* left , int* bottom, int* right,int flag);
 
 #endif /* VFRAME_H */
 

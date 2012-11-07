@@ -47,7 +47,7 @@ typedef int16_t     	addr_linearblk_t;
 #define MAX_BLK_NUM_PER_NODE	 4
 #define BASIC_BLK_NUM_PER_NODE	 2
 #define DEFAULT_SPLIT_UNIT		 8
-#define NFTL_FAT_TABLE_NUM		 2
+#define NFTL_FAT_TABLE_NUM		 8
 
 #define DEFAULT_SPLIT_UNIT_GARBAGE		8
 #define NFTL_BOUNCE_FREE		 		0
@@ -332,6 +332,7 @@ extern void aml_nftl_info_release(struct aml_nftl_info_t *aml_nftl_info);
 extern int aml_nftl_wl_init(struct aml_nftl_info_t *aml_nftl_info);
 extern int aml_nftl_check_node(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr);
 extern int aml_nftl_add_node(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t logic_blk_addr, addr_blk_t phy_blk_addr);
+extern int aml_nftl_badblock_handle(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t phy_blk_addr, addr_blk_t logic_blk_addr);
 #endif
 
 

@@ -78,10 +78,6 @@ static vframe_t *vvc1_vf_peek(void*);
 static vframe_t *vvc1_vf_get(void*);
 static void vvc1_vf_put(vframe_t *, void*);
 static int  vvc1_vf_states(vframe_states_t *states, void*);
-static int vvc1_event_cb(int type, void *data, void *private_data);
-
-static void vvc1_prot_init(void);
-static void vvc1_local_init(void);
 
 static const char vvc1_dec_id[] = "vvc1-dev";
 
@@ -90,7 +86,6 @@ static const struct vframe_operations_s vvc1_vf_provider = {
     .peek = vvc1_vf_peek,
     .get = vvc1_vf_get,
     .put = vvc1_vf_put,
-    .event_cb = vvc1_event_cb,
     .vf_states = vvc1_vf_states,
 };
 static struct vframe_provider_s vvc1_vf_prov;
@@ -438,26 +433,6 @@ static int vvc1_vf_states(vframe_states_t *states, void* op_arg)
     return 0;
 }
 
-static int vvc1_event_cb(int type, void *data, void *private_data)
-{
-    if(type & VFRAME_EVENT_RECEIVER_RESET){
-        unsigned long flags;
-        amvdec_stop();
-#ifndef CONFIG_POST_PROCESS_MANAGER
-        vf_light_unreg_provider(&vvc1_vf_prov);
-#endif
-        spin_lock_irqsave(&lock, flags);
-        vvc1_local_init();
-        vvc1_prot_init();
-        spin_unlock_irqrestore(&lock, flags); 
-#ifndef CONFIG_POST_PROCESS_MANAGER
-        vf_reg_provider(&vvc1_vf_prov);
-#endif              
-        amvdec_start();
-    }
-    return 0;        
-}
-
 int vvc1_dec_status(struct vdec_status *vstatus)
 {
     vstatus->width = vvc1_amstream_dec_info.width;
@@ -577,7 +552,8 @@ static void vvc1_local_init(void)
 {
     int i;
 
-    vvc1_ratio = vvc1_amstream_dec_info.ratio;
+    //vvc1_ratio = vvc1_amstream_dec_info.ratio;
+    vvc1_ratio = 0x100;
 
     avi_flag = (u32)vvc1_amstream_dec_info.param;
 

@@ -19,10 +19,15 @@ static  LIST_HEAD(parser_line);
 #ifdef   SETUP_SELF_RAISE 
 static  parser_list_t aml_parser[MAX_PIC_TYPE];
 #endif
-
-void (*Power_on_bl)(void);
-EXPORT_SYMBOL(Power_on_bl);
-
+#ifdef CONFIG_AML_TCON_T13
+extern void Power_on_bl(void);
+#endif
+#ifdef CONFIG_AML_TCON_P7
+extern void Power_on_bl(void);
+#endif
+#ifdef CONFIG_AML_TCON_P10
+extern void Power_on_bl(void);
+#endif
 int  register_logo_parser(logo_parser_t* new_parser)
 {
 
@@ -86,16 +91,27 @@ static int  all_parser_setup(void)
 	plogo->dev->op.transfer(plogo);
 	plogo->dev->op.deinit();
 	plogo->parser->op.deinit(plogo);
-
-	if (Power_on_bl)
-		Power_on_bl();
-		
+#ifdef CONFIG_AML_TCON_T13
+    Power_on_bl();
+#endif 	
+#ifdef CONFIG_AML_TCON_P7
+    Power_on_bl();
+#endif 	
+#ifdef CONFIG_AML_TCON_P10
+    Power_on_bl();
+#endif 	
 	return SUCCESS;	
 	
 start_logo_fail:
-	if (Power_on_bl)
-		Power_on_bl();
-		
+#ifdef CONFIG_AML_TCON_T13
+    Power_on_bl();
+#endif 
+#ifdef CONFIG_AML_TCON_P7
+    Power_on_bl();
+#endif 
+#ifdef CONFIG_AML_TCON_P10
+    Power_on_bl();
+#endif 
 	return ret;	
 
  }

@@ -329,6 +329,12 @@ static void _init_vout(tcon_dev_t *pDev)
 	pDev->lcd_info.aspect_ratio_den = pDev->conf.screen_height;
 	pDev->lcd_info.sync_duration_num = pDev->conf.sync_duration_num;
 	pDev->lcd_info.sync_duration_den = pDev->conf.sync_duration_den;
+       pDev->lcd_info.screen_real_width= pDev->conf.screen_actual_width;
+       pDev->lcd_info.screen_real_height= pDev->conf.screen_actual_height;
+	
+       
+	//add lcd actual active area size
+	printk("lcd actual active area size: %d %d (mm).\n",pDev->conf.screen_actual_width, pDev->conf.screen_actual_height);
 
 	vout_register_server(&lcd_vout_server);
 }

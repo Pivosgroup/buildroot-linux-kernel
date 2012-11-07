@@ -296,6 +296,7 @@ static const reg_t tvregs_480p[] = {
     {ENCP_VIDEO_HSO_END,         0x5,   },
     {ENCP_VIDEO_VSO_BEGIN,       0x3,   },
     {ENCP_VIDEO_VSO_END,         0x5,   },
+    {ENCP_VIDEO_VSO_BLINE,       0,     },  //added by JZD. Switch Panel to 480p first time, movie video flicks if not set this to 0
     {ENCP_VIDEO_SY_VAL,          8,     },
     {ENCP_VIDEO_SY2_VAL,         0x1d8, },
     {VENC_SYNC_ROUTE,            0,     },
@@ -407,6 +408,7 @@ static const reg_t tvregs_576p[] = {
     {ENCP_VIDEO_HSO_END,         0x0,   },
     {ENCP_VIDEO_VSO_BEGIN,       0x0,   },
     {ENCP_VIDEO_VSO_END,         0x5,   },
+    {ENCP_VIDEO_VSO_BLINE,       0,     },  //added by JZD. Switch Panel to 576p first time, movie video flicks if not set this to 0
     {ENCP_VIDEO_SY_VAL,          8,     },
     {ENCP_VIDEO_SY2_VAL,         0x1d8, },
     {VENC_SYNC_ROUTE,            0,     },

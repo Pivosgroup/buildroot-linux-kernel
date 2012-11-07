@@ -4,7 +4,7 @@
  *  structures and declares global function prototypes used
  *  in MLAN module.
  *
- *  Copyright (C) 2008-2011, Marvell International Ltd. 
+ *  Copyright (C) 2008-2010, Marvell International Ltd. 
  *  All Rights Reserved
  */
 
@@ -255,6 +255,9 @@ do {                                    \
     }                                   \
 } while(0)
 
+/** Header alignment */
+#define HEADER_ALIGNMENT                8
+
 /** Upload size */
 #define WLAN_UPLD_SIZE                  (2312)
 
@@ -314,10 +317,10 @@ do {                                    \
 /** Default beacon missing timeout */
 #define DEFAULT_BCN_MISS_TIMEOUT            5
 
-/** Maximum buffer space for beacons retrieved from scan responses */
-#define MAX_SCAN_BEACON_BUFFER          16384
-/** Default buffer space for beacons retrieved from scan responses */
-#define DEFAULT_SCAN_BEACON_BUFFER      4096
+/**
+ *  Maximum buffer space for beacons retrieved from scan responses
+ */
+#define MAX_SCAN_BEACON_BUFFER          8000
 
 /**
  * @brief Buffer pad space for newly allocated beacons/probe responses
@@ -390,7 +393,7 @@ do {                                    \
 /** Hight threashold to stop data traffic */
 #define  RX_HIGH_THRESHOLD           60
 /** Low threashold to restart data traffic */
-#define  RX_LOW_THRESHOLD            40
+#define  RX_LOW_THRESHOLD            15
 
 /** Debug command number */
 #define DBG_CMD_NUM	5
@@ -407,14 +410,6 @@ typedef struct _wlan_dbg
     t_u32 num_cmd_sleep_cfm_host_to_card_failure;
     /** Number of host to card Tx failures */
     t_u32 num_tx_host_to_card_failure;
-    /** Number of card to host command/event failures */
-    t_u32 num_cmdevt_card_to_host_failure;
-    /** Number of card to host Rx failures */
-    t_u32 num_rx_card_to_host_failure;
-    /** Number of interrupt read failures */
-    t_u32 num_int_read_failure;
-    /** Last interrupt status */
-    t_u32 last_int_status;
     /** Number of deauthentication events */
     t_u32 num_event_deauth;
     /** Number of disassosiation events */
@@ -558,12 +553,8 @@ typedef struct _wmm_desc
 {
     /** TID table */
     tid_tbl_t tid_tbl_ptr[MAX_NUM_TID];
-    /** Packets in */
-    t_u32 packets_in[MAX_NUM_TID];
     /** Packets out */
     t_u32 packets_out[MAX_NUM_TID];
-    /** Packets queued */
-    t_u32 pkts_queued[MAX_NUM_TID];
     /** Spin lock to protect ra_list */
     t_void *ra_list_spinlock;
 
@@ -822,8 +813,6 @@ typedef struct _mlan_private
     /** packet forward control */
     t_u8 pkt_fwd;
 #endif                          /* UAP_SUPPORT */
-    /** TX beamforming capability */
-    t_u32 tx_bf_cap;
     /** Rx PD rate */
     t_u8 rxpd_rate;
     /** Rate bitmap */
@@ -911,12 +900,6 @@ typedef struct _mlan_private
 
     /** MGMT IE */
     custom_ie mgmt_ie[MAX_MGMT_IE_INDEX];
-
-#ifdef UAP_SUPPORT
-    /** mgmt frame passthru mask */
-    t_u32 mgmt_frame_passthru_mask;
-#endif                          /* UAP_SUPPORT */
-
     /** Advanced Encryption Standard */
     t_u8 adhoc_aes_enabled;
     /** WMM required */
@@ -979,10 +962,7 @@ typedef struct _mlan_private
 
     /** Scan block flag */
     t_u8 scan_block;
-    /** IP address operation */
-    t_u32 op_code;
-    /** IP address */
-    t_u8 ip_addr[IPADDR_LEN];
+
 } mlan_private, *pmlan_private;
 
 /** BA stream status */
@@ -1248,8 +1228,6 @@ typedef struct _mlan_init_para
     /** 802.11d configuration */
     t_u32 cfg_11d;
 #endif
-    /** FW download CRC check flag */
-    t_u32 fw_crc_check;
 } mlan_init_para, *pmlan_init_para;
 
 /** Adapter data structure for MLAN */
@@ -1365,8 +1343,8 @@ typedef struct _mlan_adapter
     t_u8 event_received;
 
     /** Data received:
-     *       TRUE - data received from fw
-     *       FALSE - No data received
+     *       TRUE - Event received from fw, and yet to process
+     *       FALSE - No events to process
      */
     t_u8 data_received;
 
@@ -1418,8 +1396,6 @@ typedef struct _mlan_adapter
     wlan_meas_state_t state_meas;
     /** Scan table */
     BSSDescriptor_t *pscan_table;
-    /** scan age in secs */
-    t_u32 age_in_secs;
 
     /** Number of records in the scan table */
     t_u32 num_in_scan_table;
@@ -1436,9 +1412,9 @@ typedef struct _mlan_adapter
     t_u16 active_scan_time;
     /** Passive scan time */
     t_u16 passive_scan_time;
-    t_u16 bcn_buf_size;
+
     /** Beacon buffer */
-    t_u8 *bcn_buf;
+    t_u8 bcn_buf[MAX_SCAN_BEACON_BUFFER];
     /** Pointer to valid beacon buffer end */
     t_u8 *pbcn_buf_end;
 
@@ -1550,10 +1526,7 @@ typedef struct _mlan_adapter
 
     /** Bypass TX queue */
     mlan_list_head bypass_txq;
-    /** Cal data pointer */
-    t_u8 *pcal_data;
-    /** Cal data length  */
-    t_u32 cal_data_len;
+
 } mlan_adapter, *pmlan_adapter;
 
 /** Ethernet packet type for EAPOL */
@@ -1703,15 +1676,6 @@ mlan_status wlan_ret_enh_power_mode(IN pmlan_private pmpriv,
                                     IN HostCmd_DS_COMMAND * resp,
                                     IN mlan_ioctl_req * pioctl_buf);
 
-/** handle commnand for cfg data */
-mlan_status wlan_cmd_cfg_data(IN pmlan_private pmpriv,
-                              IN HostCmd_DS_COMMAND * pcmd,
-                              IN t_u16 cmd_action, IN t_void * pdata_buf);
-/** handle command resp for cfg data */
-mlan_status wlan_ret_cfg_data(IN pmlan_private pmpriv,
-                              IN HostCmd_DS_COMMAND * resp,
-                              IN t_void * pioctl_buf);
-
 /** Process sleep confirm command response */
 void wlan_process_sleep_confirm_resp(pmlan_adapter pmadapter, t_u8 * pbuf,
                                      t_u32 len);
@@ -1722,17 +1686,8 @@ void wlan_process_hs_config(pmlan_adapter pmadapter);
 mlan_status wlan_pm_reset_card(pmlan_adapter adapter);
 mlan_status wlan_pm_wakeup_card(pmlan_adapter pmadapter);
 
-#ifdef UAP_SUPPORT
-mlan_status wlan_process_802dot11_mgmt_pkt(mlan_private * priv, t_u8 * payload,
-                                           t_u32 payload_len);
-#endif /* UAP_SUPPORT */
-
 mlan_status wlan_pm_ioctl_hscfg(pmlan_adapter pmadapter,
                                 pmlan_ioctl_req pioctl_req);
-
-/** get pm info */
-mlan_status wlan_get_pm_info(IN pmlan_adapter pmadapter,
-                             IN pmlan_ioctl_req pioctl_req);
 
 t_void wlan_host_sleep_activated_event(pmlan_private priv, t_u8 activated);
 /** Handles the command response of hs_cfg */
@@ -2051,33 +2006,6 @@ wlan_strlen(const t_s8 * str)
     for (i = 0; str[i] != 0; i++) {
     }
     return i;
-}
-
-/**
- *  @brief iscdigit
- *
- *  @param chr                  A char
- *
- *  @return                     Non zero if chr is a hex, else 0
- */
-static INLINE t_u32
-wlan_isxdigit(t_u8 chr)
-{
-    return ((chr <= 'f' && chr >= 'a') || (chr <= 'F' && chr >= 'A') ||
-            (chr <= '9' && chr >= '0'));
-}
-
-/**
- *  @brief isspace
- *
- *  @param                       A chr
- *
- *  @return                      Non zero if chr is space etc, else 0
- */
-static INLINE t_u32
-wlan_isspace(t_u8 chr)
-{
-    return (chr <= ' ' && (chr == ' ' || (chr <= 13 && chr >= 9)));
 }
 
 /** delay unit */

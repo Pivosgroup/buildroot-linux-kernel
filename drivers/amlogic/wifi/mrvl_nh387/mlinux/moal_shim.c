@@ -2,7 +2,7 @@
   *
   * @brief This file contains the callback functions registered to MLAN
   *
-  * Copyright (C) 2008-2011, Marvell International Ltd. 
+  * Copyright (C) 2008-2010, Marvell International Ltd. 
   * 
   * This software file (the "File") is distributed by Marvell International 
   * Ltd. under the terms of the GNU General Public License Version 2, June 1991 
@@ -480,11 +480,10 @@ moal_ioctl_complete(IN t_void * pmoal_handle,
     moal_private *priv = NULL;
     wait_queue *wait;
     ENTER();
-
-    if (!atomic_read(&handle->ioctl_pending))
+    if (!atomic_read(&handle->ioctl_pending)) {
         PRINTM(MERROR, "ERR: Unexpected IOCTL completed: %p\n", pioctl_req);
-    else
-        atomic_dec(&handle->ioctl_pending);
+    }
+    atomic_dec(&handle->ioctl_pending);
     priv = woal_bss_num_to_priv(handle, pioctl_req->bss_num);
     if (priv == NULL) {
         PRINTM(MERROR, "%s: priv is null\n", __FUNCTION__);
@@ -582,7 +581,7 @@ moal_send_packet_complete(IN t_void * pmoal_handle,
         priv = woal_bss_num_to_priv(pmoal_handle, pmbuf->bss_num);
         skb = (struct sk_buff *) pmbuf->pdesc;
         if (priv) {
-            woal_set_trans_start(priv->netdev);
+            priv->netdev->trans_start = jiffies;
             if (skb) {
                 if (status == MLAN_STATUS_SUCCESS) {
                     priv->stats.tx_packets++;
@@ -590,20 +589,21 @@ moal_send_packet_complete(IN t_void * pmoal_handle,
                 } else {
                     priv->stats.tx_errors++;
                 }
-                if (atomic_dec_return(&handle->tx_pending) <
-                    handle->low_tx_pending) {
+                if (atomic_dec_return(&handle->tx_pending) < LOW_TX_PENDING) {
                     for (i = 0; i < handle->priv_num; i++) {
 #ifdef STA_SUPPORT
                         if ((GET_BSS_ROLE(handle->priv[i]) == MLAN_BSS_ROLE_STA)
                             && (handle->priv[i]->media_connected ||
                                 priv->is_adhoc_link_sensed)) {
-                            woal_wake_queue(handle->priv[i]->netdev);
+                            if (netif_queue_stopped(handle->priv[i]->netdev))
+                                netif_wake_queue(handle->priv[i]->netdev);
                         }
 #endif
 #ifdef UAP_SUPPORT
                         if ((GET_BSS_ROLE(handle->priv[i]) == MLAN_BSS_ROLE_UAP)
                             && (handle->priv[i]->media_connected)) {
-                            woal_wake_queue(handle->priv[i]->netdev);
+                            if (netif_queue_stopped(handle->priv[i]->netdev))
+                                netif_wake_queue(handle->priv[i]->netdev);
                         }
 #endif
                     }
@@ -770,10 +770,8 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
     moal_private *priv = NULL;
     moal_private *pmpriv = NULL;
 #ifdef STA_SUPPORT
+    char event[64];
     union iwreq_data wrqu;
-#endif
-#if defined(SDIO_SUSPEND_RESUME)
-    mlan_ds_ps_info pm_info;
 #endif
     ENTER();
 
@@ -789,11 +787,13 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
         priv->is_adhoc_link_sensed = MTRUE;
         if (!netif_carrier_ok(priv->netdev))
             netif_carrier_on(priv->netdev);
-        woal_wake_queue(priv->netdev);
+        if (netif_queue_stopped(priv->netdev))
+            netif_wake_queue(priv->netdev);
         woal_send_iwevcustom_event(priv, CUS_EVT_ADHOC_LINK_SENSED);
         break;
     case MLAN_EVENT_ID_FW_ADHOC_LINK_LOST:
-        woal_stop_queue(priv->netdev);
+        if (!netif_queue_stopped(priv->netdev))
+            netif_stop_queue(priv->netdev);
         if (netif_carrier_ok(priv->netdev))
             netif_carrier_off(priv->netdev);
         priv->is_adhoc_link_sensed = MFALSE;
@@ -809,20 +809,22 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
         priv->media_connected = MTRUE;
         if (!netif_carrier_ok(priv->netdev))
             netif_carrier_on(priv->netdev);
-        woal_wake_queue(priv->netdev);
+        if (netif_queue_stopped(priv->netdev))
+            netif_wake_queue(priv->netdev);
         break;
 
     case MLAN_EVENT_ID_DRV_SCAN_REPORT:
         PRINTM(MINFO, "Scan report\n");
-        if (priv->scan_pending_on_block == MTRUE) {
-            priv->scan_pending_on_block = MFALSE;
-            MOAL_REL_SEMAPHORE(&priv->async_sem);
-        }
         if (priv->report_scan_result) {
             memset(&wrqu, 0, sizeof(union iwreq_data));
             wireless_send_event(priv->netdev, SIOCGIWSCAN, &wrqu, NULL);
             priv->report_scan_result = MFALSE;
         }
+        if (priv->scan_pending_on_block == MTRUE) {
+            priv->scan_pending_on_block = MFALSE;
+            MOAL_REL_SEMAPHORE(&priv->async_sem);
+        }
+
         break;
 
     case MLAN_EVENT_ID_DRV_OBSS_SCAN_PARAM:
@@ -854,9 +856,18 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
         wireless_send_event(priv->netdev, IWEVCUSTOM, &wrqu,
                             pmevent->event_buf);
         break;
+    case MLAN_EVENT_ID_FW_HOSTWAKE_STAIE:
+        sprintf(event, "HOSTWAKE_STAIE_EVENT Match Condition=0x%lx",
+                *(t_u32 *) pmevent->event_buf);
+
+        wrqu.data.pointer = event;
+        wrqu.data.length = strlen(event) + IW_EV_LCP_LEN + 1;
+        wireless_send_event(priv->netdev, IWEVCUSTOM, &wrqu, event);
+        break;
     case MLAN_EVENT_ID_FW_DISCONNECTED:
         priv->media_connected = MFALSE;
-        woal_stop_queue(priv->netdev);
+        if (!netif_queue_stopped(priv->netdev))
+            netif_stop_queue(priv->netdev);
         if (netif_carrier_ok(priv->netdev))
             netif_carrier_off(priv->netdev);
         memset(wrqu.ap_addr.sa_data, 0x00, ETH_ALEN);
@@ -996,17 +1007,12 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
         }
 #endif
 #if defined(SDIO_SUSPEND_RESUME)
-        if (priv->phandle->suspend_fail == MFALSE) {
-            woal_get_pm_info(priv, &pm_info);
-            if (pm_info.is_suspend_allowed == MTRUE) {
-                priv->phandle->hs_activated = MTRUE;
+        priv->phandle->hs_activated = MTRUE;
 #ifdef MMC_PM_FUNC_SUSPENDED
-                woal_wlan_is_suspended(priv->phandle);
+        woal_wlan_is_suspended(priv->phandle);
 #endif
-            }
-            priv->phandle->hs_activate_wait_q_woken = MTRUE;
-            wake_up_interruptible(&priv->phandle->hs_activate_wait_q);
-        }
+        priv->phandle->hs_activate_wait_q_woken = MTRUE;
+        wake_up_interruptible(&priv->phandle->hs_activate_wait_q);
 #endif
         break;
     case MLAN_EVENT_ID_DRV_HS_DEACTIVATED:
@@ -1039,20 +1045,18 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
         priv->media_connected = MTRUE;
         if (!netif_carrier_ok(priv->netdev))
             netif_carrier_on(priv->netdev);
-        woal_wake_queue(priv->netdev);
+        if (netif_queue_stopped(priv->netdev))
+            netif_wake_queue(priv->netdev);
         woal_broadcast_event(priv, pmevent->event_buf, pmevent->event_len);
         break;
     case MLAN_EVENT_ID_UAP_FW_BSS_IDLE:
         priv->media_connected = MFALSE;
-        woal_stop_queue(priv->netdev);
+        if (!netif_queue_stopped(priv->netdev))
+            netif_stop_queue(priv->netdev);
         if (netif_carrier_ok(priv->netdev))
             netif_carrier_off(priv->netdev);
         woal_broadcast_event(priv, pmevent->event_buf, pmevent->event_len);
         break;
-    case MLAN_EVENT_ID_DRV_MGMT_FRAME:
-        woal_broadcast_event(priv, pmevent->event_buf, pmevent->event_len);
-        break;
-
 #endif /* UAP_SUPPORT */
     case MLAN_EVENT_ID_DRV_PASSTHRU:
         woal_broadcast_event(priv, pmevent->event_buf, pmevent->event_len);

@@ -59,7 +59,6 @@ static myfb_dev_t  *gp_fbdev_list[OSD_COUNT]={NULL,NULL};
 
 static DEFINE_MUTEX(dbg_mutex);
 static char request2XScaleValue[32];
-static char videohole[32];
 
 
 const color_bit_define_t*	
@@ -202,22 +201,9 @@ osd_set_par(struct fb_info *info)
 	virt_end_x=osd_ctrl->disp_start_x+info->var.xres;
 	virt_end_y=osd_ctrl->disp_start_y+info->var.yres;
 	
-	if(virt_end_x > vinfo->width)
-	{
-		osd_ctrl->disp_end_x=vinfo->width - 1 ;
-	}
-	else
-	{
-		osd_ctrl->disp_end_x=virt_end_x -1;
-	}
-	if(virt_end_y  >vinfo->height)
-	{
-		osd_ctrl->disp_end_y=vinfo->height - 1;
-	}
-	else
-	{     
-		osd_ctrl->disp_end_y=virt_end_y - 1; 
-	}
+	osd_ctrl->disp_end_x=vinfo->width - 1 ;
+	osd_ctrl->disp_end_y=vinfo->height - 1;
+
 	osddev_set((struct myfb_dev *)info->par);
 	return  0;
 }
@@ -288,7 +274,6 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 		case FBIOGET_OSD_ORDER:
 		case FBIOGET_OSD_GET_GBL_ALPHA:
 		case FBIOPUT_OSD_2X_SCALE:	
-		case FBIOPUT_OSD_CANVAS_CONF:
 		case FBIOPUT_OSD_ENABLE_3D_MODE:
 		case FBIOPUT_OSD_FREE_SCALE_ENABLE:
 		case FBIOPUT_OSD_FREE_SCALE_WIDTH:
@@ -296,7 +281,7 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 		case FBIOGET_OSD_BLOCK_WINDOWS:
 		case FBIOGET_OSD_BLOCK_MODE:
 		case FBIOGET_OSD_FREE_SCALE_AXIS:
-		case	FBIOPUT_OSD_ENFORCE_PROGRESSIVE:
+		case FBIOPUT_OSD_ENFORCE_PROGRESSIVE:
 			break;
 		case FBIOPUT_OSD_BLOCK_MODE:
 			block_mode = (u32)argp;
@@ -337,8 +322,6 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
     		case FBIOPUT_OSD_2X_SCALE: //arg :higher 16 bit h_scale_enable, lower 16 bit v_scale_enable
 		osddev_set_2x_scale(info->node,arg&0xffff0000?1:0,arg&0xffff?1:0);
 		break;		
-		case FBIOPUT_OSD_CANVAS_CONF:
-			osddev_set_canvas_conf(info->node, arg);
     		case FBIOPUT_OSD_SRCCOLORKEY:
 	    	switch(fbdev->color->color_index)
 	  	{
@@ -415,7 +398,7 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 		case FBIOPUT_OSD_FREE_SCALE_AXIS:
 			osddev_set_free_scale_axis(info->node, osd_axis[0], osd_axis[1], osd_axis[2], osd_axis[3]);
 			break;
-		case	FBIOPUT_OSD_ENFORCE_PROGRESSIVE:
+		case FBIOPUT_OSD_ENFORCE_PROGRESSIVE:
 			osddev_set_enforce_progressive(info->node, arg);
 			break;
 		default:
@@ -793,21 +776,6 @@ static ssize_t store__request_2xscale(struct device *device, struct device_attri
     return count;
 }
 
-static ssize_t  show_video_hole(struct device *device, struct device_attribute *attr,
-			 char *buf)
-{
-	memcpy(buf,videohole,32);
-    return 32;
-}
-
-static ssize_t store__video_hole(struct device *device, struct device_attribute *attr,
-			 const char *buf, size_t count)
-{
-	memset(videohole,0,32);
-	memcpy(videohole,buf,count);
-    return count;
-}
-
 
 static ssize_t show_free_scale_axis(struct device *device, struct device_attribute *attr,
 			 char *buf)
@@ -880,8 +848,10 @@ static ssize_t show_scale_width(struct device *device, struct device_attribute *
 	unsigned int free_scale_width=0;
 
 	osddev_get_free_scale_width(fb_info->node, &free_scale_width);
-	return snprintf(buf, PAGE_SIZE, "free_scale_width:[0x%x]\n",free_scale_width);
+	return snprintf(buf, PAGE_SIZE, "free_scale_width:%d\n",free_scale_width);
+	
 }
+
 static ssize_t store_scale_height(struct device *device, struct device_attribute *attr,
 			 const char *buf, size_t count)
 {
@@ -893,6 +863,7 @@ static ssize_t store_scale_height(struct device *device, struct device_attribute
 		return err;
 	return count;
 }
+
 static ssize_t show_scale_height(struct device *device, struct device_attribute *attr,
 			 char *buf)
 {
@@ -900,19 +871,21 @@ static ssize_t show_scale_height(struct device *device, struct device_attribute 
 	unsigned int free_scale_height=0;
 
 	osddev_get_free_scale_height(fb_info->node, &free_scale_height);
-	return snprintf(buf, PAGE_SIZE, "free_scale_height:[0x%x]\n",free_scale_height);
+	return snprintf(buf, PAGE_SIZE, "free_scale_height:%d\n",free_scale_height);
 }
+
 static ssize_t store_free_scale(struct device *device, struct device_attribute *attr,
 			 const char *buf, size_t count)
 {
 	struct fb_info *fb_info = dev_get_drvdata(device);
 	unsigned int free_scale_enable=0;
 	int err;
-	 free_scale_enable= simple_strtoul(buf, NULL, 0);
+	free_scale_enable= simple_strtoul(buf, NULL, 0);
 	if ((err = osd_ioctl(fb_info,FBIOPUT_OSD_FREE_SCALE_ENABLE,free_scale_enable)))
 		return err;
 	return count;
 }
+
 static ssize_t show_free_scale(struct device *device, struct device_attribute *attr,
 			 char *buf)
 {
@@ -922,6 +895,7 @@ static ssize_t show_free_scale(struct device *device, struct device_attribute *a
 	osddev_get_free_scale_enable(fb_info->node, &free_scale_enable);
 	return snprintf(buf, PAGE_SIZE, "free_scale_enalbe:[0x%x]\n",free_scale_enable);
 }
+
 static ssize_t store_scale(struct device *device, struct device_attribute *attr,
 			 const char *buf, size_t count)
 {
@@ -960,13 +934,13 @@ static ssize_t store_osd_info(struct device *device, struct device_attribute *at
 	} else {
 		amlog_level(LOG_LEVEL_HIGH, "set store_osd_info *buf* is NULL error\n");
 	}
-
+	
 	if (osd_info_flag == 0){
 		amlog_level(LOG_LEVEL_HIGH, "pandata[%d].x_start :  %d\n"
 									  "pandata[%d].x_end   :  %d\n"
 									  "pandata[%d].y_start :  %d\n"
 									  "pandata[%d].y_end   :  %d\n",
-									fb_info->node, osd_val[0][0], fb_info->node,
+									fb_info->node, osd_val[0][0], fb_info->node, 
 									osd_val[0][1], fb_info->node, osd_val[0][2],
 									fb_info->node, osd_val[0][3]);
 		amlog_level(LOG_LEVEL_HIGH, "dispdata[%d].x_start :  %d\n"
@@ -999,7 +973,7 @@ static ssize_t store_osd_info(struct device *device, struct device_attribute *at
 	}else if(osd_info_flag == 2){
 		amlog_level(LOG_LEVEL_HIGH, "set store_osd_info osd_info_flag is error\n");
 	}
-
+	
 	return count;
 }
 
@@ -1101,28 +1075,6 @@ static ssize_t store_enforce_progressive(struct device *device, struct device_at
 
 	return count;
 }
-
-static ssize_t show_canvas_conf(struct device *device, struct device_attribute *attr,
-			 char *buf)
-{
-	struct fb_info *fb_info = dev_get_drvdata(device);
-	struct myfb_dev *fbdev = (struct myfb_dev *)fb_info->par;
-	return snprintf(buf, PAGE_SIZE, "canvas_conf:[0x%x]\n",fbdev->canvas_conf);
-
-}
-
-static ssize_t store_canvas_conf(struct device *device, struct device_attribute *attr,
-			 const char *buf, size_t count)
-{
-	struct fb_info *fb_info = dev_get_drvdata(device);
-	struct myfb_dev *fbdev = (struct myfb_dev *)fb_info->par;
-	int err;
-	fbdev->canvas_conf = simple_strtoul(buf, NULL, 0);
-	if ((err = osd_ioctl(fb_info,FBIOPUT_OSD_CANVAS_CONF,fbdev->canvas_conf)))
-		return err;
-	return count;
-}
-
 static struct device_attribute osd_attrs[] = {
 	__ATTR(scale, S_IRUGO|S_IWUSR, show_scale, store_scale),
 	__ATTR(order, S_IRUGO|S_IWUSR, show_order, store_order),	
@@ -1138,11 +1090,9 @@ static struct device_attribute osd_attrs[] = {
 	__ATTR(block_windows, S_IRUGO|S_IWUSR, show_block_windows, store_block_windows),
 	__ATTR(block_mode, S_IRUGO|S_IWUSR, show_block_mode, store_block_mode),
 	__ATTR(free_scale_axis, S_IRUGO|S_IWUSR, show_free_scale_axis, store_free_scale_axis),
-	__ATTR(osd_info_msg, S_IRUGO|S_IWUSR, NULL, store_osd_info),
 	__ATTR(request2XScale, S_IRUGO|S_IWUSR, show_request_2xscale, store__request_2xscale),
-	__ATTR(video_hole, S_IRUGO|S_IWUSR, show_video_hole, store__video_hole),
+	__ATTR(osd_info_msg, S_IRUGO|S_IWUSR, NULL, store_osd_info),
 	__ATTR(enforce_progressive, S_IRUGO| S_IWUSR, show_enforce_progressive, store_enforce_progressive),
-	__ATTR(canvas_conf, S_IRUGO|S_IWUSR, show_canvas_conf, store_canvas_conf),
 };		
 
 #ifdef  CONFIG_PM
@@ -1185,18 +1135,15 @@ static void osd_late_resume(struct early_suspend *h)
 }
 #endif
 
-#if defined(CONFIG_MACH_MESON3_REFF16) || defined(CONFIG_MACH_MESON3_STV_MBX_MC) //add by steven
+#ifdef CONFIG_MACH_MESON_STV_MBX_M3 //modifed by clei for resolution CONFIG_MACH_MESON_8726M_REFC03_ICS
 int  __init  get_resolution(char *str)
 {
-    int status = 0;
-
     if(strncmp("480", str, 3) == 0)
     {
 			mydef_var[0].xres=mydef_var[1].xres=720;
 			mydef_var[0].yres=mydef_var[1].yres=480;	
 			mydef_var[0].xres_virtual=mydef_var[1].xres_virtual=720;
 			mydef_var[0].yres_virtual=mydef_var[1].yres_virtual=960;
-      status = 1;
     }
     else if(strncmp("576", str, 3) == 0)
     {
@@ -1204,7 +1151,6 @@ int  __init  get_resolution(char *str)
 			mydef_var[0].yres=mydef_var[1].yres=576;	
 			mydef_var[0].xres_virtual=mydef_var[1].xres_virtual=720;
 			mydef_var[0].yres_virtual=mydef_var[1].yres_virtual=1152;
-      status = 1;
     }
     else if(strncmp("720", str, 3) == 0)
     {
@@ -1212,7 +1158,6 @@ int  __init  get_resolution(char *str)
 			mydef_var[0].yres=mydef_var[1].yres=720;	
 			mydef_var[0].xres_virtual=mydef_var[1].xres_virtual=1280;
 			mydef_var[0].yres_virtual=mydef_var[1].yres_virtual=1440;
-      status = 1;
     }
     else if(strncmp("1080", str, 4) == 0)
     {
@@ -1220,15 +1165,44 @@ int  __init  get_resolution(char *str)
 			mydef_var[0].yres=mydef_var[1].yres=1080;	
 			mydef_var[0].xres_virtual=mydef_var[1].xres_virtual=1920;
 			mydef_var[0].yres_virtual=mydef_var[1].yres_virtual=2160;
-      status = 1;
     }
     printk("***osd size: %d, %d, %d, %d...\n", mydef_var[0].xres, mydef_var[0].yres, mydef_var[0].xres_virtual, mydef_var[0].yres_virtual);
 
-    return status;
 }
 __setup("androidboot.resolution=", get_resolution) ;
 #endif
 
+#ifdef CONFIG_FB_MULTI_OUTPUT_MODE
+static int screen_width=0;
+static int screen_height=0;
+int  __init  resolution_setup(char *str)
+{
+    char *options;
+    if(NULL==str)
+	  {
+		    printk("resolution string erro\n");
+		    return -EINVAL;
+	  } 
+	  printk("resolution string = %s\n", str);
+	  
+	  if((options = strchr(str,',')) != NULL)
+	  	*(options++) = 0;
+	  else
+	  	return -EINVAL;
+//	  printk("width =%s ,height=%s\n",str,options);
+	  screen_width = 	simple_strtoul(str, NULL, 0);
+	  screen_height = simple_strtoul(options, NULL, 0);	
+    printk("screen_height = %d ,screen_width = %d\n" ,screen_height,screen_width);
+	  if((screen_height > 1080)||(screen_width > 1920))
+	  {	
+	      screen_height = 0;
+	  	  screen_width = 0;
+	  }	
+	  return 0;
+	
+}
+__setup("resolution_size=",resolution_setup);
+#endif 
 static int __init
 osd_probe(struct platform_device *pdev)
 {
@@ -1270,6 +1244,7 @@ osd_probe(struct platform_device *pdev)
 		osddev_init();
     	}
 	vinfo = get_current_vinfo();
+       
     	for (index=0;index<OSD_COUNT;index++)
     	{
     		//platform resource 
@@ -1319,7 +1294,8 @@ osd_probe(struct platform_device *pdev)
 		 amlog_level(LOG_LEVEL_HIGH,"Frame buffer memory assigned at phy:0x%08x, vir:0x%p, size=%dK\n",
 	    	fbdev->fb_mem_paddr, fbdev->fb_mem_vaddr, fbdev->fb_len >> 10);
 		 
-
+              mydef_var[index].width=vinfo->screen_real_width;
+              mydef_var[index].height=vinfo->screen_real_height;
 		if(init_logo_obj && index==logo_osd_index ) //adjust default var info
 		{
 			int  bpp=init_logo_obj->dev->output_dev.osd.color_depth;//bytes per pixel
@@ -1337,7 +1313,41 @@ osd_probe(struct platform_device *pdev)
 			}
 		} else {
 			amlog_level(LOG_LEVEL_HIGH,"---------------clear framebuffer%d memory  \r\n",index);
-			memset((char*)fbdev->fb_mem_vaddr, 0x80, fbdev->fb_len);	
+			memset((char*)fbdev->fb_mem_vaddr, 0, fbdev->fb_len);	
+			#ifdef CONFIG_FB_MULTI_OUTPUT_MODE
+			static  para_info_outputmode_osd_t output_osd[outputmode_num]={
+			{"480i",CONFIG_FB_OSD1_480_DEFAULT_WIDTH, CONFIG_FB_OSD1_480_DEFAULT_HEIGHT, CONFIG_FB_OSD1_480_DEFAULT_WIDTH_VIRTUAL, CONFIG_FB_OSD1_480_DEFAULT_HEIGHT_VIRTUAL},
+			{"480p",CONFIG_FB_OSD1_480_DEFAULT_WIDTH, CONFIG_FB_OSD1_480_DEFAULT_HEIGHT, CONFIG_FB_OSD1_480_DEFAULT_WIDTH_VIRTUAL, CONFIG_FB_OSD1_480_DEFAULT_HEIGHT_VIRTUAL},
+			{"576i",CONFIG_FB_OSD1_576_DEFAULT_WIDTH, CONFIG_FB_OSD1_576_DEFAULT_HEIGHT, CONFIG_FB_OSD1_576_DEFAULT_WIDTH_VIRTUAL, CONFIG_FB_OSD1_576_DEFAULT_HEIGHT_VIRTUAL},
+			{"576p",CONFIG_FB_OSD1_576_DEFAULT_WIDTH, CONFIG_FB_OSD1_576_DEFAULT_HEIGHT, CONFIG_FB_OSD1_576_DEFAULT_WIDTH_VIRTUAL, CONFIG_FB_OSD1_576_DEFAULT_HEIGHT_VIRTUAL},
+			{"720p",CONFIG_FB_OSD1_720_DEFAULT_WIDTH, CONFIG_FB_OSD1_720_DEFAULT_HEIGHT, CONFIG_FB_OSD1_720_DEFAULT_WIDTH_VIRTUAL, CONFIG_FB_OSD1_720_DEFAULT_HEIGHT_VIRTUAL},
+			{"1080i",CONFIG_FB_OSD1_1080_DEFAULT_WIDTH, CONFIG_FB_OSD1_1080_DEFAULT_HEIGHT, CONFIG_FB_OSD1_1080_DEFAULT_WIDTH_VIRTUAL, CONFIG_FB_OSD1_1080_DEFAULT_HEIGHT_VIRTUAL},
+			{"1080p",CONFIG_FB_OSD1_1080_DEFAULT_WIDTH, CONFIG_FB_OSD1_1080_DEFAULT_HEIGHT, CONFIG_FB_OSD1_1080_DEFAULT_WIDTH_VIRTUAL, CONFIG_FB_OSD1_1080_DEFAULT_HEIGHT_VIRTUAL},
+			};
+			char *para=outputmode;
+			if(para)
+			{
+			    for(i=0;i<outputmode_num;i++)
+					{
+					    if(strcmp(output_osd[i].name,para)==0)
+						  {
+						       mydef_var[index].xres=output_osd[i].xres;
+						       mydef_var[index].yres=output_osd[i].yres;	
+						       mydef_var[index].xres_virtual=output_osd[i].xres_virtual;
+						       mydef_var[index].yres_virtual=output_osd[i].yres_virtual;//logo always use double buffer
+						       if((screen_width != 0) && (screen_height !=0))
+						       {
+					             mydef_var[index].xres=screen_width;
+						           mydef_var[index].yres=screen_height;	
+						           mydef_var[index].xres_virtual=screen_width;
+						           mydef_var[index].yres_virtual=screen_height*2;//logo always use double buffer
+					         }		
+						  }
+					}
+				}
+
+			#endif
+			
 		}
 	
 		_fbdev_set_default(fbdev,index);

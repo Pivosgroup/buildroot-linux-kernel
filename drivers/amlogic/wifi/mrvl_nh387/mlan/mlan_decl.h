@@ -2,7 +2,7 @@
  *
  *  @brief This file declares the generic data structures and APIs.
  *
- *  Copyright (C) 2008-2011, Marvell International Ltd. 
+ *  Copyright (C) 2008-2010, Marvell International Ltd. 
  *  All Rights Reserved
  */
 
@@ -15,7 +15,7 @@ Change log:
 #define _MLAN_DECL_H_
 
 /** MLAN release version */
-#define MLAN_RELEASE_VERSION		"130.p44"
+#define MLAN_RELEASE_VERSION		"130.p10"
 
 /** Re-define generic data types for MLAN/MOAL */
 /** Signed char (1-byte) */
@@ -94,12 +94,8 @@ typedef t_u32 t_ptr;
 /** NET IP alignment */
 #define MLAN_NET_IP_ALIGN        0
 
-/** DMA alignment */
-#define DMA_ALIGNMENT            64
-/** max size of TxPD */
-#define MAX_TXPD_SIZE            32
 /** Minimum data header length */
-#define MLAN_MIN_DATA_HEADER_LEN (DMA_ALIGNMENT+MAX_TXPD_SIZE)
+#define MLAN_MIN_DATA_HEADER_LEN 32     // (sizeof(mlan_txpd))
 
 /** rx data header length */
 #define MLAN_RX_HEADER_LEN       MLAN_MIN_DATA_HEADER_LEN
@@ -251,28 +247,21 @@ typedef enum _mlan_error_code
 {
     /** No error */
     MLAN_ERROR_NO_ERROR = 0,
-    /** Firmware/device errors below (MSB=0) */
+    /** Firmware errors below (MSB=0) */
     MLAN_ERROR_FW_NOT_READY = 0x00000001,
     MLAN_ERROR_FW_BUSY,
     MLAN_ERROR_FW_CMDRESP,
-    MLAN_ERROR_DATA_TX_FAIL,
-    MLAN_ERROR_DATA_RX_FAIL,
     /** Driver errors below (MSB=1) */
     MLAN_ERROR_PKT_SIZE_INVALID = 0x80000001,
     MLAN_ERROR_PKT_TIMEOUT,
-    MLAN_ERROR_PKT_INVALID,
     MLAN_ERROR_CMD_INVALID,
     MLAN_ERROR_CMD_TIMEOUT,
     MLAN_ERROR_CMD_DNLD_FAIL,
     MLAN_ERROR_CMD_CANCEL,
     MLAN_ERROR_CMD_RESP_FAIL,
-    MLAN_ERROR_CMD_ASSOC_FAIL,
-    MLAN_ERROR_CMD_SCAN_FAIL,
-    MLAN_ERROR_IOCTL_INVALID,
-    MLAN_ERROR_IOCTL_FAIL,
+    MLAN_ERROR_ASSOC_FAIL,
     MLAN_ERROR_EVENT_UNKNOWN,
     MLAN_ERROR_INVALID_PARAMETER,
-    MLAN_ERROR_NO_MEM,
     /** More to add */
 } mlan_error_code;
 
@@ -346,6 +335,7 @@ typedef enum _mlan_event_id
     MLAN_EVENT_ID_FW_START_TX,
     MLAN_EVENT_ID_FW_CHANNEL_SWITCH_ANN,
     MLAN_EVENT_ID_FW_BW_CHANGED,
+    MLAN_EVENT_ID_FW_HOSTWAKE_STAIE,
 #ifdef UAP_SUPPORT
     MLAN_EVENT_ID_UAP_FW_BSS_START,
     MLAN_EVENT_ID_UAP_FW_BSS_ACTIVE,
@@ -357,9 +347,6 @@ typedef enum _mlan_event_id
     MLAN_EVENT_ID_DRV_DEFER_HANDLING,
     MLAN_EVENT_ID_DRV_HS_ACTIVATED,
     MLAN_EVENT_ID_DRV_HS_DEACTIVATED,
-#ifdef UAP_SUPPORT
-    MLAN_EVENT_ID_DRV_MGMT_FRAME,
-#endif
     MLAN_EVENT_ID_DRV_OBSS_SCAN_PARAM,
     MLAN_EVENT_ID_DRV_PASSTHRU,
     MLAN_EVENT_ID_DRV_SCAN_REPORT,
@@ -380,16 +367,6 @@ typedef struct _mlan_fw_image
     /** Firmware image length */
     t_u32 fw_len;
 } mlan_fw_image, *pmlan_fw_image;
-
-/** Custom data structure */
-typedef struct _mlan_init_param
-{
-    /** Cal data buffer pointer */
-    t_u8 *pcal_data_buf;
-    /** Cal data length */
-    t_u32 cal_data_len;
-    /** Other custom data */
-} mlan_init_param, *pmlan_init_param;
 
 /** mlan_event data structure */
 typedef struct _mlan_event
@@ -743,8 +720,6 @@ typedef struct _mlan_device
     /** 802.11d configuration */
     t_u32 cfg_11d;
 #endif
-    /** FW download CRC check flag */
-    t_u32 fw_crc_check;
 } mlan_device, *pmlan_device;
 
 /** MLAN API function prototype */
@@ -760,10 +735,6 @@ MLAN_API mlan_status mlan_unregister(IN t_void * pmlan_adapter);
 /** Firmware Downloading */
 MLAN_API mlan_status mlan_dnld_fw(IN t_void * pmlan_adapter,
                                   IN pmlan_fw_image pmfw);
-
-/** Custom data pass API */
-MLAN_API mlan_status mlan_set_init_param(IN t_void * pmlan_adapter,
-                                         IN pmlan_init_param pparam);
 
 /** Firmware Initialization */
 MLAN_API mlan_status mlan_init_fw(IN t_void * pmlan_adapter);
@@ -789,7 +760,5 @@ MLAN_API t_void mlan_interrupt(IN t_void * pmlan_adapter);
 /** mlan ioctl */
 MLAN_API mlan_status mlan_ioctl(IN t_void * pmlan_adapter,
                                 IN pmlan_ioctl_req pioctl_req);
-/** mlan select wmm queue */
-MLAN_API t_u8 mlan_select_wmm_queue(IN t_void * pmlan_adapter,
-                                    IN t_u8 bss_num, IN t_u8 tid);
+
 #endif /* !_MLAN_DECL_H_ */

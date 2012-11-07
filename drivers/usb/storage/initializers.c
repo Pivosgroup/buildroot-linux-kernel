@@ -104,3 +104,16 @@ int usb_stor_huawei_e220_init(struct us_data *us)
 	US_DEBUGP("Huawei mode set result is %d\n", result);
 	return 0;
 }
+
+
+/* This places The A-LINK 3G module for it init process */
+int usb_stor_alink_3g_init(struct us_data *us)
+{
+	u16 vid = le16_to_cpu(us->pusb_dev->descriptor.idVendor);
+	u16 pid = le16_to_cpu(us->pusb_dev->descriptor.idProduct);
+
+	if((vid == 0x1e0e) && (pid == 0xf000))
+		mdelay(3 * 1000);
+
+	return 0;
+}

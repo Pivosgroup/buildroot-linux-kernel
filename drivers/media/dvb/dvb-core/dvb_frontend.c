@@ -604,13 +604,23 @@ restart:
 			case DVBFE_ALGO_HW:
 				dprintk("%s: Frontend ALGO = DVBFE_ALGO_HW\n", __func__);
 				params = NULL; /* have we been asked to RETUNE ? */
+				#if 1
+				fepriv->delay = HZ / 10;
+				#endif
 
 				if (fepriv->state & FESTATE_RETUNE) {
 					dprintk("%s: Retune requested, FESTATE_RETUNE\n", __func__);
 					params = &fepriv->parameters;
 					fepriv->state = FESTATE_TUNED;
+					#if 1
+                                        if (fe->ops.tune) {
+                                                fe->ops.tune(fe, params, fepriv->tune_mode_flags, &fepriv->delay, &s);
+                                                fepriv->state = FESTATE_TUNED;
+                                        }
+					#endif
 				}
 
+				#if 0
 				if (fe->ops.tune)
 					fe->ops.tune(fe, params, fepriv->tune_mode_flags, &fepriv->delay, &s);
 
@@ -619,6 +629,21 @@ restart:
 					dvb_frontend_add_event(fe, s);
 					fepriv->status = s;
 				}
+				#endif
+
+                                #if 1
+                                if (!(fepriv->tune_mode_flags & FE_TUNE_MODE_ONESHOT) &&
+                                        fepriv->state == FESTATE_TUNED && fe->ops.read_status) {
+
+                                        fe->ops.read_status(fe, &s);
+                                        if (s != fepriv->status) {
+                                                dprintk("%s: state changed, adding current state\n", __func__);
+                                                dvb_frontend_add_event(fe, s);
+                                                fepriv->status = s;
+                                        }
+                                }
+                                #endif
+
 				break;
 			case DVBFE_ALGO_SW:
 				dprintk("%s: Frontend ALGO = DVBFE_ALGO_SW\n", __func__);
@@ -1510,7 +1535,7 @@ static int dvb_frontend_ioctl(struct inode *inode, struct file *file,
 	struct dvb_frontend *fe = dvbdev->priv;
 	struct dvb_frontend_private *fepriv = fe->frontend_priv;
 	int err = -EOPNOTSUPP;
-	int need_lock = 1;
+	//int need_lock = 1; modifed by clei from yfeng 2012/05/25
 
 	dprintk("%s (%d)\n", __func__, _IOC_NR(cmd));
 
@@ -1521,7 +1546,7 @@ static int dvb_frontend_ioctl(struct inode *inode, struct file *file,
 	    (_IOC_DIR(cmd) != _IOC_READ || cmd == FE_GET_EVENT ||
 	     cmd == FE_DISEQC_RECV_SLAVE_REPLY))
 		return -EPERM;
-
+/* modifed by clei from yfeng 2012/05/25
 	if (cmd==FE_READ_STATUS ||
 			cmd==FE_READ_BER ||
 			cmd==FE_READ_SIGNAL_STRENGTH ||
@@ -1530,7 +1555,7 @@ static int dvb_frontend_ioctl(struct inode *inode, struct file *file,
 			cmd==FE_GET_FRONTEND)
 		need_lock = 0;
 
-	if (need_lock)
+	if (need_lock)*/
 		if (down_interruptible (&fepriv->sem))
 			return -ERESTARTSYS;
 
@@ -1541,7 +1566,7 @@ static int dvb_frontend_ioctl(struct inode *inode, struct file *file,
 		err = dvb_frontend_ioctl_legacy(inode, file, cmd, parg);
 	}
 
-	if(need_lock)
+//	if(need_lock) modifed by clei from yfeng 2012/05/25
 		up(&fepriv->sem);
 	return err;
 }

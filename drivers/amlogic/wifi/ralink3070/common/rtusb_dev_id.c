@@ -5,36 +5,32 @@
  * Hsinchu County 302,
  * Taiwan, R.O.C.
  *
- * (c) Copyright 2002-2007, Ralink Technology, Inc.
+ * (c) Copyright 2002-2010, Ralink Technology, Inc.
  *
- * This program is free software; you can redistribute it and/or modify  * 
- * it under the terms of the GNU General Public License as published by  * 
- * the Free Software Foundation; either version 2 of the License, or     * 
- * (at your option) any later version.                                   * 
- *                                                                       * 
- * This program is distributed in the hope that it will be useful,       * 
- * but WITHOUT ANY WARRANTY; without even the implied warranty of        * 
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         * 
- * GNU General Public License for more details.                          * 
- *                                                                       * 
- * You should have received a copy of the GNU General Public License     * 
- * along with this program; if not, write to the                         * 
- * Free Software Foundation, Inc.,                                       * 
- * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             * 
- *                                                                       * 
- *************************************************************************
+ * This program is free software; you can redistribute it and/or modify  *
+ * it under the terms of the GNU General Public License as published by  *
+ * the Free Software Foundation; either version 2 of the License, or     *
+ * (at your option) any later version.                                   *
+ *                                                                       *
+ * This program is distributed in the hope that it will be useful,       *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+ * GNU General Public License for more details.                          *
+ *                                                                       *
+ * You should have received a copy of the GNU General Public License     *
+ * along with this program; if not, write to the                         *
+ * Free Software Foundation, Inc.,                                       *
+ * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
+ *                                                                       *
+ *************************************************************************/
 
-    Module Name:
-    rtusb_dev_id.c
- 
-    Abstract:
- 
-    Revision History:
-    Who        When          What
-    ---------  ----------    ----------------------------------------------
- */
 
-#include "rt_config.h"
+#define RTMP_MODULE_OS
+
+/*#include "rt_config.h"*/
+#include "rtmp_comm.h"
+#include "rt_os_util.h"
+#include "rt_os_net.h"
 
 /* module table */
 USB_DEVICE_ID rtusb_dev_id[] = {
@@ -51,6 +47,7 @@ USB_DEVICE_ID rtusb_dev_id[] = {
 	{USB_DEVICE(0x0DF6,0x0042)}, /* Sitecom 3072 */
 	{USB_DEVICE(0x0DF6,0x0048)}, /* Sitecom 3070 */
 	{USB_DEVICE(0x0DF6,0x0047)}, /* Sitecom 3071 */
+	{USB_DEVICE(0x0DF6,0x005F)}, /* Sitecom 3072 */
 	{USB_DEVICE(0x14B2,0x3C12)}, /* AL 3070 */
 	{USB_DEVICE(0x18C5,0x0012)}, /* Corega 3070 */
 	{USB_DEVICE(0x083A,0x7511)}, /* Arcadyan 3070 */
@@ -66,10 +63,12 @@ USB_DEVICE_ID rtusb_dev_id[] = {
 	{USB_DEVICE(0x13D3,0x3305)}, /* AzureWave 3070*/
 	{USB_DEVICE(0x1044,0x800D)}, /* Gigabyte GN-WB32L 3070 */
 	{USB_DEVICE(0x2019,0xAB25)}, /* Planex Communications, Inc. RT3070 */
+	{USB_DEVICE(0x2019,0x5201)}, /* Planex Communications, Inc. RT8070 */
 	{USB_DEVICE(0x07B8,0x3070)}, /* AboCom 3070 */
 	{USB_DEVICE(0x07B8,0x3071)}, /* AboCom 3071 */
 	{USB_DEVICE(0x07B8,0x3072)}, /* Abocom 3072 */
 	{USB_DEVICE(0x7392,0x7711)}, /* Edimax 3070 */
+	{USB_DEVICE(0x7392,0x4085)}, /* 2L Central Europe BV 8070 */
 	{USB_DEVICE(0x1A32,0x0304)}, /* Quanta 3070 */
 	{USB_DEVICE(0x1EDA,0x2310)}, /* AirTies 3070 */
 	{USB_DEVICE(0x07D1,0x3C0A)}, /* D-Link 3072 */
@@ -80,6 +79,7 @@ USB_DEVICE_ID rtusb_dev_id[] = {
 	{USB_DEVICE(0x07D1,0x3C17)}, /* D-Link 8070 */
 	{USB_DEVICE(0x1D4D,0x000C)}, /* Pegatron Corporation 3070 */
 	{USB_DEVICE(0x1D4D,0x000E)}, /* Pegatron Corporation 3070 */
+	{USB_DEVICE(0x1D4D,0x0011)}, /* Pegatron Corporation 3072 */
 	{USB_DEVICE(0x5A57,0x5257)}, /* Zinwell 3070 */
 	{USB_DEVICE(0x5A57,0x0283)}, /* Zinwell 3072 */
 	{USB_DEVICE(0x04BB,0x0945)}, /* I-O DATA 3072 */
@@ -105,11 +105,36 @@ USB_DEVICE_ID rtusb_dev_id[] = {
 	{USB_DEVICE(0x13D3,0x3321)}, /* Azurewave */
 	{USB_DEVICE(0x07FA,0x7712)}, /* Edimax */
 	{USB_DEVICE(0x0789,0x0166)}, /* Edimax */
-	{USB_DEVICE(0x148F,0x2070)}, /* Edimax */
-#endif // RT3070 //
+	{USB_DEVICE(0x0586,0x341A)}, /* Zyxel */
+	{USB_DEVICE(0x0586,0x341E)}, /* Zyxel */
+	{USB_DEVICE(0x0586,0x343E)}, /* Zyxel */
+	{USB_DEVICE(0x1EDA,0x2012)}, /* Airties */
+#endif /* RT3070 */
+#ifdef RT3370
+	{USB_DEVICE(0x148F,0x3370)}, /* Ralink 3370 */
+	{USB_DEVICE(0x0DF6,0x0050)}, /* Sitecom 3370 */
+#endif /* RT3370*/
+#ifdef RT5370
+	{USB_DEVICE(0x148F,0x5370)}, /* Ralink 5370 */	
+	{USB_DEVICE(0x148F,0x5372)}, /* Ralink 5370 */	
+	{USB_DEVICE(0x13D3,0x3365)}, /* Azurewave */
+	{USB_DEVICE(0x13D3,0x3329)}, /* Azurewave */
+	{USB_DEVICE(0x2001,0x3C15)}, /* Alpha */
+	{USB_DEVICE(0x2001,0x3C19)}, /* Alpha */
+	{USB_DEVICE(0x043E,0x7A12)}, /* Arcadyan */
+	{USB_DEVICE(0x043E,0x7A22)}, /* LG innotek */
+#endif // RT5370 //
+#ifdef RT5372
+	{USB_DEVICE(0x148F,0x5372)}, /* Ralink 5372 */
+	{USB_DEVICE(0x13D3,0x3365)}, /* Azurewave */
+#endif /*  RT5372 */
+#ifdef RT5572
+	{USB_DEVICE(0x148F,0x5572)}, /* Ralink 5572 */
+	{USB_DEVICE(0x043E,0x7A32)}, /* Arcadyan */
+#endif /* RT5572 */
 	{ }/* Terminating entry */
 };
 
-INT const rtusb_usb_id_len = sizeof(rtusb_dev_id) / sizeof(USB_DEVICE_ID);
+int const rtusb_usb_id_len = sizeof(rtusb_dev_id) / sizeof(USB_DEVICE_ID);
 
 MODULE_DEVICE_TABLE(usb, rtusb_dev_id);

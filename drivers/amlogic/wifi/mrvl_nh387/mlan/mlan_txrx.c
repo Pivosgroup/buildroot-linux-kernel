@@ -4,7 +4,7 @@
  *  @brief This file contains the handling of TX/RX in MLAN
  *
  *
- *  Copyright (C) 2009-2011, Marvell International Ltd. 
+ *  Copyright (C) 2009-2010, Marvell International Ltd. 
  *  All Rights Reserved
  *   
  */
@@ -134,7 +134,7 @@ wlan_process_tx(pmlan_private priv, pmlan_buffer pmbuf,
     if ((ret == MLAN_STATUS_SUCCESS) || (ret == MLAN_STATUS_PENDING)) {
         pmadapter->callbacks.moal_get_system_time(pmadapter->pmoal_handle, &sec,
                                                   &usec);
-        PRINTM(MDATA, "%lu.%06lu : Data => FW\n", sec, usec);
+        PRINTM(MDATA, "%lu.%lu : Data => FW\n", sec, usec);
 
         DBG_HEXDUMP(MDAT_D, "Tx", head_ptr + INTF_HEADER_LEN,
                     MIN(pmbuf->data_len + sizeof(TxPD), MAX_DATA_DUMP_LEN));

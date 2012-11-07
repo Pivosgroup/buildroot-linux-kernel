@@ -128,6 +128,7 @@ static int dmx_add_feed(struct aml_dmx *dmx, struct dvb_demux_feed *feed);
 static u32 video_pts = 0;
 static u32 audio_pts = 0;
 static int demux_skipbyte = 0;
+static bool error_sendcmd = false;
 
 /*Section buffer watchdog*/
 static void section_buffer_watchdog_func(unsigned long arg)
@@ -169,7 +170,8 @@ static void section_buffer_watchdog_func(unsigned long arg)
 							demux_channel_activity32,
 							section_busy32);
 
-				dmx_reset_hw(dvb);
+				error_sendcmd = true;
+				//dmx_reset_hw(dvb);
 				goto end;
 			}
 #else
@@ -237,6 +239,12 @@ static void section_buffer_watchdog_func(unsigned long arg)
 	}
 
 end:
+	if(error_sendcmd){
+		pr_error("error_sendcmd call and reset hw\n");
+		error_sendcmd = false;
+		dmx_reset_hw(dvb);
+	}
+	
 	spin_unlock_irqrestore(&dvb->slock, flags);
 #ifdef ENABLE_SEC_BUFF_WATCHDOG
 	mod_timer(&dvb->watchdog_timer, jiffies+msecs_to_jiffies(WATCHDOG_TIMER));
@@ -1212,7 +1220,7 @@ static int dmx_enable(struct aml_dmx *dmx)
 			(0<<DISCARD_AV_PACKAGE)               |
 			(0<<TS_RECORDER_SELECT)               |
 			(record<<TS_RECORDER_ENABLE)          |
-			(0<<KEEP_DUPLICATE_PACKAGE)           |
+			(1<<KEEP_DUPLICATE_PACKAGE)           |
 			//(1<<SECTION_END_WITH_TABLE_ID)        |
 			(1<<ENABLE_FREE_CLK_FEC_DATA_VALID)   |
 			(1<<ENABLE_FREE_CLK_STB_REG)          |
@@ -1314,7 +1322,8 @@ static int dmx_set_chan_regs(struct aml_dmx *dmx, int cid)
 	pr_dbg("write fm comp %x\n", data|(max>>1));
 	
 	if(DMX_READ_REG(dmx->id, OM_CMD_STATUS)&0x8e00) {
-		pr_error("error send cmd %x\n", DMX_READ_REG(dmx->id, OM_CMD_STATUS));
+		pr_error("chan error send cmd %x\n", DMX_READ_REG(dmx->id, OM_CMD_STATUS));
+		error_sendcmd = true;
 	}
 	
 	return 0;
@@ -1471,7 +1480,8 @@ static int dmx_set_filter_regs(struct aml_dmx *dmx, int fid)
 	pr_dbg("write fm comp %x\n", data|((max>>1)<<4));
 	
 	if(DMX_READ_REG(dmx->id, OM_CMD_STATUS)&0x8e00) {
-		pr_error("error send cmd %x\n",DMX_READ_REG(dmx->id, OM_CMD_STATUS));
+		pr_error("filter error send cmd %x\n",DMX_READ_REG(dmx->id, OM_CMD_STATUS));
+		error_sendcmd = true;
 	}
 	
 	return 0;

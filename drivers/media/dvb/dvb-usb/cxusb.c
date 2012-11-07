@@ -1205,8 +1205,14 @@ static int cxusb_mygica_d689_frontend_attach(struct dvb_usb_adapter *adap)
 		usb_rcvbulkpipe(d->udev, d->props.generic_bulk_ctrl_endpoint));
 	usb_clear_halt(d->udev,
 		usb_rcvbulkpipe(d->udev, d->props.adapter[0].stream.endpoint));
+/* modifed by clei 2012/05/17 support d680 */
+        cxusb_d680_dmb_gpio_tuner(d, 0x80, 0);
+        msleep(50);
+        cxusb_d680_dmb_gpio_tuner(d, 0x80, 1);
+        cxusb_d680_dmb_gpio_tuner(d, 0x07, 0);
+        cxusb_d680_dmb_gpio_tuner(d, 0x07, 1);
 
-
+	#if 0
 	/* Reset the tuner */
 	if (cxusb_d680_dmb_gpio_tuner(d, 0x07, 0) < 0) {
 		err("clear tuner gpio failed");
@@ -1218,6 +1224,7 @@ static int cxusb_mygica_d689_frontend_attach(struct dvb_usb_adapter *adap)
 		return -EIO;
 	}
 	msleep(100);
+	#endif
 
 	/* Attach frontend */
 	adap->fe = dvb_attach(atbm8830_attach, &mygica_d689_atbm8830_cfg,
@@ -1919,7 +1926,7 @@ static struct dvb_usb_device_properties cxusb_mygica_d689_properties = {
 	.num_adapters = 1,
 	.adapter = {
 		{
-			.streaming_ctrl   = cxusb_d680_dmb_streaming_ctrl,
+			.streaming_ctrl   = cxusb_streaming_ctrl,//modifed by clei d689 2012/05/17
 			.frontend_attach  = cxusb_mygica_d689_frontend_attach,
 			.tuner_attach     = cxusb_mygica_d689_tuner_attach,
 

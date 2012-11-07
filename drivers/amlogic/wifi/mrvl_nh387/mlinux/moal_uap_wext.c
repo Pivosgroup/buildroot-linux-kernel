@@ -182,34 +182,22 @@ woal_set_freq(struct net_device *dev, struct iw_request_info *info,
               struct iw_freq *fwrq, char *extra)
 {
     moal_private *priv = (moal_private *) netdev_priv(dev);
-    mlan_uap_bss_param *sys_cfg = NULL, *ap_cfg = NULL;
+    mlan_uap_bss_param sys_cfg, ap_cfg;
     int ret = 0, chan = 0, i = 0;
 
     ENTER();
 
-    ap_cfg = kmalloc(sizeof(mlan_uap_bss_param), GFP_ATOMIC);
-    if (ap_cfg == NULL) {
-        ret = -ENOMEM;
-        goto done;
-    }
-
-    sys_cfg = kmalloc(sizeof(mlan_uap_bss_param), GFP_ATOMIC);
-    if (sys_cfg == NULL) {
-        ret = -ENOMEM;
-        goto done;
-    }
-
     if (MLAN_STATUS_SUCCESS !=
-        woal_set_get_sys_config(priv, MLAN_ACT_GET, ap_cfg)) {
+        woal_set_get_sys_config(priv, MLAN_ACT_GET, &ap_cfg)) {
         PRINTM(MERROR, "Error getting AP confiruration\n");
         ret = -EFAULT;
         goto done;
     }
-    i = ap_cfg->chan_list.num_of_chan;
+    i = ap_cfg.chan_list.num_of_chan;
 
     /* Initialize the invalid values so that the correct values below are
        downloaded to firmware */
-    woal_set_sys_config_invalid_data(sys_cfg);
+    woal_set_sys_config_invalid_data(&sys_cfg);
 
     /* If setting by frequency, convert to a channel */
     if (fwrq->e == 1)
@@ -217,32 +205,28 @@ woal_set_freq(struct net_device *dev, struct iw_request_info *info,
     else
         chan = fwrq->m;
     if (chan > 0 && chan < MAX_CHANNEL)
-        sys_cfg->channel = chan;
+        sys_cfg.channel = chan;
     else {
         ret = -EINVAL;
         goto done;
     }
-    for (i = 0; i < ap_cfg->chan_list.num_of_chan; i++)
-        if (ap_cfg->chan_list.chan[i] == chan)
+    for (i = 0; i < ap_cfg.chan_list.num_of_chan; i++)
+        if (ap_cfg.chan_list.chan[i] == chan)
             break;
-    if (i == ap_cfg->chan_list.num_of_chan) {
+    if (i == ap_cfg.chan_list.num_of_chan) {
         PRINTM(MERROR, "Channel %d is not supported\n", chan);
         ret = -EINVAL;
         goto done;
     }
 
     if (MLAN_STATUS_SUCCESS !=
-        woal_set_get_sys_config(priv, MLAN_ACT_SET, sys_cfg)) {
+        woal_set_get_sys_config(priv, MLAN_ACT_SET, &sys_cfg)) {
         PRINTM(MERROR, "Error setting AP confiruration\n");
         ret = -EFAULT;
         goto done;
     }
 
   done:
-    if (sys_cfg)
-        kfree(sys_cfg);
-    if (ap_cfg)
-        kfree(ap_cfg);
     LEAVE();
     return ret;
 }
@@ -352,7 +336,7 @@ woal_set_encode(struct net_device *dev, struct iw_request_info *info,
 {
     int ret = 0;
     moal_private *priv = (moal_private *) netdev_priv(dev);
-    mlan_uap_bss_param *sys_cfg = NULL, *ap_cfg = NULL;
+    mlan_uap_bss_param sys_cfg, ap_cfg;
     wep_key *pkey = NULL;
     int key_index = 0;
 
@@ -366,20 +350,8 @@ woal_set_encode(struct net_device *dev, struct iw_request_info *info,
         goto done;
     }
 
-    ap_cfg = kmalloc(sizeof(mlan_uap_bss_param), GFP_ATOMIC);
-    if (ap_cfg == NULL) {
-        ret = -ENOMEM;
-        goto done;
-    }
-
-    sys_cfg = kmalloc(sizeof(mlan_uap_bss_param), GFP_ATOMIC);
-    if (sys_cfg == NULL) {
-        ret = -ENOMEM;
-        goto done;
-    }
-
     if (MLAN_STATUS_SUCCESS !=
-        woal_set_get_sys_config(priv, MLAN_ACT_GET, ap_cfg)) {
+        woal_set_get_sys_config(priv, MLAN_ACT_GET, &ap_cfg)) {
         PRINTM(MERROR, "Error getting AP confiruration\n");
         ret = -EFAULT;
         goto done;
@@ -387,21 +359,21 @@ woal_set_encode(struct net_device *dev, struct iw_request_info *info,
 
     /* Initialize the invalid values so that the correct values below are
        downloaded to firmware */
-    woal_set_sys_config_invalid_data(sys_cfg);
-    sys_cfg->wep_cfg.key0.key_index = 0;
-    sys_cfg->wep_cfg.key1.key_index = 1;
-    sys_cfg->wep_cfg.key2.key_index = 2;
-    sys_cfg->wep_cfg.key3.key_index = 3;
+    woal_set_sys_config_invalid_data(&sys_cfg);
+    sys_cfg.wep_cfg.key0.key_index = 0;
+    sys_cfg.wep_cfg.key1.key_index = 1;
+    sys_cfg.wep_cfg.key2.key_index = 2;
+    sys_cfg.wep_cfg.key3.key_index = 3;
 
     if (key_index >= 0 && key_index <= 3) {
         if (key_index == 0)
-            pkey = &sys_cfg->wep_cfg.key0;
+            pkey = &sys_cfg.wep_cfg.key0;
         else if (key_index == 1)
-            pkey = &sys_cfg->wep_cfg.key1;
+            pkey = &sys_cfg.wep_cfg.key1;
         else if (key_index == 2)
-            pkey = &sys_cfg->wep_cfg.key2;
+            pkey = &sys_cfg.wep_cfg.key2;
         else if (key_index == 3)
-            pkey = &sys_cfg->wep_cfg.key3;
+            pkey = &sys_cfg.wep_cfg.key3;
     }
 
     if (dwrq->length) {
@@ -412,18 +384,18 @@ woal_set_encode(struct net_device *dev, struct iw_request_info *info,
         }
         if (key_index < 0) {
             /* Get current default key index */
-            if (ap_cfg->wep_cfg.key0.is_default)
-                pkey = &sys_cfg->wep_cfg.key0;
-            if (ap_cfg->wep_cfg.key1.is_default)
-                pkey = &sys_cfg->wep_cfg.key1;
-            if (ap_cfg->wep_cfg.key2.is_default)
-                pkey = &sys_cfg->wep_cfg.key2;
-            if (ap_cfg->wep_cfg.key3.is_default)
-                pkey = &sys_cfg->wep_cfg.key3;
+            if (ap_cfg.wep_cfg.key0.is_default)
+                pkey = &sys_cfg.wep_cfg.key0;
+            if (ap_cfg.wep_cfg.key1.is_default)
+                pkey = &sys_cfg.wep_cfg.key1;
+            if (ap_cfg.wep_cfg.key2.is_default)
+                pkey = &sys_cfg.wep_cfg.key2;
+            if (ap_cfg.wep_cfg.key3.is_default)
+                pkey = &sys_cfg.wep_cfg.key3;
         }
 
         if (!(dwrq->flags & IW_ENCODE_NOKEY)) {
-            sys_cfg->protocol = PROTOCOL_STATIC_WEP;
+            sys_cfg.protocol = PROTOCOL_STATIC_WEP;
             memcpy(pkey->key, extra, dwrq->length);
             /* Set the length */
             if (dwrq->length > MIN_WEP_KEY_SIZE)
@@ -440,7 +412,7 @@ woal_set_encode(struct net_device *dev, struct iw_request_info *info,
          */
         if (dwrq->flags & IW_ENCODE_DISABLED) {
             PRINTM(MINFO, "*** iwconfig mlanX key off ***\n");
-            sys_cfg->protocol = PROTOCOL_NO_SECURITY;
+            sys_cfg.protocol = PROTOCOL_NO_SECURITY;
         } else {
             /* 
              * iwconfig mlanX key [n]
@@ -452,13 +424,13 @@ woal_set_encode(struct net_device *dev, struct iw_request_info *info,
             } else {
                 /* Get current key configuration at key_index */
                 if (key_index == 0)
-                    memcpy(pkey, &ap_cfg->wep_cfg.key0, sizeof(wep_key));
+                    memcpy(pkey, &ap_cfg.wep_cfg.key0, sizeof(wep_key));
                 if (key_index == 1)
-                    memcpy(pkey, &ap_cfg->wep_cfg.key1, sizeof(wep_key));
+                    memcpy(pkey, &ap_cfg.wep_cfg.key1, sizeof(wep_key));
                 if (key_index == 2)
-                    memcpy(pkey, &ap_cfg->wep_cfg.key2, sizeof(wep_key));
+                    memcpy(pkey, &ap_cfg.wep_cfg.key2, sizeof(wep_key));
                 if (key_index == 3)
-                    memcpy(pkey, &ap_cfg->wep_cfg.key3, sizeof(wep_key));
+                    memcpy(pkey, &ap_cfg.wep_cfg.key3, sizeof(wep_key));
                 /* Set current key index as default */
                 pkey->is_default = MTRUE;
             }
@@ -468,12 +440,12 @@ woal_set_encode(struct net_device *dev, struct iw_request_info *info,
         switch (dwrq->flags & 0xf000) {
         case IW_ENCODE_RESTRICTED:
             /* iwconfig mlanX restricted key [1] */
-            sys_cfg->auth_mode = MLAN_AUTH_MODE_SHARED;
+            sys_cfg.auth_mode = MLAN_AUTH_MODE_SHARED;
             PRINTM(MINFO, "Auth mode restricted!\n");
             break;
         case IW_ENCODE_OPEN:
             /* iwconfig mlanX key [2] open */
-            sys_cfg->auth_mode = MLAN_AUTH_MODE_OPEN;
+            sys_cfg.auth_mode = MLAN_AUTH_MODE_OPEN;
             PRINTM(MINFO, "Auth mode open!\n");
             break;
         case IW_ENCODE_RESTRICTED | IW_ENCODE_OPEN:
@@ -485,17 +457,13 @@ woal_set_encode(struct net_device *dev, struct iw_request_info *info,
     }
 
     if (MLAN_STATUS_SUCCESS !=
-        woal_set_get_sys_config(priv, MLAN_ACT_SET, sys_cfg)) {
+        woal_set_get_sys_config(priv, MLAN_ACT_SET, &sys_cfg)) {
         PRINTM(MERROR, "Error setting AP confiruration\n");
         ret = -EFAULT;
         goto done;
     }
 
   done:
-    if (sys_cfg)
-        kfree(sys_cfg);
-    if (ap_cfg)
-        kfree(ap_cfg);
     LEAVE();
     return ret;
 }

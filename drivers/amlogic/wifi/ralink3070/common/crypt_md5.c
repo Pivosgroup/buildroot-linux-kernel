@@ -5,23 +5,23 @@
  * Hsinchu County 302,
  * Taiwan, R.O.C.
  *
- * (c) Copyright 2002-2007, Ralink Technology, Inc.
+ * (c) Copyright 2002-2010, Ralink Technology, Inc.
  *
- * This program is free software; you can redistribute it and/or modify  * 
- * it under the terms of the GNU General Public License as published by  * 
- * the Free Software Foundation; either version 2 of the License, or     * 
- * (at your option) any later version.                                   * 
- *                                                                       * 
- * This program is distributed in the hope that it will be useful,       * 
- * but WITHOUT ANY WARRANTY; without even the implied warranty of        * 
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         * 
- * GNU General Public License for more details.                          * 
- *                                                                       * 
- * You should have received a copy of the GNU General Public License     * 
- * along with this program; if not, write to the                         * 
- * Free Software Foundation, Inc.,                                       * 
- * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             * 
- *                                                                       * 
+ * This program is free software; you can redistribute it and/or modify  *
+ * it under the terms of the GNU General Public License as published by  *
+ * the Free Software Foundation; either version 2 of the License, or     *
+ * (at your option) any later version.                                   *
+ *                                                                       *
+ * This program is distributed in the hope that it will be useful,       *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+ * GNU General Public License for more details.                          *
+ *                                                                       *
+ * You should have received a copy of the GNU General Public License     *
+ * along with this program; if not, write to the                         *
+ * Free Software Foundation, Inc.,                                       *
+ * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
+ *                                                                       *
  *************************************************************************/
 
 
@@ -65,22 +65,30 @@ void md5_mac(u8 *key, size_t key_len, u8 *data, size_t data_len, u8 *mac)
  */
 void hmac_md5(u8 *key, size_t key_len, u8 *data, size_t data_len, u8 *mac)
 {
-	MD5_CTX	context;
+/*	MD5_CTX	context;*/
+	MD5_CTX	*pcontext = NULL;
     u8 k_ipad[65]; /* inner padding - key XORd with ipad */
     u8 k_opad[65]; /* outer padding - key XORd with opad */
     u8 tk[16];
 	int	i;
 
-	//assert(key != NULL && data != NULL && mac != NULL);
+
+	/* allocate memory */
+	os_alloc_mem(NULL, (UCHAR **)&pcontext, sizeof(MD5_CTX));
+	if (pcontext == NULL)
+	{
+		DBGPRINT(RT_DEBUG_ERROR, ("%s: Allocate memory fail!!!\n", __FUNCTION__));
+		return;
+	}
+
+	/*assert(key != NULL && data != NULL && mac != NULL);*/
 
 	/* if key is longer	than 64	bytes reset	it to key =	MD5(key) */
 	if (key_len	> 64) {
-		MD5_CTX	ttcontext;
-
-		MD5Init(&ttcontext);
-		MD5Update(&ttcontext, key, key_len);
-		MD5Final(tk, &ttcontext);
-		//key=(PUCHAR)ttcontext.buf;
+		MD5Init(pcontext);
+		MD5Update(pcontext, key, key_len);
+		MD5Final(tk, pcontext);
+		/*key=(PUCHAR)ttcontext.buf;*/
 		key	= tk;
 		key_len	= 16;
 	}
@@ -97,7 +105,7 @@ void hmac_md5(u8 *key, size_t key_len, u8 *data, size_t data_len, u8 *mac)
 	/* start out by	storing	key	in pads	*/
 	NdisZeroMemory(k_ipad, sizeof(k_ipad));
 	NdisZeroMemory(k_opad,	sizeof(k_opad));
-	//assert(key_len < sizeof(k_ipad));
+	/*assert(key_len < sizeof(k_ipad));*/
 	NdisMoveMemory(k_ipad, key,	key_len);
 	NdisMoveMemory(k_opad, key,	key_len);
 
@@ -108,16 +116,19 @@ void hmac_md5(u8 *key, size_t key_len, u8 *data, size_t data_len, u8 *mac)
 	}
 
 	/* perform inner MD5 */
-	MD5Init(&context);					 /*	init context for 1st pass */
-	MD5Update(&context,	k_ipad,	64);	 /*	start with inner pad */
-	MD5Update(&context,	data, data_len); /*	then text of datagram */
-	MD5Final(mac, &context);			 /*	finish up 1st pass */
+	MD5Init(pcontext);					 /*	init context for 1st pass */
+	MD5Update(pcontext,	k_ipad,	64);	 /*	start with inner pad */
+	MD5Update(pcontext,	data, data_len); /*	then text of datagram */
+	MD5Final(mac, pcontext);			 /*	finish up 1st pass */
 
 	/* perform outer MD5 */
-	MD5Init(&context);					 /*	init context for 2nd pass */
-	MD5Update(&context,	k_opad,	64);	 /*	start with outer pad */
-	MD5Update(&context,	mac, 16);		 /*	then results of	1st	hash */
-	MD5Final(mac, &context);			 /*	finish up 2nd pass */
+	MD5Init(pcontext);					 /*	init context for 2nd pass */
+	MD5Update(pcontext,	k_opad,	64);	 /*	start with outer pad */
+	MD5Update(pcontext,	mac, 16);		 /*	then results of	1st	hash */
+	MD5Final(mac, pcontext);			 /*	finish up 2nd pass */
+
+	if (pcontext != NULL)
+		os_free_mem(NULL, pcontext);
 }
 
 #ifndef RT_BIG_ENDIAN
@@ -135,7 +146,7 @@ void byteReverse(unsigned char *buf, unsigned longs)
 
 
 /* ==========================  MD5 implementation =========================== */ 
-// four base functions for MD5 
+/* four base functions for MD5 */
 #define MD5_F1(x, y, z) (((x) & (y)) | ((~x) & (z))) 
 #define MD5_F2(x, y, z) (((x) & (z)) | ((y) & (~z))) 
 #define MD5_F3(x, y, z) ((x) ^ (y) ^ (z))
@@ -196,14 +207,14 @@ VOID MD5Update(MD5_CTX *pCtx, UCHAR *pData, ULONG LenInBytes)
     pCtx->LenInBitCount[0] = (ULONG) (pCtx->LenInBitCount[0] + (LenInBytes << 3));
  
     if (pCtx->LenInBitCount[0] < temp)
-        pCtx->LenInBitCount[1]++;   //carry in
+        pCtx->LenInBitCount[1]++;   /*carry in*/
 
     pCtx->LenInBitCount[1] += LenInBytes >> 29;
 
-    // mod 64 bytes
+    /* mod 64 bytes*/
     temp = (temp >> 3) & 0x3f;  
     
-    // process lacks of 64-byte data 
+    /* process lacks of 64-byte data */
     if (temp) 
     {
         UCHAR *pAds = (UCHAR *) pCtx->Input + temp;
@@ -220,7 +231,7 @@ VOID MD5Update(MD5_CTX *pCtx, UCHAR *pData, ULONG LenInBytes)
 
         pData += 64-temp;
         LenInBytes -= 64-temp; 
-    } // end of if (temp)
+    } /* end of if (temp)*/
     
      
     TfTimes = (LenInBytes >> 6);
@@ -232,9 +243,9 @@ VOID MD5Update(MD5_CTX *pCtx, UCHAR *pData, ULONG LenInBytes)
         MD5Transform(pCtx->Buf, (ULONG *)pCtx->Input);
         pData += 64;
         LenInBytes -= 64;
-    } // end of for
+    } /* end of for*/
 
-    // buffering lacks of 64-byte data
+    /* buffering lacks of 64-byte data*/
     if(LenInBytes)
         NdisMoveMemory(pCtx->Input, (UCHAR *)pData, LenInBytes);   
    
@@ -269,7 +280,7 @@ VOID MD5Final(UCHAR Digest[16], MD5_CTX *pCtx)
     
     pAppend = (UCHAR *)pCtx->Input + Remainder;
 
-    // padding bits without crossing block(64-byte based) boundary
+    /* padding bits without crossing block(64-byte based) boundary*/
     if (Remainder < 56)
     {
         *pAppend = 0x80;
@@ -277,7 +288,7 @@ VOID MD5Final(UCHAR Digest[16], MD5_CTX *pCtx)
         
         NdisZeroMemory((UCHAR *)pCtx->Input + Remainder+1, PadLenInBytes); 
 		
-		// add data-length field, from low to high
+		/* add data-length field, from low to high*/
        	for (i=0; i<4; i++)
         {
         	pCtx->Input[56+i] = (UCHAR)((pCtx->LenInBitCount[0] >> (i << 3)) & 0xff);
@@ -286,12 +297,12 @@ VOID MD5Final(UCHAR Digest[16], MD5_CTX *pCtx)
       	
         byteReverse(pCtx->Input, 16);
         MD5Transform(pCtx->Buf, (ULONG *)pCtx->Input);
-    } // end of if
+    } /* end of if*/
     
-    // padding bits with crossing block(64-byte based) boundary
+    /* padding bits with crossing block(64-byte based) boundary*/
     else
     {
-        // the first block ===
+        /* the first block ===*/
         *pAppend = 0x80;
         PadLenInBytes --;
        
@@ -302,10 +313,10 @@ VOID MD5Final(UCHAR Digest[16], MD5_CTX *pCtx)
         MD5Transform(pCtx->Buf, (ULONG *)pCtx->Input);
         
 
-        // the second block ===
+        /* the second block ===*/
         NdisZeroMemory((UCHAR *)pCtx->Input, PadLenInBytes); 
 
-        // add data-length field
+        /* add data-length field*/
         for (i=0; i<4; i++)
         {
         	pCtx->Input[56+i] = (UCHAR)((pCtx->LenInBitCount[0] >> (i << 3)) & 0xff);
@@ -314,12 +325,12 @@ VOID MD5Final(UCHAR Digest[16], MD5_CTX *pCtx)
 
         byteReverse(pCtx->Input, 16);
         MD5Transform(pCtx->Buf, (ULONG *)pCtx->Input);
-    } // end of else
+    } /* end of else*/
 
 
-    NdisMoveMemory((UCHAR *)Digest, (ULONG *)pCtx->Buf, 16); // output
+    NdisMoveMemory((UCHAR *)Digest, (ULONG *)pCtx->Buf, 16); /* output*/
     byteReverse((UCHAR *)Digest, 4);
-    NdisZeroMemory(pCtx, sizeof(pCtx)); // memory free 
+    NdisZeroMemory(pCtx, sizeof(pCtx)); /* memory free */
 }
 
 
@@ -352,7 +363,7 @@ VOID MD5Transform(ULONG Buf[4], ULONG Mes[16])
  	};
 
 	
-	// [equal to 4294967296*abs(sin(index))]
+	/* [equal to 4294967296*abs(sin(index))]*/
     static ULONG MD5Table[64] = 
 	{ 
 		0xd76aa478,	0xe8c7b756,	0x242070db,	0xc1bdceee,	
@@ -381,13 +392,13 @@ VOID MD5Transform(ULONG Buf[4], ULONG Mes[16])
         Reg[i]=Buf[i];
 			
 				
-    // 64 steps in MD5 algorithm
+    /* 64 steps in MD5 algorithm*/
     for (i=0; i<16; i++)                    
     {
         MD5Step(MD5_F1, Reg[0], Reg[1], Reg[2], Reg[3], Mes[i],               
                 MD5Table[i], LShiftVal[i & 0x3]);
 
-        // one-word right shift
+        /* one-word right shift*/
         Temp   = Reg[3]; 
         Reg[3] = Reg[2];
         Reg[2] = Reg[1];
@@ -399,7 +410,7 @@ VOID MD5Transform(ULONG Buf[4], ULONG Mes[16])
         MD5Step(MD5_F2, Reg[0], Reg[1], Reg[2], Reg[3], Mes[(5*(i & 0xf)+1) & 0xf], 
                 MD5Table[i], LShiftVal[(0x1 << 2)+(i & 0x3)]);    
 
-        // one-word right shift
+        /* one-word right shift*/
         Temp   = Reg[3]; 
         Reg[3] = Reg[2];
         Reg[2] = Reg[1];
@@ -411,7 +422,7 @@ VOID MD5Transform(ULONG Buf[4], ULONG Mes[16])
         MD5Step(MD5_F3, Reg[0], Reg[1], Reg[2], Reg[3], Mes[(3*(i & 0xf)+5) & 0xf], 
                 MD5Table[i], LShiftVal[(0x1 << 3)+(i & 0x3)]);        
 
-        // one-word right shift
+        /* one-word right shift*/
         Temp   = Reg[3]; 
         Reg[3] = Reg[2];
         Reg[2] = Reg[1];
@@ -423,7 +434,7 @@ VOID MD5Transform(ULONG Buf[4], ULONG Mes[16])
         MD5Step(MD5_F4, Reg[0], Reg[1], Reg[2], Reg[3], Mes[(7*(i & 0xf)) & 0xf], 
                 MD5Table[i], LShiftVal[(0x3 << 2)+(i & 0x3)]);   
 
-        // one-word right shift
+        /* one-word right shift*/
         Temp   = Reg[3]; 
         Reg[3] = Reg[2];
         Reg[2] = Reg[1];
@@ -432,7 +443,7 @@ VOID MD5Transform(ULONG Buf[4], ULONG Mes[16])
     }
     
       
-    // (temporary)output
+    /* (temporary)output*/
     for (i=0; i<4; i++)
         Buf[i] += Reg[i];
 
@@ -441,7 +452,7 @@ VOID MD5Transform(ULONG Buf[4], ULONG Mes[16])
 
 
 /* =========================  SHA-1 implementation ========================== */
-// four base functions for SHA-1
+/* four base functions for SHA-1*/
 #define SHA1_F1(b, c, d)    (((b) & (c)) | ((~b) & (d)))         
 #define SHA1_F2(b, c, d)    ((b) ^ (c) ^ (d)) 
 #define SHA1_F3(b, c, d)    (((b) & (c)) | ((b) & (d)) | ((c) & (d)))
@@ -451,7 +462,7 @@ VOID MD5Transform(ULONG Buf[4], ULONG Mes[16])
     ( e	+= ( f(b, c, d) + w + k + CYCLIC_LEFT_SHIFT(a, 5)) & 0xffffffff, \
       b = CYCLIC_LEFT_SHIFT(b, 30) )
 
-//Initiate SHA-1 Context satisfied in RFC 3174  
+/*Initiate SHA-1 Context satisfied in RFC 3174  */
 VOID SHAInit(SHA_CTX *pCtx)
 {
     pCtx->Buf[0]=0x67452301;
@@ -492,18 +503,18 @@ UCHAR SHAUpdate(SHA_CTX *pCtx, UCHAR *pData, ULONG LenInBytes)
 
     pCtx->LenInBitCount[0] = (ULONG) (pCtx->LenInBitCount[0] + (LenInBytes << 3));
     if (pCtx->LenInBitCount[0] < temp1)
-        pCtx->LenInBitCount[1]++;   //carry in
+        pCtx->LenInBitCount[1]++;   /*carry in*/
 
 
     pCtx->LenInBitCount[1] = (ULONG) (pCtx->LenInBitCount[1] +(LenInBytes >> 29));
     if (pCtx->LenInBitCount[1] < temp2)
-        return (err);   //check total length of original data
+        return (err);   /*check total length of original data*/
  
 
-    // mod 64 bytes
+    /* mod 64 bytes*/
     temp1 = (temp1 >> 3) & 0x3f;  
     
-    // process lacks of 64-byte data 
+    /* process lacks of 64-byte data */
     if (temp1) 
     {
         UCHAR *pAds = (UCHAR *) pCtx->Input + temp1;
@@ -522,7 +533,7 @@ UCHAR SHAUpdate(SHA_CTX *pCtx, UCHAR *pData, ULONG LenInBytes)
 
         pData += 64-temp1;
         LenInBytes -= 64-temp1; 
-    } // end of if (temp1)
+    } /* end of if (temp1)*/
     
      
     TfTimes = (LenInBytes >> 6);
@@ -536,9 +547,9 @@ UCHAR SHAUpdate(SHA_CTX *pCtx, UCHAR *pData, ULONG LenInBytes)
         SHATransform(pCtx->Buf, (ULONG *)pCtx->Input);
         pData += 64;
         LenInBytes -= 64;
-    } // end of for
+    } /* end of for*/
 
-    // buffering lacks of 64-byte data
+    /* buffering lacks of 64-byte data*/
     if(LenInBytes)
         NdisMoveMemory(pCtx->Input, (UCHAR *)pData, LenInBytes);
 
@@ -546,8 +557,8 @@ UCHAR SHAUpdate(SHA_CTX *pCtx, UCHAR *pData, ULONG LenInBytes)
 
 }
 
-// Append padding bits and length of original message in the tail 
-// The message digest has to be completed in the end 
+/* Append padding bits and length of original message in the tail */
+/* The message digest has to be completed in the end */
 VOID SHAFinal(SHA_CTX *pCtx, UCHAR Digest[20])
 {
     UCHAR Remainder;
@@ -561,7 +572,7 @@ VOID SHAFinal(SHA_CTX *pCtx, UCHAR Digest[20])
 
     PadLenInBytes = (Remainder < 56) ? (56-Remainder) : (120-Remainder);
     
-    // padding bits without crossing block(64-byte based) boundary
+    /* padding bits without crossing block(64-byte based) boundary*/
     if (Remainder < 56)
     {       
         *pAppend = 0x80;
@@ -569,7 +580,7 @@ VOID SHAFinal(SHA_CTX *pCtx, UCHAR Digest[20])
         
         NdisZeroMemory((UCHAR *)pCtx->Input + Remainder+1, PadLenInBytes); 
 		 
-		// add data-length field, from high to low
+		/* add data-length field, from high to low*/
         for (i=0; i<4; i++)
         {
         	pCtx->Input[56+i] = (UCHAR)((pCtx->LenInBitCount[1] >> ((3-i) << 3)) & 0xff);
@@ -579,12 +590,12 @@ VOID SHAFinal(SHA_CTX *pCtx, UCHAR Digest[20])
         byteReverse((UCHAR *)pCtx->Input, 16);
         NdisZeroMemory((UCHAR *)pCtx->Input + 64, 14);
         SHATransform(pCtx->Buf, (ULONG *)pCtx->Input);
-    } // end of if
+    } /* end of if*/
     
-    // padding bits with crossing block(64-byte based) boundary
+    /* padding bits with crossing block(64-byte based) boundary*/
     else
     {
-        // the first block ===
+        /* the first block ===*/
         *pAppend = 0x80;
         PadLenInBytes --;
         
@@ -596,10 +607,10 @@ VOID SHAFinal(SHA_CTX *pCtx, UCHAR Digest[20])
         SHATransform(pCtx->Buf, (ULONG *)pCtx->Input);
 
 
-        // the second block ===
+        /* the second block ===*/
         NdisZeroMemory((UCHAR *)pCtx->Input, PadLenInBytes); 
 			
-		// add data-length field
+		/* add data-length field*/
 		for (i=0; i<4; i++)
         {
         	pCtx->Input[56+i] = (UCHAR)((pCtx->LenInBitCount[1] >> ((3-i) << 3)) & 0xff);
@@ -609,37 +620,45 @@ VOID SHAFinal(SHA_CTX *pCtx, UCHAR Digest[20])
         byteReverse((UCHAR *)pCtx->Input, 16);
         NdisZeroMemory((UCHAR *)pCtx->Input + 64, 16); 
         SHATransform(pCtx->Buf, (ULONG *)pCtx->Input);
-    } // end of else
+    } /* end of else*/
 	
 		
-    //Output, bytereverse
+    /*Output, bytereverse*/
     for (i=0; i<20; i++)
     {
         Digest [i] = (UCHAR)(pCtx->Buf[i>>2] >> 8*(3-(i & 0x3)));
     }
     
-    NdisZeroMemory(pCtx, sizeof(pCtx)); // memory free 
+    NdisZeroMemory(pCtx, sizeof(pCtx)); /* memory free */
 }
 
 
-// The central algorithm of SHA-1, consists of four rounds and 
-// twenty steps per round
+/* The central algorithm of SHA-1, consists of four rounds and */
+/* twenty steps per round*/
 VOID SHATransform(ULONG Buf[5], ULONG Mes[20])
 {
     ULONG Reg[5],Temp; 
 	unsigned int i;
-    ULONG W[80]; 
-   
+/*    ULONG W[80]; */
+	ULONG *W = NULL;
     static ULONG SHA1Table[4] = { 0x5a827999, 0x6ed9eba1, 
                                   0x8f1bbcdc, 0xca62c1d6 };
- 
+
+	/* allocate memory */
+	os_alloc_mem(NULL, (UCHAR **)&W, sizeof(ULONG)*80);
+	if (W == NULL)
+	{
+		DBGPRINT(RT_DEBUG_ERROR, ("%s: Allocate memory fail!!!\n", __FUNCTION__));
+		return;
+	}
+
     Reg[0]=Buf[0];
 	Reg[1]=Buf[1];
 	Reg[2]=Buf[2];
 	Reg[3]=Buf[3];
 	Reg[4]=Buf[4];
 
-    //the first octet of a word is stored in the 0th element, bytereverse
+    /*the first octet of a word is stored in the 0th element, bytereverse*/
 	for(i = 0; i < 16; i++)
     { 
     	W[i]  = (Mes[i] >> 24) & 0xff;
@@ -653,7 +672,7 @@ VOID SHATransform(ULONG Buf[5], ULONG Mes[20])
 	    W[16+i] = CYCLIC_LEFT_SHIFT(W[i] ^ W[2+i] ^ W[8+i] ^ W[13+i], 1);
 	    
     
-    // 80 steps in SHA-1 algorithm
+    /* 80 steps in SHA-1 algorithm*/
     for (i=0; i<80; i++)                    
     {
         if (i<20)
@@ -673,7 +692,7 @@ VOID SHATransform(ULONG Buf[5], ULONG Mes[20])
                      W[i], SHA1Table[3]);
 			
 
-       // one-word right shift
+       /* one-word right shift*/
 		Temp   = Reg[4];
         Reg[4] = Reg[3];
         Reg[3] = Reg[2];
@@ -681,13 +700,15 @@ VOID SHATransform(ULONG Buf[5], ULONG Mes[20])
         Reg[1] = Reg[0];
         Reg[0] = Temp;       
   
-    } // end of for-loop
+    } /* end of for-loop*/
 
 
-    // (temporary)output
+    /* (temporary)output*/
     for (i=0; i<5; i++)
         Buf[i] += Reg[i];
-    
+
+	if (W != NULL)
+		os_free_mem(NULL, W);
 }
 
 
@@ -712,18 +733,27 @@ VOID	HMAC_SHA1(
 	IN	UINT	key_len,
 	IN	UCHAR	*digest)
 {
-	SHA_CTX	context;
+/*	SHA_CTX	context;*/
+	SHA_CTX	*pcontext = NULL;
 	UCHAR	k_ipad[65]; /* inner padding - key XORd with ipad	*/
 	UCHAR	k_opad[65]; /* outer padding - key XORd with opad	*/
-	INT		i;
+	int		i;
 
-	// if key is longer	than 64	bytes reset	it to key=SHA1(key)	
+
+	/* allocate memory */
+	os_alloc_mem(NULL, (UCHAR **)&pcontext, sizeof(SHA_CTX));
+	if (pcontext == NULL)
+	{
+		DBGPRINT(RT_DEBUG_ERROR, ("%s: Allocate memory fail!!!\n", __FUNCTION__));
+		return;
+	}
+
+	/* if key is longer	than 64	bytes reset	it to key=SHA1(key)	*/
 	if (key_len	> 64) 
 	{
-		SHA_CTX		 tctx;
-		SHAInit(&tctx);
-		SHAUpdate(&tctx, key, key_len);
-		SHAFinal(&tctx,	key);
+		SHAInit(pcontext);
+		SHAUpdate(pcontext, key, key_len);
+		SHAFinal(pcontext,	key);
 		key_len	= 20;
 	}
 	NdisZeroMemory(k_ipad, sizeof(k_ipad));
@@ -731,24 +761,27 @@ VOID	HMAC_SHA1(
 	NdisMoveMemory(k_ipad, key,	key_len);
 	NdisMoveMemory(k_opad, key,	key_len);
 
-	// XOR key with	ipad and opad values  
+	/* XOR key with	ipad and opad values  */
 	for	(i = 0;	i <	64;	i++) 
 	{	
 		k_ipad[i] ^= 0x36;
 		k_opad[i] ^= 0x5c;
 	}
 
-	// perform inner SHA1 
-	SHAInit(&context); 						/* init context for 1st pass */
-	SHAUpdate(&context,	k_ipad,	64);		/*	start with inner pad */
-	SHAUpdate(&context,	text, text_len);	/*	then text of datagram */
-	SHAFinal(&context, digest);				/* finish up 1st pass */
+	/* perform inner SHA1 */
+	SHAInit(pcontext); 						/* init context for 1st pass */
+	SHAUpdate(pcontext,	k_ipad,	64);		/*	start with inner pad */
+	SHAUpdate(pcontext,	text, text_len);	/*	then text of datagram */
+	SHAFinal(pcontext, digest);				/* finish up 1st pass */
 
-	//perform outer	SHA1  
-	SHAInit(&context);					/* init context for 2nd pass */
-	SHAUpdate(&context,	k_opad,	64);	/*	start with outer pad */
-	SHAUpdate(&context,	digest,	20);	/*	then results of	1st	hash */
-	SHAFinal(&context, digest);			/* finish up 2nd pass */
+	/*perform outer	SHA1  */
+	SHAInit(pcontext);					/* init context for 2nd pass */
+	SHAUpdate(pcontext,	k_opad,	64);	/*	start with outer pad */
+	SHAUpdate(pcontext,	digest,	20);	/*	then results of	1st	hash */
+	SHAFinal(pcontext, digest);			/* finish up 2nd pass */
+
+	if (pcontext != NULL)
+		os_free_mem(NULL, pcontext);
 }
 
 

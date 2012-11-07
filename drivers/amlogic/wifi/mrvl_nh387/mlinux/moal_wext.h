@@ -88,9 +88,6 @@ Change log:
 #define CUS_EVT_IBSS_CONNECT_ATTEMPT   "EVENT=IBSS_CONNECT_ATTEMPT_"
 /** Custom event : IBSS STA connect attempt */
 #define CUS_EVT_IBSS_DISCONNECT_ATTEMPT   "EVENT=IBSS_DISCONNECT_ATTEMPT_"
-/** Custom event : START and STOP add by Neo_Ho **/
-#define CUS_EVT_START			"START"
-#define CUS_EVT_STOP			"STOP"
 
 /** NF value for default scan */
 #define MRVDRV_NF_DEFAULT_SCAN_VALUE		(-96)
@@ -110,37 +107,6 @@ Change log:
 /** Add value */
 #define IWE_STREAM_ADD_VALUE(i, c, v, e, w, l)  iwe_stream_add_value((c), (v), (e), (w), (l))
 #endif
-
-/** combo scan header */
-#define WEXT_CSCAN_HEADER		"CSCAN S\x01\x00\x00S\x00"
-/** combo scan header size */
-#define WEXT_CSCAN_HEADER_SIZE		12
-/** combo scan ssid section */
-#define WEXT_CSCAN_SSID_SECTION		'S'
-/** commbo scan channel section */
-#define WEXT_CSCAN_CHANNEL_SECTION	'C'
-/** commbo scan passive dwell section */
-#define WEXT_CSCAN_PASV_DWELL_SECTION	'P'
-/** commbo scan home dwell section */
-#define WEXT_CSCAN_HOME_DWELL_SECTION	'H'
-
-/** band AUTO */
-#define	WIFI_FREQUENCY_BAND_AUTO		0
-/** band 5G */
-#define	WIFI_FREQUENCY_BAND_5GHZ        1
-/** band 2G */
-#define	WIFI_FREQUENCY_BAND_2GHZ		2
-/** All band */
-#define WIFI_FREQUENCY_ALL_BAND         3
-
-/** Rx filter: unicast */
-#define RX_FILTER_UNICAST               1
-/** Rx filter: broadcast */
-#define RX_FILTER_BROADCAST             2
-/** Rx filter: IPV4 multicast */
-#define RX_FILTER_IPV4_MULTICAST        4
-/** Rx filter: IPV6 multicast */
-#define RX_FILTER_IPV6_MULTICAST        8
 
 extern struct iw_handler_def woal_handler_def;
 struct iw_statistics *woal_get_wireless_stats(struct net_device *dev);

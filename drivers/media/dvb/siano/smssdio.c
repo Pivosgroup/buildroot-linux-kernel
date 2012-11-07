@@ -49,7 +49,7 @@
 #define SMSSDIO_INT		0x04
 #define SMSSDIO_BLOCK_SIZE	128
 
-static const struct sdio_device_id smssdio_ids[] __devinitconst = {
+static const struct sdio_device_id smssdio_ids[] = {
 	{SDIO_DEVICE(SDIO_VENDOR_ID_SIANO, SDIO_DEVICE_ID_SIANO_STELLAR),
 	 .driver_data = SMS1XXX_BOARD_SIANO_STELLAR},
 	{SDIO_DEVICE(SDIO_VENDOR_ID_SIANO, SDIO_DEVICE_ID_SIANO_NOVA_A0),
@@ -60,7 +60,17 @@ static const struct sdio_device_id smssdio_ids[] __devinitconst = {
 	 .driver_data = SMS1XXX_BOARD_SIANO_VEGA},
 	{SDIO_DEVICE(SDIO_VENDOR_ID_SIANO, SDIO_DEVICE_ID_SIANO_VENICE),
 	 .driver_data = SMS1XXX_BOARD_SIANO_VEGA},
-	{ /* end: all zeroes */ },
+	{SDIO_DEVICE(SDIO_VENDOR_ID_SIANO, 0x302),
+	 .driver_data = SMS1XXX_BOARD_SIANO_MING},
+	{SDIO_DEVICE(SDIO_VENDOR_ID_SIANO, 0x500),
+	 .driver_data = SMS1XXX_BOARD_SIANO_PELE},
+	{SDIO_DEVICE(SDIO_VENDOR_ID_SIANO, 0x600),
+	 .driver_data = SMS1XXX_BOARD_SIANO_RIO},
+    {SDIO_DEVICE(SDIO_VENDOR_ID_SIANO, 0x700),
+	 .driver_data = SMS1XXX_BOARD_SIANO_DENVER_2160},
+	{SDIO_DEVICE(SDIO_VENDOR_ID_SIANO, 0x800),
+	 .driver_data = SMS1XXX_BOARD_SIANO_DENVER_1530},
+	 { /* end: all zeroes */ },
 };
 
 MODULE_DEVICE_TABLE(sdio, smssdio_ids);
@@ -79,7 +89,7 @@ struct smssdio_device {
 
 static int smssdio_sendrequest(void *context, void *buffer, size_t size)
 {
-	int ret = 0;
+	int ret;
 	struct smssdio_device *smsdev;
 
 	smsdev = context;
@@ -87,8 +97,11 @@ static int smssdio_sendrequest(void *context, void *buffer, size_t size)
 	sdio_claim_host(smsdev->func);
 
 	while (size >= smsdev->func->cur_blksize) {
-		ret = sdio_memcpy_toio(smsdev->func, SMSSDIO_DATA,
-					buffer, smsdev->func->cur_blksize);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 10)
+		ret = sdio_memcpy_toio(smsdev->func, SMSSDIO_DATA, buffer, smsdev->func->cur_blksize);
+#else
+		ret = sdio_write_blocks(smsdev->func, SMSSDIO_DATA, buffer, 1);
+#endif
 		if (ret)
 			goto out;
 
@@ -97,8 +110,12 @@ static int smssdio_sendrequest(void *context, void *buffer, size_t size)
 	}
 
 	if (size) {
-		ret = sdio_memcpy_toio(smsdev->func, SMSSDIO_DATA,
-					buffer, size);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 10)
+		ret = sdio_memcpy_toio(smsdev->func, SMSSDIO_DATA, buffer, size);
+#else
+		ret = sdio_write_bytes(smsdev->func, SMSSDIO_DATA,
+				       buffer, size);
+#endif
 	}
 
 out:
@@ -139,10 +156,14 @@ static void smssdio_interrupt(struct sdio_func *func)
 			return;
 		}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 10)
 		ret = sdio_memcpy_fromio(smsdev->func,
 					 cb->p,
 					 SMSSDIO_DATA,
 					 SMSSDIO_BLOCK_SIZE);
+#else
+		ret = sdio_read_blocks(smsdev->func, cb->p, SMSSDIO_DATA, 1);
+#endif
 		if (ret) {
 			sms_err("Error %d reading initial block!\n", ret);
 			return;
@@ -179,10 +200,15 @@ static void smssdio_interrupt(struct sdio_func *func)
 		/*
 		 * First attempt to transfer all of it in one go...
 		 */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 10)
 		ret = sdio_memcpy_fromio(smsdev->func,
 					 buffer,
 					 SMSSDIO_DATA,
 					 size);
+#else
+		ret = sdio_read_blocks(smsdev->func, buffer,
+				        SMSSDIO_DATA, size/SMSSDIO_BLOCK_SIZE);
+#endif
 		if (ret && ret != -EINVAL) {
 			smscore_putbuffer(smsdev->coredev, cb);
 			sms_err("Error %d reading data from card!\n", ret);
@@ -198,9 +224,16 @@ static void smssdio_interrupt(struct sdio_func *func)
 		 */
 		if (ret == -EINVAL) {
 			while (size) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 10)
 				ret = sdio_memcpy_fromio(smsdev->func,
 						  buffer, SMSSDIO_DATA,
 						  smsdev->func->cur_blksize);
+#else
+				ret = sdio_read_blocks(smsdev->func,
+							buffer,
+							SMSSDIO_DATA,
+							1);
+#endif
 				if (ret) {
 					smscore_putbuffer(smsdev->coredev, cb);
 					sms_err("Error %d reading "
@@ -223,7 +256,7 @@ static void smssdio_interrupt(struct sdio_func *func)
 	smscore_onresponse(smsdev->coredev, cb);
 }
 
-static int __devinit smssdio_probe(struct sdio_func *func,
+static int smssdio_probe(struct sdio_func *func,
 			 const struct sdio_device_id *id)
 {
 	int ret;
@@ -339,7 +372,7 @@ static struct sdio_driver smssdio_driver = {
 /* Module functions                                                */
 /*******************************************************************/
 
-static int __init smssdio_module_init(void)
+int smssdio_register(void)
 {
 	int ret = 0;
 
@@ -351,13 +384,10 @@ static int __init smssdio_module_init(void)
 	return ret;
 }
 
-static void __exit smssdio_module_exit(void)
+void smssdio_unregister(void)
 {
 	sdio_unregister_driver(&smssdio_driver);
 }
-
-module_init(smssdio_module_init);
-module_exit(smssdio_module_exit);
 
 MODULE_DESCRIPTION("Siano SMS1xxx SDIO driver");
 MODULE_AUTHOR("Pierre Ossman");

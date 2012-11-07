@@ -19,6 +19,7 @@
 #include <mach/am_regs.h>
 #include <linux/amports/amaudio.h>
 
+
 #include "amaudio.h"
 
 #define AMAUDIO_DEVICE_COUNT    3
@@ -32,16 +33,22 @@ MODULE_VERSION("1.0.0");
 
 
 typedef struct {
+
 	unsigned int in_rd_ptr; /*i2s in read pointer */
+
 	unsigned int in_wr_ptr; /*i2s in write pointer */
 	unsigned int in_op_mode;
 	unsigned int out_rd_ptr;/*i2s out read pointer */
+
 	unsigned int out_wr_ptr; /*i2s out write pointer*/
 	unsigned int out_op_mode;
 	unsigned int type;
+
 	unsigned int in_start;
+
 	unsigned int in_size;
 	unsigned int out_start;	
+
     unsigned int out_size;
     struct timer_list timer;
 
@@ -84,7 +91,15 @@ static unsigned int music_mix_flag = 1;
 static unsigned int mic_mix_flag = 1;
 static unsigned int enable_debug = 0;
 static unsigned int enable_debug_dump = 0;
-
+//--------------------------------------------
+static unsigned int enable_resample_flag=0;
+static unsigned int resample_type_flag=0; //0-->no resample  processing
+                                           //1-->down resample processing
+                                           //2-->up     resample processing
+/*resample update for sync*/
+extern unsigned int timestamp_enable_resample_flag;
+extern unsigned int timestamp_resample_type_flag;
+//--------------------------------------------
 #define DEBUG_DUMP 1
 
 static unsigned short* dump_buf = 0;
@@ -93,9 +108,12 @@ static unsigned int dump_off = 0;
 
 
 extern int aml_pcm_playback_enable;
+extern unsigned int dac_mute_const;
 
 static unsigned int audio_in_int_cnt = 0;
 static unsigned int level2 = 0;
+static int last_out_status = 0;
+static int last_in_status = 0;
 static int amaudio_in_started = 0;
 static int amaudio_out_started = 0;
 
@@ -459,7 +477,8 @@ static irqreturn_t amaudio_in_callback(int irq, void*data)
 
  //   aprint("+ level = %d, count=%d\n", amaudio_inbuf.level, count/2);
     
-    int_in = 0;    
+err: 
+ int_in = 0;    
 
     spin_unlock(&amaudio_clk_lock);
     return IRQ_HANDLED;
@@ -476,7 +495,7 @@ static irqreturn_t amaudio_out_callback(int irq, void* data)
     unsigned int hwptr = 0;
     unsigned int count = 0;
     unsigned int scount = 0;
-    unsigned int tmp;
+    unsigned int tmp, tmp1;
     int ret = 0;
 
     spin_lock(&amaudio_clk_lock);
@@ -608,15 +627,18 @@ err:
 
 /* direct audio end */ 
 static ssize_t amaudio_write(struct file *file, const char *buf,
+
                                 size_t count, loff_t * ppos);
 
 static ssize_t amaudio_read(struct file *file, char __user *buf, 
+
 															size_t count, loff_t * ppos);
 static int amaudio_open(struct inode *inode, struct file *file);
 
 static int amaudio_release(struct inode *inode, struct file *file);
 
 static int amaudio_ioctl(struct inode *inode, struct file *file,
+
                         unsigned int cmd, ulong arg);
 
 const static struct file_operations amaudio_out_fops = {
@@ -815,9 +837,13 @@ static ssize_t put_audout_buf(amaudio_t* amaudio, void* dbuf, void* sbuf, size_t
 
 
 static ssize_t amaudio_write(struct file *file, const char *buf,
+
 	size_t count, loff_t * ppos)
+
 {
+
   amaudio_t * amaudio = (amaudio_t *)file->private_data;
+
   int len = 0;
   char* tmpBuf;
 
@@ -1128,10 +1154,15 @@ static ssize_t amaudio_read(struct file *file, char __user *buf,
 	}
 	else if(amaudio->type == 0){
 		if(audio_out_buf_ready == 0){
+
 			aprint("amaudio output can not read now\n");
+
             kfree(tmpBuf);
 			return -EINVAL;
+
 		}
+
+
 
         if(if_audio_out_enable() == 0){
           aprint("amaudio read: audio out be closed !!!\n");
@@ -1139,16 +1170,22 @@ static ssize_t amaudio_read(struct file *file, char __user *buf,
 
         if(amaudio->out_op_mode == 0){  /* 32 bit block mode */
 		  len = copy_to_user((void*)buf, (void*)(amaudio->out_rd_ptr+amaudio->out_start), count);
+
           /* the appilcation request "count" bytes */
+
         }else if(amaudio->out_op_mode == 1){/* 16bit, two samples, also 32bit*/
           len = get_audout_buf(amaudio, (void*)tmpBuf, (void*)(amaudio->out_rd_ptr + amaudio->out_start), count);
           if(copy_to_user((void*)buf, (void*)tmpBuf, count-len) != 0){
             aprint("amaudio out: should not be here, please check if read out the whole size\n");
+
           }
+
         }
 	}
+
     kfree(tmpBuf);
 	return count - len;
+
 }
 
 static int audout_irq_alloced = 0;
@@ -1278,7 +1315,9 @@ error:
   return 0;
 }
 static int amaudio_release(struct inode *inode, struct file *file)
+
 {
+
 	amaudio_t * amaudio = (amaudio_t *)file->private_data;
 
     if(iminor(inode) == 0){
@@ -1297,14 +1336,17 @@ static int amaudio_release(struct inode *inode, struct file *file)
       amaudio_out_started = 0;
       int_out_enable = 0;
     }else if(iminor(inode) == 1){
+
 #if 0
       del_timer_sync(&amaudio_in.timer);
 #else
+
       free_irq(INT_AUDIO_IN, &amaudio_in);
 #endif      
       kfree(amaudio);
       direct_audio_flag = DIRECT_AUDIO_OFF;
       kfree((void*)amaudio_inbuf.out_start);
+
       kfree(amaudio_tmpbuf_in);
       amaudio_tmpbuf_in = 0;
       amaudio_in_started = 0;
@@ -1315,40 +1357,72 @@ static int amaudio_release(struct inode *inode, struct file *file)
 #endif      
     }
 
+
 	return 0;
+
 }
 static int amaudio_ioctl(struct inode *inode, struct file *file,
+
                         unsigned int cmd, ulong arg)
+
 {
+
 	s32 r = 0;
 	u32 reg;
 	amaudio_t * amaudio = (amaudio_t *)file->private_data;
+
     switch(cmd){
+
 		case AMAUDIO_IOC_GET_I2S_OUT_SIZE:
+
 			if(audio_out_buf_ready){
+
 				r = READ_MPEG_REG(AIU_MEM_I2S_END_PTR) - READ_MPEG_REG(AIU_MEM_I2S_START_PTR) + 64;
+
 			}else{
+
 				r = -EINVAL;
+
 			}
+
 			break;
+
 		case AMAUDIO_IOC_GET_I2S_OUT_PTR:
+
 			if(audio_out_buf_ready){
+
 				r = read_i2s_rd_ptr() - READ_MPEG_REG(AIU_MEM_I2S_START_PTR);
+
 			}else{
+
 				r = -EINVAL;
+
 			}
+
 			break;
+
 		case AMAUDIO_IOC_SET_I2S_OUT_RD_PTR:
+
 			if(audio_out_buf_ready){
+
 				if(arg < 0 || arg > (READ_MPEG_REG(AIU_MEM_I2S_END_PTR) - READ_MPEG_REG(AIU_MEM_I2S_START_PTR)+64)){
+
 					r = -EINVAL;
+
 				}else{
+
 					amaudio->out_rd_ptr = arg;
+
 				}
+
 			}else{
+
 				r = -EINVAL;
+
 			}
+
 			break;
+
         case AMAUDIO_IOC_GET_I2S_OUT_RD_PTR:
             r = amaudio->out_rd_ptr;
             break;
@@ -1367,15 +1441,25 @@ static int amaudio_ioctl(struct inode *inode, struct file *file,
             r = amaudio->out_wr_ptr;
             break;
 		case AMAUDIO_IOC_GET_I2S_IN_SIZE:
+
 			if(audio_in_buf_ready){
+
                r = amaudio_inbuf.in_size;
+
 			}else{
+
 				r = -EINVAL;
+
 			}
+
 			break;
+
 		case AMAUDIO_IOC_GET_I2S_IN_PTR:
+
 			if(audio_in_buf_ready){
+
               r = amaudio_inbuf.out_wr_ptr; /* should be a hw pointer */
+
             }
 			else{
 				r = -EINVAL;
@@ -1389,22 +1473,36 @@ static int amaudio_ioctl(struct inode *inode, struct file *file,
 					amaudio_inbuf.in_rd_ptr = arg;
 				}
 			}else{
+
 				r = -EINVAL;
+
 			}
+
 			break;
+
         case AMAUDIO_IOC_GET_I2S_IN_RD_PTR:
             r = amaudio_inbuf.in_rd_ptr;
             break;
         case AMAUDIO_IOC_SET_I2S_IN_WR_PTR:
+
 			if(audio_in_buf_ready){
+
 				if(arg < 0 || arg > (READ_MPEG_REG(AUDIN_FIFO0_END)- READ_MPEG_REG(AUDIN_FIFO0_START)+8)){
+
 					r = -EINVAL;
+
 				}else{
+
 					amaudio_inbuf.in_wr_ptr = arg;
+
 				}
+
 			}else{
+
 				r = -EINVAL;
+
 			}
+
 			break;
         case AMAUDIO_IOC_GET_I2S_IN_WR_PTR:
             r = amaudio_inbuf.in_wr_ptr;
@@ -1437,6 +1535,7 @@ static int amaudio_ioctl(struct inode *inode, struct file *file,
 			else
 				audio_i2s_swap_left_right(3);
 			break;
+
 		case AMAUDIO_IOC_DIRECT_AUDIO:
 			direct_audio_ctrl(arg);
 			break;		
@@ -1447,11 +1546,17 @@ static int amaudio_ioctl(struct inode *inode, struct file *file,
             direct_audio_right_gain(arg);
             break;
 		default:
+
 			break;
+
 		
+
 	};
+
 	return r;
+
 }
+
 
 static const struct file_operations amaudio_fops = {
   .owner    =   THIS_MODULE,
@@ -1584,6 +1689,8 @@ static ssize_t show_enable_dump(struct class* class, struct class_attribute* att
 static ssize_t store_enable_dump(struct class* class, struct class_attribute* attr,
    const char* buf, size_t count )
 {
+  unsigned long flags;
+  
   unsigned int tmp = 0;
 
   if(buf[0] == '0'){
@@ -1666,6 +1773,69 @@ static ssize_t amaudio_runtime_show(struct class* class, struct class_attribute*
   return ret;
 }
 
+//--------------------------------------------
+static ssize_t show_enable_resample(struct class* class, struct class_attribute* attr,
+    char* buf)
+{
+  return sprintf(buf, "%s\n", enable_resample_flag? "ON": "OFF");
+}
+
+static ssize_t store_enable_resample(struct class* class, struct class_attribute* attr,
+   const char* buf, size_t count )
+{
+  if(buf[0] == '0'){
+    enable_resample_flag = 0;
+    timestamp_enable_resample_flag = 0;
+  }else if(buf[0] == '1'){
+    enable_resample_flag = 1;
+    timestamp_enable_resample_flag = 1;
+  }
+  return count;
+}
+static ssize_t show_resample_type(struct class* class, struct class_attribute* attr,
+    char* buf)
+{
+     if(resample_type_flag==0){      //0-->no resample  processing
+         return sprintf(buf, "NO\n");
+     }else if(resample_type_flag==1){//1-->down resample processing
+         return sprintf(buf, "DW\n");
+     }else if(resample_type_flag==2){//2-->up resample processing
+         return sprintf(buf, "UP\n");
+     }
+}
+static ssize_t store_resample_type(struct class* class, struct class_attribute* attr,
+   const char* buf, size_t count )
+{
+  if(buf[0] == '0'){ 
+    resample_type_flag = 0;  //0-->no resample  processing
+    timestamp_resample_type_flag = 0;
+  }else if(buf[0] == '1'){     
+    resample_type_flag = 1;  //1-->down resample processing
+    timestamp_resample_type_flag = 1;
+  }else if(buf[0] == '2'){
+    resample_type_flag = 2;  //2-->up resample processing
+    timestamp_resample_type_flag = 2;
+  }
+  return count;
+}
+static ssize_t dac_mute_const_show(struct class*cla, struct class_attribute* attr, char* buf)
+{
+  char* pbuf = buf;
+  pbuf += sprintf(pbuf, "dac mute const val  0x%x\n", dac_mute_const);
+  return (pbuf-buf);
+}
+static ssize_t dac_mute_const_store(struct class* class, struct class_attribute* attr,
+   const char* buf, size_t count )
+{
+  unsigned val = dac_mute_const;
+  if(buf[0])
+  	val=simple_strtoul(buf, NULL, 16);	
+  if(val == 0 || val == 0x800000)
+  	dac_mute_const = val;
+  printk("dac mute const val set to 0x%x\n", val);
+  return count;
+}
+//--------------------------------------------
 static struct class_attribute amaudio_attrs[]={
   __ATTR(enable_direct_audio,  S_IRUGO | S_IWUSR, show_direct_flag, store_direct_flag),
   __ATTR(enable_music_mix, S_IRUGO | S_IWUSR, show_music_mix, store_music_mix),
@@ -1675,6 +1845,9 @@ static struct class_attribute amaudio_attrs[]={
   __ATTR(enable_debug_dump, S_IRUGO | S_IWUSR, show_enable_dump, store_enable_dump),
   __ATTR_RO(amaudio_runtime),
   __ATTR(audio_channels_mask, S_IRUGO | S_IWUSR, show_audio_channels_mask, store_audio_channels_mask),
+  __ATTR(enable_resample, S_IRUGO | S_IWUSR, show_enable_resample, store_enable_resample),
+  __ATTR(resample_type, S_IRUGO | S_IWUSR, show_resample_type, store_resample_type),
+  __ATTR(dac_mute_const, S_IRUGO | S_IWUSR, dac_mute_const_show, dac_mute_const_store),
   __ATTR_NULL
 };
 

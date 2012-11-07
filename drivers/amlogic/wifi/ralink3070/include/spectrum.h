@@ -5,25 +5,25 @@
  * Hsinchu County 302,
  * Taiwan, R.O.C.
  *
- * (c) Copyright 2002-2007, Ralink Technology, Inc.
+ * (c) Copyright 2002-2010, Ralink Technology, Inc.
  *
- * This program is free software; you can redistribute it and/or modify  * 
- * it under the terms of the GNU General Public License as published by  * 
- * the Free Software Foundation; either version 2 of the License, or     * 
- * (at your option) any later version.                                   * 
- *                                                                       * 
- * This program is distributed in the hope that it will be useful,       * 
- * but WITHOUT ANY WARRANTY; without even the implied warranty of        * 
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         * 
- * GNU General Public License for more details.                          * 
- *                                                                       * 
- * You should have received a copy of the GNU General Public License     * 
- * along with this program; if not, write to the                         * 
- * Free Software Foundation, Inc.,                                       * 
- * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             * 
- *                                                                       * 
- *************************************************************************
- */
+ * This program is free software; you can redistribute it and/or modify  *
+ * it under the terms of the GNU General Public License as published by  *
+ * the Free Software Foundation; either version 2 of the License, or     *
+ * (at your option) any later version.                                   *
+ *                                                                       *
+ * This program is distributed in the hope that it will be useful,       *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+ * GNU General Public License for more details.                          *
+ *                                                                       *
+ * You should have received a copy of the GNU General Public License     *
+ * along with this program; if not, write to the                         *
+ * Free Software Foundation, Inc.,                                       *
+ * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
+ *                                                                       *
+ *************************************************************************/
+
 
 #ifndef __SPECTRUM_H__
 #define __SPECTRUM_H__
@@ -122,27 +122,6 @@ VOID EnqueueTPCRep(
 	IN UINT8 TxPwr,
 	IN UINT8 LinkMargin);
 
-#ifdef WDS_SUPPORT
-/*
-	==========================================================================
-	Description:
-		Prepare Channel Switch Announcement action frame and enqueue it into
-		management queue waiting for transmition.
-		
-	Parametrs:
-		1. the destination mac address of the frame.
-		2. Channel switch announcement mode.
-		2. a New selected channel.
-	
-	Return	: None.
-	==========================================================================
- */
-VOID EnqueueChSwAnn(
-	IN PRTMP_ADAPTER pAd,
-	IN PUCHAR pDA, 
-	IN UINT8 ChSwMode,
-	IN UINT8 NewCh);
-#endif // WDS_SUPPORT //
 
 /*
 	==========================================================================
@@ -169,15 +148,15 @@ VOID PeerSpectrumAction(
 	Return	: None.
 	==========================================================================
  */
-INT Set_MeasureReq_Proc(
+int Set_MeasureReq_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-INT Set_TpcReq_Proc(
+int Set_TpcReq_Proc(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
-INT Set_PwrConstraint(
+int Set_PwrConstraint(
 	IN	PRTMP_ADAPTER	pAd, 
 	IN	PSTRING			arg);
 
@@ -237,5 +216,5 @@ VOID RguClass_BuildBcnChList(
 	IN PRTMP_ADAPTER pAd,
 	OUT PUCHAR pBuf,
 	OUT	PULONG pBufLen);
-#endif // __SPECTRUM_H__ //
+#endif /* __SPECTRUM_H__ */
 

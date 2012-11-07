@@ -37,13 +37,6 @@
 #include <asm/hardware/cache-l2x0.h>
 #endif
 
-#define TIMERE_CLOCK_SOURCE_BITS 24
-#define TIMERE_CLOCK_SOURCE_UNIT TIMERE_UNIT_1us
-#define TIMERE_CLOCK_SOURCE_TICKS_PER_SEC 1000000
-#define TIMERE_CLOCK_SOURCE_MASK CLOCKSOURCE_MASK(TIMERE_CLOCK_SOURCE_BITS)
-
-static cycle_t timer_e_sched_counter = 0;
-
 /***********************************************************************
  * IRQ
  **********************************************************************/
@@ -176,18 +169,18 @@ void __init meson_map_io(void)
 
 static cycle_t cycle_read_timerE(struct clocksource *cs)
 {
-	static cycle_t old = 0;
-	cycle_t cur = READ_CBUS_REG(ISA_TIMERE);
-	timer_e_sched_counter += (cur >= old) ? cur - old : cur + (0x1000000 - old);
-	old = cur;
-	return cur;
+    static cycle_t last = 0,old = 0;
+    cycle_t cur = READ_CBUS_REG(ISA_TIMERE);
+    last += (cur >= old) ? (cur - old) : (cur + (0x1000000 - old));
+    old = cur;
+	return (cycles_t) last;
 }
 
 static struct clocksource clocksource_timer_e = {
 	.name   = "Timer-E",
 	.rating = 300,
 	.read   = cycle_read_timerE,
-	.mask   = TIMERE_CLOCK_SOURCE_MASK,
+	.mask   = CLOCKSOURCE_MASK(24),
 	.flags  = CLOCK_SOURCE_IS_CONTINUOUS,
 };
 
@@ -195,7 +188,7 @@ static struct clocksource clocksource_timer_f = {
     .name   = "Timer-F",
     .rating = 300,
     .read   = cycle_read_timerE,
-    .mask   = TIMERE_CLOCK_SOURCE_MASK,
+    .mask   = CLOCKSOURCE_MASK(24),
     .flags  = CLOCK_SOURCE_IS_CONTINUOUS,
 };
 
@@ -203,26 +196,23 @@ static struct clocksource clocksource_timer_f = {
 static void __init meson_clocksource_init(void)
 {
 	CLEAR_CBUS_REG_MASK(ISA_TIMER_MUX, TIMER_E_INPUT_MASK);
-	SET_CBUS_REG_MASK(ISA_TIMER_MUX, TIMERE_CLOCK_SOURCE_UNIT << TIMER_E_INPUT_BIT);
+	SET_CBUS_REG_MASK(ISA_TIMER_MUX, TIMERE_UNIT_1us << TIMER_E_INPUT_BIT);
 	WRITE_CBUS_REG(ISA_TIMERE, 0);
 
-	clocksource_timer_e.shift =
-		clocksource_hz2shift(TIMERE_CLOCK_SOURCE_BITS, TIMERE_CLOCK_SOURCE_TICKS_PER_SEC);
-	clocksource_timer_e.mult  =
-		clocksource_hz2mult(TIMERE_CLOCK_SOURCE_TICKS_PER_SEC, clocksource_timer_e.shift);
-
-  /* Why is timer_f using a different multiplier ? */
-	clocksource_timer_f.shift = clocksource_timer_e.shift;
-	//clocksource_timer_f.mult = ((clocksource_timer_e.mult)>>6)*64;
-	clocksource_timer_f.mult = ((clocksource_timer_e.mult)>>6)*40;
-	/*printk("Timer-E=%x,%x, Timer-F=%x,%x",
+	clocksource_timer_e.shift = clocksource_hz2shift(24, 1000000);
+	clocksource_timer_e.mult  = clocksource_hz2mult(1000000, clocksource_timer_e.shift);
+    
+    clocksource_timer_f.shift = clocksource_timer_e.shift;
+    //clocksource_timer_f.mult = ((clocksource_timer_e.mult)>>6)*64;
+    clocksource_timer_f.mult = ((clocksource_timer_e.mult)>>6)*40;
+    /*printk("Timer-E=%x,%x, Timer-F=%x,%x",
     clocksource_timer_e.shift,
     clocksource_timer_e.mult,
     clocksource_timer_f.shift,
     clocksource_timer_f.mult
-		);*/
-	clocksource_register(&clocksource_timer_e);
-	clocksource_register(&clocksource_timer_f);
+     );*/
+    clocksource_register(&clocksource_timer_e);
+    clocksource_register(&clocksource_timer_f);
 }
 
 /*
@@ -230,9 +220,10 @@ static void __init meson_clocksource_init(void)
  */
 unsigned long long sched_clock(void)
 {
-	cycle_read_timerE(&clocksource_timer_e);
-	return clocksource_cyc2ns(timer_e_sched_counter,
-		clocksource_timer_e.mult, clocksource_timer_e.shift);
+	cycle_t cyc = cycle_read_timerE(NULL);
+	struct clocksource *cs = &clocksource_timer_e;
+
+	return clocksource_cyc2ns(cyc, cs->mult, cs->shift);
 }
 
 /********** Clock Event Device, Timer-AC *********/

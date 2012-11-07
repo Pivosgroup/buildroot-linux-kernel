@@ -75,5 +75,4 @@ static inline u32 tsync_vpts_discontinuity_margin(void)
     return AV_DISCONTINUE_THREDHOLD;
 }
 
-extern void tsync_set_automute_on(int automute_on);
 #endif /* TSYNC_H */

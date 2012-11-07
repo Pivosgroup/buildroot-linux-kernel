@@ -5,39 +5,29 @@
  * Hsinchu County 302,
  * Taiwan, R.O.C.
  *
- * (c) Copyright 2002-2007, Ralink Technology, Inc.
+ * (c) Copyright 2002-2010, Ralink Technology, Inc.
  *
- * This program is free software; you can redistribute it and/or modify  * 
- * it under the terms of the GNU General Public License as published by  * 
- * the Free Software Foundation; either version 2 of the License, or     * 
- * (at your option) any later version.                                   * 
- *                                                                       * 
- * This program is distributed in the hope that it will be useful,       * 
- * but WITHOUT ANY WARRANTY; without even the implied warranty of        * 
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         * 
- * GNU General Public License for more details.                          * 
- *                                                                       * 
- * You should have received a copy of the GNU General Public License     * 
- * along with this program; if not, write to the                         * 
- * Free Software Foundation, Inc.,                                       * 
- * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             * 
- *                                                                       * 
- *************************************************************************
+ * This program is free software; you can redistribute it and/or modify  *
+ * it under the terms of the GNU General Public License as published by  *
+ * the Free Software Foundation; either version 2 of the License, or     *
+ * (at your option) any later version.                                   *
+ *                                                                       *
+ * This program is distributed in the hope that it will be useful,       *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+ * GNU General Public License for more details.                          *
+ *                                                                       *
+ * You should have received a copy of the GNU General Public License     *
+ * along with this program; if not, write to the                         *
+ * Free Software Foundation, Inc.,                                       *
+ * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
+ *                                                                       *
+ *************************************************************************/
 
-	Module Name:
-	cmm_tkip.c
-
-	Abstract:
-
-	Revision History:
-	Who			When			What
-	--------	----------		----------------------------------------------
-	Paul Wu		02-25-02		Initial
-*/
 
 #include	"rt_config.h"
 
-// Rotation functions on 32 bit values 
+/* Rotation functions on 32 bit values */
 #define ROL32( A, n ) \
 	( ((A) << (n)) | ( ((A)>>(32-(n))) & ( (1UL << (n)) - 1 ) ) ) 
 #define ROR32( A, n ) ROL32( (A), 32-(n) ) 
@@ -114,9 +104,9 @@ UINT Tkip_Sbox_Upper[256] =
 	0x82,0x29,0x5A,0x1E,0x7B,0xA8,0x6D,0x2C 
 }; 
 
-//
-// Expanded IV for TKIP function.
-//
+
+/* Expanded IV for TKIP function.*/
+
 typedef	struct	GNU_PACKED _IV_CONTROL_
 {
 	union GNU_PACKED
@@ -172,7 +162,7 @@ ULONG	RTMPTkipGetUInt32(
 	IN	PUCHAR	pMICKey)
 {  	
 	ULONG	res = 0; 
-	INT		i;
+	int		i;
 	
 	for (i = 0; i < 4; i++) 
 	{ 
@@ -205,7 +195,7 @@ VOID	RTMPTkipPutUInt32(
 	IN OUT	PUCHAR		pDst,
 	IN		ULONG		val)					  
 { 	
-	INT i;
+	int i;
 	
 	for(i = 0; i < 4; i++) 
 	{ 
@@ -237,10 +227,10 @@ VOID RTMPTkipSetMICKey(
 	IN	PTKIP_KEY_INFO	pTkip,	
 	IN	PUCHAR			pMICKey)
 { 
-	// Set the key 
+	/* Set the key */
 	pTkip->K0 = RTMPTkipGetUInt32(pMICKey); 
 	pTkip->K1 = RTMPTkipGetUInt32(pMICKey + 4); 
-	// and reset the message 
+	/* and reset the message */
 	pTkip->L = pTkip->K0;
 	pTkip->R = pTkip->K1;
 	pTkip->nBytesInM = 0;
@@ -270,10 +260,10 @@ VOID	RTMPTkipAppendByte(
 	IN	PTKIP_KEY_INFO	pTkip,	
 	IN	UCHAR 			uChar)
 { 
-	// Append the byte to our word-sized buffer 
+	/* Append the byte to our word-sized buffer */
 	pTkip->M |= (uChar << (8* pTkip->nBytesInM)); 
 	pTkip->nBytesInM++; 
-	// Process the word if it is full. 
+	/* Process the word if it is full. */
 	if( pTkip->nBytesInM >= 4 ) 
 	{ 
 		pTkip->L ^= pTkip->M; 
@@ -285,7 +275,7 @@ VOID	RTMPTkipAppendByte(
 		pTkip->L += pTkip->R; 
 		pTkip->R ^= ROR32( pTkip->L, 2 ); 
 		pTkip->L += pTkip->R; 
-		// Clear the buffer 
+		/* Clear the buffer */
 		pTkip->M = 0; 
 		pTkip->nBytesInM = 0; 
 	} 
@@ -316,7 +306,7 @@ VOID	RTMPTkipAppend(
 	IN	PUCHAR			pSrc,
 	IN	UINT			nBytes)						  
 { 
-	// This is simple 
+	/* This is simple */
 	while(nBytes > 0) 
 	{ 
 		RTMPTkipAppendByte(pTkip, *pSrc++); 
@@ -345,18 +335,18 @@ VOID	RTMPTkipAppend(
 VOID	RTMPTkipGetMIC( 
 	IN	PTKIP_KEY_INFO	pTkip)
 { 
-	// Append the minimum padding
+	/* Append the minimum padding*/
 	RTMPTkipAppendByte(pTkip, 0x5a );	
 	RTMPTkipAppendByte(pTkip, 0 ); 
 	RTMPTkipAppendByte(pTkip, 0 ); 
 	RTMPTkipAppendByte(pTkip, 0 ); 
 	RTMPTkipAppendByte(pTkip, 0 ); 
-	// and then zeroes until the length is a multiple of 4 
+	/* and then zeroes until the length is a multiple of 4 */
 	while( pTkip->nBytesInM != 0 ) 
 	{ 
 		RTMPTkipAppendByte(pTkip, 0 ); 
 	} 
-	// The appendByte function has already computed the result. 
+	/* The appendByte function has already computed the result. */
 	RTMPTkipPutUInt32(pTkip->MIC, pTkip->L);
 	RTMPTkipPutUInt32(pTkip->MIC + 4, pTkip->R);
 } 
@@ -393,13 +383,13 @@ VOID	RTMPInitMICEngine(
 {
 	ULONG Priority = UserPriority;
 
-	// Init MIC value calculation
+	/* Init MIC value calculation*/
 	RTMPTkipSetMICKey(&pAd->PrivateInfo.Tx, pMICKey);
-	// DA
+	/* DA*/
 	RTMPTkipAppend(&pAd->PrivateInfo.Tx, pDA, MAC_ADDR_LEN);
-	// SA
+	/* SA*/
 	RTMPTkipAppend(&pAd->PrivateInfo.Tx, pSA, MAC_ADDR_LEN);
-	// Priority + 3 bytes of 0
+	/* Priority + 3 bytes of 0*/
 	RTMPTkipAppend(&pAd->PrivateInfo.Tx, (PUCHAR)&Priority, 4);
 }
 
@@ -439,29 +429,29 @@ BOOLEAN	RTMPTkipCompareMICValue(
 	UCHAR	OldMic[8];
 	ULONG	Priority = UserPriority;
 
-	// Init MIC value calculation
+	/* Init MIC value calculation*/
 	RTMPTkipSetMICKey(&pAd->PrivateInfo.Rx, pMICKey);
-	// DA
+	/* DA*/
 	RTMPTkipAppend(&pAd->PrivateInfo.Rx, pDA, MAC_ADDR_LEN);
-	// SA
+	/* SA*/
 	RTMPTkipAppend(&pAd->PrivateInfo.Rx, pSA, MAC_ADDR_LEN);
-	// Priority + 3 bytes of 0
+	/* Priority + 3 bytes of 0*/
 	RTMPTkipAppend(&pAd->PrivateInfo.Rx, (PUCHAR)&Priority, 4);
 	
-	// Calculate MIC value from plain text data
+	/* Calculate MIC value from plain text data*/
 	RTMPTkipAppend(&pAd->PrivateInfo.Rx, pSrc, Len);
 
-	// Get MIC valude from received frame
+	/* Get MIC valude from received frame*/
 	NdisMoveMemory(OldMic, pSrc + Len, 8);
 	
-	// Get MIC value from decrypted plain data
+	/* Get MIC value from decrypted plain data*/
 	RTMPTkipGetMIC(&pAd->PrivateInfo.Rx);
 		
-	// Move MIC value from MSDU, this steps should move to data path.
-	// Since the MIC value might cross MPDUs.
+	/* Move MIC value from MSDU, this steps should move to data path.*/
+	/* Since the MIC value might cross MPDUs.*/
 	if(!NdisEqualMemory(pAd->PrivateInfo.Rx.MIC, OldMic, 8))
 	{
-		DBGPRINT_RAW(RT_DEBUG_ERROR, ("RTMPTkipCompareMICValue(): TKIP MIC Error !\n"));  //MIC error.
+		DBGPRINT_RAW(RT_DEBUG_ERROR, ("RTMPTkipCompareMICValue(): TKIP MIC Error !\n"));  /*MIC error.*/
 
 		
 		return (FALSE);
@@ -510,12 +500,12 @@ VOID	RTMPCalculateMICValue(
 	UserPriority = RTMP_GET_PACKET_UP(pPacket);
 	pSrc = pSrcBufVA;
     
-	// determine if this is a vlan packet 
+	/* determine if this is a vlan packet */
 	if (((*(pSrc + 12) << 8) + *(pSrc + 13)) == 0x8100)
 		vlan_offset = 4;
 	
 #ifdef CONFIG_STA_SUPPORT
-#endif // CONFIG_STA_SUPPORT //
+#endif /* CONFIG_STA_SUPPORT */
 	{
 		RTMPInitMICEngine(
 			pAd,
@@ -529,9 +519,9 @@ VOID	RTMPCalculateMICValue(
 
 	if (pEncap != NULL)
 	{
-		// LLC encapsulation
+		/* LLC encapsulation*/
 		RTMPTkipAppend(&pAd->PrivateInfo.Tx, pEncap, 6);
-		// Protocol Type
+		/* Protocol Type*/
 		RTMPTkipAppend(&pAd->PrivateInfo.Tx, pSrc + 12 + vlan_offset, 2);		
 	}
 	SrcBufLen -= (14 + vlan_offset);
@@ -543,11 +533,11 @@ VOID	RTMPCalculateMICValue(
 			RTMPTkipAppend(&pAd->PrivateInfo.Tx, pSrc, SrcBufLen);
 		}
 		
-		break;	// No need handle next packet	
+		break;	/* No need handle next packet	*/
 
-	}	while (TRUE);		// End of copying payload
+	}	while (TRUE);		/* End of copying payload*/
 
-	// Compute the final MIC Value
+	/* Compute the final MIC Value*/
 	RTMPTkipGetMIC(&pAd->PrivateInfo.Tx);
 }
 
@@ -609,8 +599,8 @@ VOID RTMPTkipMixKey(
 	UINT ppk4; 
 	UINT ppk5; 
 
-	INT i; 
-	INT j; 
+	int i; 
+	int j; 
 
 	tsc0 = (unsigned int)((pnh >> 16) % 65536); /* msb */ 
 	tsc1 = (unsigned int)(pnh % 65536); 
@@ -690,10 +680,10 @@ VOID RTMPTkipMixKey(
 }
 
 
-//
-// TRUE: Success!
-// FALSE: Decrypt Error!
-//
+
+/* TRUE: Success!*/
+/* FALSE: Decrypt Error!*/
+
 BOOLEAN RTMPSoftDecryptTKIP(
 	IN 		PRTMP_ADAPTER 	pAd,
 	IN 		PUCHAR			pHdr,
@@ -713,7 +703,7 @@ BOOLEAN RTMPSoftDecryptTKIP(
 	UCHAR			DA[MAC_ADDR_LEN];
 	UCHAR			SA[MAC_ADDR_LEN];	
 	UCHAR			RC4Key[16];
-	UINT			p1k[5]; //for mix_key;
+	UINT			p1k[5]; /*for mix_key;*/
 	ULONG			pnl;/* Least significant 16 bits of PN */
 	ULONG			pnh;/* Most significant 32 bits of PN */ 
 	ARC4_CTX_STRUC 	ARC4_CTX;
@@ -758,7 +748,7 @@ BOOLEAN RTMPSoftDecryptTKIP(
 	if (to_ds == 0 && from_ds == 1)
 	{
 		NdisMoveMemory(DA, pFrame->Addr1, MAC_ADDR_LEN);
-		NdisMoveMemory(TA, pFrame->Addr2, MAC_ADDR_LEN);  //BSSID		
+		NdisMoveMemory(TA, pFrame->Addr2, MAC_ADDR_LEN);  /*BSSID		*/
 		NdisMoveMemory(SA, pFrame->Addr3, MAC_ADDR_LEN);
 	}	
 	else if (to_ds == 0 && from_ds == 0 )
@@ -812,7 +802,7 @@ BOOLEAN RTMPSoftDecryptTKIP(
 
     if(crc32 != cpu2le32(trailfcs))
     {
-		DBGPRINT(RT_DEBUG_ERROR, ("! WEP Data CRC Error !\n"));	 //CRC error.
+		DBGPRINT(RT_DEBUG_ERROR, ("! WEP Data CRC Error !\n"));	 /*CRC error.*/
 		return FALSE;
 	}
 
@@ -826,8 +816,8 @@ BOOLEAN RTMPSoftDecryptTKIP(
 
 	if (!NdisEqualMemory(MIC, TrailMIC, LEN_TKIP_MIC))
 	{
-		DBGPRINT(RT_DEBUG_ERROR, ("! TKIP MIC Error !\n"));	 //MIC error.
-		//RTMPReportMicError(pAd, &pWpaKey[KeyID]);	// marked by AlbertY @ 20060630 
+		DBGPRINT(RT_DEBUG_ERROR, ("! TKIP MIC Error !\n"));	 /*MIC error.*/
+		/*RTMPReportMicError(pAd, &pWpaKey[KeyID]);	 marked by AlbertY @ 20060630 */
 		return FALSE;		
 	}
 
@@ -864,22 +854,34 @@ VOID TKIP_GTK_KEY_WRAP(
     OUT UCHAR   *output_text)
 {	
 	UCHAR	ekey[LEN_KEY_DESC_IV + LEN_PTK_KEK];	
-	ARC4_CTX_STRUC ARC4_CTX;
-	
+/*	ARC4_CTX_STRUC ARC4_CTX;*/
+	ARC4_CTX_STRUC *pARC4_CTX = NULL;
+
+
+	/* allocate memory */
+	os_alloc_mem(NULL, (UCHAR **)&pARC4_CTX, sizeof(ARC4_CTX_STRUC));
+	if (pARC4_CTX == NULL)
+	{
+		DBGPRINT(RT_DEBUG_ERROR, ("%s: Allocate memory fail!!!\n", __FUNCTION__));
+		return;
+	}
+
 	/* The encryption key is generated by concatenating the
 	   EAPOL-Key IV field and the KEK. */
 	NdisMoveMemory(ekey, iv, LEN_KEY_DESC_IV);
 	NdisMoveMemory(&ekey[LEN_KEY_DESC_IV], key, LEN_PTK_KEK);
 
 	/* RC4 stream cipher initialization with the KEK */	
-	ARC4_INIT(&ARC4_CTX, &ekey[0], LEN_KEY_DESC_IV + LEN_PTK_KEK);
+	ARC4_INIT(pARC4_CTX, &ekey[0], LEN_KEY_DESC_IV + LEN_PTK_KEK);
 
 	/* The first 256 octets of the RC4 key stream shall be discarded */
-	ARC4_Discard_KeyLength(&ARC4_CTX, 256);
+	ARC4_Discard_KeyLength(pARC4_CTX, 256);
 
 	/* encryption begins using the 257th key stream octet */
-	ARC4_Compute(&ARC4_CTX, input_text, input_len, output_text);
-	
+	ARC4_Compute(pARC4_CTX, input_text, input_len, output_text);
+
+	if (pARC4_CTX != NULL)
+		os_free_mem(NULL, pARC4_CTX);
 }
 
 VOID TKIP_GTK_KEY_UNWRAP( 

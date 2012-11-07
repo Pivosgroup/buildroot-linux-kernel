@@ -1,5 +1,4 @@
 /*
-#define DLOCK() unsigned long flags
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the named License,
@@ -30,93 +29,62 @@ typedef struct {
     struct vframe_s **pool;
 } vfq_t;
 
-
-#define DVLOCK() unsigned long _vlock_flags
-#define VLOCK() {raw_local_save_flags(_vlock_flags);local_fiq_disable();}
-#define VUNLOCK() {raw_local_irq_restore(_vlock_flags);}
-
 static inline void vfq_lookup_start(vfq_t *q)
 {
-	DVLOCK();
-	VLOCK();
 	 q->pre_rp =  q->rp ;
 	 q->pre_wp = q->wp;
-	VUNLOCK();
 }
 static inline void vfq_lookup_end(vfq_t *q)
 {
-	DVLOCK();
-        VLOCK();
 	  q->rp = q->pre_rp ;
 	  q->wp = q->pre_wp ;	
-	VUNLOCK();
 }
 
 static inline void vfq_init(vfq_t *q, u32 size, struct vframe_s **pool)
 {
-	DVLOCK();
-        VLOCK();
     q->rp = q->wp = 0;
     q->size = size;
     q->pool = pool;
-	VUNLOCK();
 }
 
 static inline bool vfq_empty(vfq_t *q)
 {
-	bool ret;
-	DVLOCK();
-        VLOCK();
-	ret=(q->rp == q->wp);
-	VUNLOCK();
-	return ret;
+    return (q->rp == q->wp);
 }
 
 static inline void vfq_push(vfq_t *q, vframe_t *vf)
 {
-	DVLOCK();
-        VLOCK();
-    	q->pool[q->wp] = vf;
-    	q->wp = (q->wp == (q->size-1)) ? 0 : (q->wp+1);
-	VUNLOCK();
+    q->pool[q->wp] = vf;
+    q->wp = (q->wp == (q->size-1)) ? 0 : (q->wp+1);
 }
 
 static inline vframe_t *vfq_pop(vfq_t *q)
 {
     vframe_t *vf;
-	DVLOCK();
-    	if (vfq_empty(q))
-        	return NULL;
-        VLOCK();	    
-	vf = q->pool[q->rp];
 
-    	q->rp = (q->rp == (q->size-1)) ? 0 : (q->rp+1);
-	VUNLOCK();
+    if (vfq_empty(q))
+        return NULL;
+
+    vf = q->pool[q->rp];
+
+    q->rp = (q->rp == (q->size-1)) ? 0 : (q->rp+1);
+
     return vf;
 }
 
 static inline vframe_t *vfq_peek(vfq_t *q)
 {
-	vframe_t * vf;
-	DVLOCK();
-        VLOCK();
-	vf=(vfq_empty(q)) ? NULL : q->pool[q->rp];
-	VUNLOCK();
-	return vf;
+    return (vfq_empty(q)) ? NULL : q->pool[q->rp];
 }
 
 static inline int vfq_level(vfq_t *q)
 {
-    int level;
-	
-	DVLOCK();
-        VLOCK();
-	level= q->wp - q->rp;
+    int level = q->wp - q->rp;
     
-    	if (level < 0)
-        	level += q->size;
-	VUNLOCK();
-   	 return level;
+    if (level < 0)
+        level += q->size;
+
+    return level;
 }
 
 #endif /* __VFP_H_ */

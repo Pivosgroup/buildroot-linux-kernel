@@ -12,4 +12,3 @@ audiodsp-objs += spdif_module.o
 
 obj-$(CONFIG_AML_AUDIO_DSP)    +=audiodsp.o
 
-#EXTRA_CFLAGS = -DENABLE_WAIT_FORMAT

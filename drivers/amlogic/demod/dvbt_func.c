@@ -1051,7 +1051,8 @@ static void dvbt_reg_initial(struct aml_demod_sta *demod_sta)
     apb_write_reg(2, 0x4c, 0x00000bbf);  // CCI_RP
     apb_write_reg(2, 0x4d, 0x00000376);  // CCI_RPSQ
     //apb_write_reg(2, 0x4e, 0x00202109);  // CCI_CTRL
-    apb_write_reg(2, 0x4e, 0x000f1d09);
+//rsj    apb_write_reg(2, 0x4e, 0x000f1d09);    //for mtc 20120619
+	apb_write_reg(2, 0x4e, 0x003f1d09);
     apb_write_reg(2, 0x52, 0x00000000);  // CCI_NOTCH1_A2
     apb_write_reg(2, 0x53, 0x00000000);  // CCI_NOTCH1_B1
     apb_write_reg(2, 0x54, 0x00c00000);  // CCI_NOTCH2_A1

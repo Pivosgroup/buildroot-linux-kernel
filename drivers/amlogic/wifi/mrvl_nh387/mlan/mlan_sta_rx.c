@@ -3,7 +3,7 @@
  *  @brief This file contains the handling of RX in MLAN
  *  module.
  * 
- *  Copyright (C) 2008-2011, Marvell International Ltd. 
+ *  Copyright (C) 2008-2010, Marvell International Ltd. 
  *  All Rights Reserved
  */
 
@@ -67,21 +67,22 @@ wlan_process_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
     EthII_Hdr_t *peth_hdr;
     t_u8 rfc1042_eth_hdr[MLAN_MAC_ADDR_LENGTH] =
         { 0xaa, 0xaa, 0x03, 0x00, 0x00, 0x00 };
-    t_u8 snap_oui_802_h[MLAN_MAC_ADDR_LENGTH] =
-        { 0xaa, 0xaa, 0x03, 0x00, 0x00, 0xf8 };
-    t_u8 appletalk_aarp_type[2] = { 0x80, 0xf3 };
-    t_u8 ipx_snap_type[2] = { 0x81, 0x37 };
 
     ENTER();
-
     prx_pd = (RxPD *) (pmbuf->pbuf + pmbuf->data_offset);
+
     prx_pkt = (RxPacketHdr_t *) ((t_u8 *) prx_pd + prx_pd->rx_pkt_offset);
 
+    DBG_HEXDUMP(MDAT_D, "Rx", pmbuf->pbuf + pmbuf->data_offset,
+                MIN(pmbuf->data_len, MAX_DATA_DUMP_LEN));
+
+/** Rx packet type debugging */
+#define RX_PKT_TYPE_DEBUG  0xEF
 /** Small debug type */
 #define DBG_TYPE_SMALL  2
 /** Size of debugging structure */
 #define SIZE_OF_DBG_STRUCT 4
-    if (prx_pd->rx_pkt_type == PKT_TYPE_DEBUG) {
+    if (prx_pd->rx_pkt_type == RX_PKT_TYPE_DEBUG) {
         t_u8 dbgType;
         dbgType = *(t_u8 *) & prx_pkt->eth803_hdr;
         if (dbgType == DBG_TYPE_SMALL) {
@@ -103,14 +104,8 @@ wlan_process_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
     HEXDUMP("RX Data: Src", prx_pkt->eth803_hdr.src_addr,
             sizeof(prx_pkt->eth803_hdr.src_addr));
 
-    if ((memcmp(pmadapter, &prx_pkt->rfc1042_hdr,
-                snap_oui_802_h, sizeof(snap_oui_802_h)) == 0) ||
-        ((memcmp(pmadapter, &prx_pkt->rfc1042_hdr,
-                 rfc1042_eth_hdr, sizeof(rfc1042_eth_hdr)) == 0) &&
-         memcmp(pmadapter, &prx_pkt->rfc1042_hdr.snap_type,
-                appletalk_aarp_type, sizeof(appletalk_aarp_type)) &&
-         memcmp(pmadapter, &prx_pkt->rfc1042_hdr.snap_type,
-                ipx_snap_type, sizeof(ipx_snap_type)))) {
+    if (!memcmp(pmadapter, &prx_pkt->rfc1042_hdr,
+                rfc1042_eth_hdr, sizeof(rfc1042_eth_hdr))) {
         /* 
          *  Replace the 803 header and rfc1042 header (llc/snap) with an 
          *    EthernetII header, keep the src/dst and snap_type (ethertype).
@@ -147,8 +142,6 @@ wlan_process_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
     pmbuf->data_len -= hdr_chop;
     pmbuf->data_offset += hdr_chop;
     pmbuf->pparent = MNULL;
-    DBG_HEXDUMP(MDAT_D, "Rx", pmbuf->pbuf + pmbuf->data_offset,
-                MIN(pmbuf->data_len, MAX_DATA_DUMP_LEN));
 
     priv->rxpd_rate = prx_pd->rx_rate;
 
@@ -156,7 +149,7 @@ wlan_process_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
     pmadapter->callbacks.moal_get_system_time(pmadapter->pmoal_handle,
                                               &pmbuf->out_ts_sec,
                                               &pmbuf->out_ts_usec);
-    PRINTM(MDATA, "%lu.%06lu : Data => kernel seq_num=%d tid=%d\n",
+    PRINTM(MDATA, "%lu.%lu : Data => kernel seq_num=%d tid=%d\n",
            pmbuf->out_ts_sec, pmbuf->out_ts_usec, prx_pd->seq_num,
            prx_pd->priority);
     ret = pmadapter->callbacks.moal_recv_packet(pmadapter->pmoal_handle, pmbuf);
@@ -230,7 +223,7 @@ mlan_process_sta_rx_packet(IN t_void * adapter, IN pmlan_buffer pmbuf)
         memcpy(pmadapter, ta, prx_pkt->eth803_hdr.src_addr,
                MLAN_MAC_ADDR_LENGTH);
     } else {
-        if ((rx_pkt_type != PKT_TYPE_BAR) && (prx_pd->priority < MAX_NUM_TID))
+        if (rx_pkt_type != PKT_TYPE_BAR)
             priv->rx_seq[prx_pd->priority] = prx_pd->seq_num;
         memcpy(pmadapter, ta,
                priv->curr_bss_params.bss_descriptor.mac_address,

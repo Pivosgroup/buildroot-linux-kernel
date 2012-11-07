@@ -193,11 +193,6 @@ void osddev_get_osd_info(u32 index, s32 (*posdval)[4], u32 (*posdreg)[5], s32 in
 	osd_get_osd_info_hw(index, posdval, posdreg, info_flag);
 }
 
-void osddev_set_canvas_conf(u32 index, u32 canvas_conf)
-{
-	osd_set_canvas_conf_hw(index, canvas_conf);
-}
-
 void osddev_set_2x_scale(u32 index,u16 h_scale_enable,u16 v_scale_enable)
 {
 	osd_set_2x_scale_hw(index,h_scale_enable,v_scale_enable);

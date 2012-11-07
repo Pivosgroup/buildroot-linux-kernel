@@ -5,44 +5,32 @@
  * Hsinchu County 302,
  * Taiwan, R.O.C.
  *
- * (c) Copyright 2002-2007, Ralink Technology, Inc.
+ * (c) Copyright 2002-2010, Ralink Technology, Inc.
  *
- * This program is free software; you can redistribute it and/or modify  * 
- * it under the terms of the GNU General Public License as published by  * 
- * the Free Software Foundation; either version 2 of the License, or     * 
- * (at your option) any later version.                                   * 
- *                                                                       * 
- * This program is distributed in the hope that it will be useful,       * 
- * but WITHOUT ANY WARRANTY; without even the implied warranty of        * 
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         * 
- * GNU General Public License for more details.                          * 
- *                                                                       * 
- * You should have received a copy of the GNU General Public License     * 
- * along with this program; if not, write to the                         * 
- * Free Software Foundation, Inc.,                                       * 
- * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             * 
- *                                                                       * 
- *************************************************************************
+ * This program is free software; you can redistribute it and/or modify  *
+ * it under the terms of the GNU General Public License as published by  *
+ * the Free Software Foundation; either version 2 of the License, or     *
+ * (at your option) any later version.                                   *
+ *                                                                       *
+ * This program is distributed in the hope that it will be useful,       *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+ * GNU General Public License for more details.                          *
+ *                                                                       *
+ * You should have received a copy of the GNU General Public License     *
+ * along with this program; if not, write to the                         *
+ * Free Software Foundation, Inc.,                                       *
+ * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
+ *                                                                       *
+ *************************************************************************/
 
-	Module Name:
-	rtusb_data.c
-
-	Abstract:
-	Ralink USB driver Tx/Rx functions.
-
-	Revision History:
-	Who         When          What
-	--------    ----------    ----------------------------------------------
-	Jan            03-25-2006    created
-
-*/
 
 #ifdef RTMP_MAC_USB
 
 
 #include	"rt_config.h"
 
-extern  UCHAR Phy11BGNextRateUpward[]; // defined in mlme.c
+extern  UCHAR Phy11BGNextRateUpward[]; /* defined in mlme.c*/
 extern UCHAR	EpToQueue[];
 
 
@@ -102,7 +90,7 @@ VOID	RTUSBRejectPendingPackets(
 	}
 
 }
-#endif // RALINK_ATE //
+#endif /* RALINK_ATE */
 
 
 /*
@@ -129,8 +117,8 @@ NDIS_STATUS	RTUSBFreeDescriptorRequest(
 	IN	UCHAR			BulkOutPipeId,
 	IN	UINT32			NumberRequired)
 {
-//	UCHAR			FreeNumber = 0;
-//	UINT			Index;
+/*	UCHAR			FreeNumber = 0;*/
+/*	UINT			Index;*/
 	NDIS_STATUS		Status = NDIS_STATUS_FAILURE;
 	unsigned long   IrqFlags;
 	HT_TX_CONTEXT	*pHTTXContext;
@@ -138,6 +126,20 @@ NDIS_STATUS	RTUSBFreeDescriptorRequest(
 
 	pHTTXContext = &pAd->TxContext[BulkOutPipeId];
 	RTMP_IRQ_LOCK(&pAd->TxContextQueueLock[BulkOutPipeId], IrqFlags);
+#ifdef USB_BULK_BUF_ALIGMENT
+	if( ((pHTTXContext->CurWriteIdx< pHTTXContext->NextBulkIdx  ) &&   (pHTTXContext->NextBulkIdx - pHTTXContext->CurWriteIdx == 1)) 
+		|| ((pHTTXContext->CurWriteIdx ==(BUF_ALIGMENT_RINGSIZE -1) ) &&  (pHTTXContext->NextBulkIdx == 0 )))
+	{
+		RTUSB_SET_BULK_FLAG(pAd, (fRTUSB_BULK_OUT_DATA_NORMAL << BulkOutPipeId));
+
+	}
+	else if (pHTTXContext->bCurWriting == TRUE)
+	{
+		DBGPRINT(RT_DEBUG_TRACE,("BUF_ALIGMENT RTUSBFreeD c3 --> QueIdx=%d, CWPos=%ld, NBOutPos=%ld!\n", BulkOutPipeId, pHTTXContext->CurWritePosition, pHTTXContext->NextBulkOutPosition));
+		RTUSB_SET_BULK_FLAG(pAd, (fRTUSB_BULK_OUT_DATA_NORMAL << BulkOutPipeId));
+	}
+
+#else
 	if ((pHTTXContext->CurWritePosition < pHTTXContext->NextBulkOutPosition) && ((pHTTXContext->CurWritePosition + NumberRequired + LOCAL_TXBUF_SIZE) > pHTTXContext->NextBulkOutPosition))
 	{
 		
@@ -152,6 +154,7 @@ NDIS_STATUS	RTUSBFreeDescriptorRequest(
 		DBGPRINT(RT_DEBUG_TRACE,("RTUSBFreeD c3 --> QueIdx=%d, CWPos=%ld, NBOutPos=%ld!\n", BulkOutPipeId, pHTTXContext->CurWritePosition, pHTTXContext->NextBulkOutPosition));
 		RTUSB_SET_BULK_FLAG(pAd, (fRTUSB_BULK_OUT_DATA_NORMAL << BulkOutPipeId));
 	}
+#endif /* USB_BULK_BUF_ALIGMENT */
 	else
 	{
 		Status = NDIS_STATUS_SUCCESS;
@@ -236,12 +239,17 @@ VOID RTMPWriteTxInfo(
 	pTxInfo->QSEL = QueueSel;
 	if (QueueSel != FIFO_EDCA)
 		DBGPRINT(RT_DEBUG_TRACE, ("====> QueueSel != FIFO_EDCA<============\n"));
-	pTxInfo->USBDMANextVLD = FALSE; //NextValid;  // Need to check with Jan about this.
+	pTxInfo->USBDMANextVLD = FALSE; /*NextValid;   Need to check with Jan about this.*/
 	pTxInfo->USBDMATxburst = TxBurst;
 	pTxInfo->WIV = bWiv;
+#ifndef USB_BULK_BUF_ALIGMENT
 	pTxInfo->SwUseLastRound = 0;
+#else
+	pTxInfo->bFragLasAlignmentsectiontRound = 0;
+#endif /* USB_BULK_BUF_ALIGMENT */
 	pTxInfo->rsv = 0;
 	pTxInfo->rsv2 = 0;
 }
 
-#endif // RTMP_MAC_USB //
+
+#endif /* RTMP_MAC_USB */

@@ -8,7 +8,7 @@ config AML_HDMI_TX
         help  
                 hdmi output enable,It should be enalbe if board have hdmi out interface
 
-if AM_DEINTERLACE
+if AML_HDMI_TX
 config AML_HDMI_TX_HDCP
         tristate "HDMITX hdcp enable"
         default n

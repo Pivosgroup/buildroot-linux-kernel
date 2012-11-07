@@ -15,6 +15,8 @@ Change log:
 #ifndef _MLAN_11N_RXREORDER_H_
 #define _MLAN_11N_RXREORDER_H_
 
+/** Rx packet type for BAR */
+#define PKT_TYPE_BAR 0xE7
 /** Max value a TID can take = 2^12 = 4096 */
 #define MAX_TID_VALUE			(2 << 11)
 /** 2^11 = 2048 */
@@ -55,9 +57,6 @@ Change log:
 #define ADDBA_RSP_STATUS_REJECT 1
 /** ADDBA response status : Accept */
 #define ADDBA_RSP_STATUS_ACCEPT 0
-
-/** DEFAULT SEQ NUM */
-#define DEFAULT_SEQ_NUM            0xffff
 
 mlan_status mlan_11n_rxreorder_pkt(void *priv, t_u16 seqNum, t_u16 tid,
                                    t_u8 * ta, t_u8 pkttype, void *payload);
