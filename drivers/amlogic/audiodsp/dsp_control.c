@@ -322,11 +322,7 @@ exit:
 /**
  *	bit31 - digital raw output
  *	bit30 - IEC61937 pass over HDMI
-
- *    bit 5 - DTS passthrough working mode
- 		     00:  AIU 958 hw search raw mode 
- 		     01:  PCM_RAW mode,the same as AC3/AC3+
- *    bit 3:4 - used for the communication of dsp and player tansfer decoding infomation:
+ *	bit 3:4 - used for the communication of dsp and player tansfer decoding infomation:
  *                00: used for libplayer_end to tell dsp_end that the file end has been notreached;
  *                01: used for libplayer_end to tell dsp_end that the file end has been reached;
  *                10: used for dsp_end to tell libplayer_end that all the data in the dsp_end_buf has been decoded completely;
