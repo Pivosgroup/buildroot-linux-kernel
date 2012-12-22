@@ -216,6 +216,7 @@ void mali_meson_poweron(void)
 
 _mali_osk_errcode_t mali_platform_init(void)
 {
+    mali_meson_poweron();
     MALI_SUCCESS;
 }
 
