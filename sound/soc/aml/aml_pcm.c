@@ -44,7 +44,6 @@
 #define AOUT_EVENT_RAWDATA_DST                  0xD
 #define AOUT_EVENT_RAWDATA_WMA_PRO              0xE
 extern int aout_notifier_call_chain(unsigned long val, void *v);
-extern void	aml_alsa_hw_reprepare();
 
 extern unsigned IEC958_mode_raw;
 extern unsigned IEC958_mode_codec;
@@ -90,7 +89,7 @@ static const struct snd_pcm_hardware aml_pcm_hardware = {
 	.period_bytes_max	= 8*1024,
 	.periods_min		= 2,
 	.periods_max		= 1024,
-	.buffer_bytes_max	= 32 * 1024,
+	.buffer_bytes_max	= 64 * 1024,
 	
 	.rate_min = 32000,
   .rate_max = 48000,
@@ -111,7 +110,7 @@ static const struct snd_pcm_hardware aml_pcm_capture = {
 	.period_bytes_max	= 8*1024,
 	.periods_min		= 2,
 	.periods_max		= 1024,
-	.buffer_bytes_max	= 32 * 1024,
+	.buffer_bytes_max	= 64 * 1024,
 
 	.rate_min = 8000,
   .rate_max = 48000,
@@ -158,19 +157,19 @@ static int aml_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 		(void *) buf->addr,
 		size);
 
-        aml_pcm_playback_start_addr = buf->area;
-		aml_pcm_playback_end_addr = buf->area + size;
+        aml_pcm_playback_start_addr = (unsigned int)buf->area;
+		aml_pcm_playback_end_addr = (unsigned int)buf->area + size;
 		aml_pcm_playback_phy_start_addr = buf->addr;
 		aml_pcm_playback_phy_end_addr = buf->addr+size;
         /* alloc iec958 buffer */
-        aml_iec958_playback_start_addr = dma_alloc_coherent(pcm->card->dev, size*4,
+        aml_iec958_playback_start_addr = (unsigned int)dma_alloc_coherent(pcm->card->dev, size*4,
            &aml_iec958_playback_start_phy, GFP_KERNEL);
         if(aml_iec958_playback_start_addr == 0){
-          printk("aml-pcm %d: alloc iec958 buffer failed\n");
+          printk("aml-pcm: alloc iec958 buffer failed\n");
           return -ENOMEM;
         }
         aml_iec958_playback_size = size*4;
-        printk("iec958 %d: preallocate dma buffer start=%p, size=%x\n", aml_iec958_playback_start_addr, size*4);
+        printk("iec958 preallocate dma buffer start=%p, size=%x\n", (void*)aml_iec958_playback_start_addr, size*4);
 	}else{
 		size = aml_pcm_capture.buffer_bytes_max;
 		buf->dev.type = SNDRV_DMA_TYPE_DEV;
@@ -184,8 +183,8 @@ static int aml_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 		(void *) buf->addr,
 		size);
 
-        aml_pcm_capture_start_addr = buf->area;
-		aml_pcm_capture_end_addr = buf->area+size;
+        aml_pcm_capture_start_addr = (unsigned int)buf->area;
+		aml_pcm_capture_end_addr = (unsigned int)buf->area+size;
 		aml_pcm_capture_phy_start_addr = buf->addr;
 		aml_pcm_capture_phy_end_addr = buf->addr+size;		
 	}
@@ -272,7 +271,7 @@ static void  aml_hw_i2s_init(struct snd_pcm_runtime *runtime)
 		printk("I2S hw init,i2s mode %d\n",I2S_MODE);
 
 }
-static int audio_notify_hdmi_info(int audio_type, void *v){
+static void audio_notify_hdmi_info(int audio_type, void *v){
     struct snd_pcm_substream *substream =(struct snd_pcm_substream*)v;
 	if(substream->runtime->rate != audio_sr_info || audio_type_info != audio_type){
 		printk("audio info changed.notify to hdmi: type %d,sr %d\n",audio_type,substream->runtime->rate);
@@ -282,7 +281,7 @@ static int audio_notify_hdmi_info(int audio_type, void *v){
 	audio_type_info = audio_type;
 	
 }
-static void iec958_notify_hdmi_info()
+static void iec958_notify_hdmi_info(void)
 {
 	unsigned audio_type = AOUT_EVENT_IEC_60958_PCM;
 	if(playback_substream_handle){
@@ -367,7 +366,7 @@ static void aml_hw_iec958_init(void)
 
 }
 
-void	aml_alsa_hw_reprepare()
+void	aml_alsa_hw_reprepare(void)
 {
 	/* diable 958 module before call initiation */
 	audio_hw_958_enable(0);
@@ -932,7 +931,7 @@ static void aml_pcm_free_dma_buffers(struct snd_pcm *pcm)
     aml_pcm_playback_start_addr = 0;
     aml_pcm_capture_start_addr  = 0;
     if(aml_iec958_playback_start_addr){
-      dma_free_coherent(pcm->card->dev, aml_iec958_playback_size, aml_iec958_playback_start_addr, aml_iec958_playback_start_phy);
+      dma_free_coherent(pcm->card->dev, aml_iec958_playback_size, (void*)aml_iec958_playback_start_addr, aml_iec958_playback_start_phy);
       aml_iec958_playback_start_addr = 0;
     }
 }
