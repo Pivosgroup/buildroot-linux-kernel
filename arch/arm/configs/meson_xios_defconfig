@@ -890,7 +890,8 @@ CONFIG_KEY_INPUT_CUSTOM_AM=y
 # Amlogic Power Management Support
 #
 CONFIG_AMLOGIC_PM=y
-CONFIG_STV_MBX_POWEROFF=y
+# CONFIG_PMU_ACT8xxx is not set
+CONFIG_IR810_POWEROFF=y
 
 #
 # Amlogic Light Sensor Support
