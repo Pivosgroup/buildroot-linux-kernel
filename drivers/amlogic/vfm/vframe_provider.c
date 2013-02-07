@@ -176,7 +176,7 @@ void vf_unreg_provider(struct vframe_provider_s *prov)
                     receiver->ops->event_cb(VFRAME_EVENT_PROVIDER_UNREG, NULL, receiver->op_arg);
                 }
                 else{
-                    printk("%s Error to notify receiver\n", __func__);
+                    printk("%s Error to notify receiver: %s\n", __func__, prov->name);
                 }
                 vf_update_active_map();
                 break;

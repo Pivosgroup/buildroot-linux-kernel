@@ -397,7 +397,7 @@ static ssize_t store_dbg(struct device * dev, struct device_attribute *attr, con
 static ssize_t show_disp_cap(struct device * dev, struct device_attribute *attr, char * buf)
 {   
     int i,pos=0;
-    char* disp_mode_t[]={"480i","480p","576i","576p","720p","1080i","1080p","720p50hz","1080i50hz","1080p50hz",NULL};
+    char* disp_mode_t[]={"480i","480p","576i","576p","720p","1080i","1080p","720p50hz","1080i50hz","1080p50hz","1080p24hz",NULL};
     char* native_disp_mode = hdmitx_edid_get_native_VIC(&hdmitx_device);
     HDMI_Video_Codes_t vic;
     for(i=0; disp_mode_t[i]; i++){

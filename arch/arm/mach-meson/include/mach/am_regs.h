@@ -1330,6 +1330,7 @@
 #define HASB_ARM_MB3                               0x1037
 #define HHI_TIMER90K                               0x103b
 #define HHI_AUD_DAC_CTRL                           0x1044
+#define HHI_VIID_CLK_DIV                           0x104a
 #define HHI_SYS_PLL_CNTL2                          0x104d
 #define HHI_AUD_PLL_CNTL2                          0x104e
 #define HHI_VID_PLL_CNTL2                          0x104f
@@ -1353,6 +1354,8 @@
 #define HHI_WIFI_PLL_CNTL                          0x1061
 #define HHI_WIFI_PLL_CNTL2                         0x1062
 #define HHI_WIFI_PLL_CNTL3                         0x1063
+#define HHI_VID_PLL_CNTL4                          0x1065
+#define HHI_VID_DIVIDER_CNTL                       0x1066
 #define HHI_A9_CLK_CNTL                            0x1067
 #define HHI_DDR_PLL_CNTL                           0x1068
 #define HHI_DDR_PLL_CNTL2                          0x1069
@@ -5401,6 +5404,7 @@
 #define VENC_VDAC_DAC2_OFFSET                      0x1bf5
 #define VENC_VDAC_DAC3_GAINCTRL                    0x1bf6
 #define VENC_VDAC_DAC3_OFFSET                      0x1bf7
+#define VENC_VDAC_FIFO_CTRL 			   0x1bfc
 //====== No prgressive venc
 //
 // Closing file:  venc_regs.h
@@ -5632,6 +5636,8 @@
 // Bit  7: 4 RW, enci_cb_cmpt_dly_sel. 0=no delay; 1~6=delay by 1~6 clk; 7~15 reserved.
 // Bit  3: 0 RW, enci_cr_cmpt_dly_sel. 0=no delay; 1~6=delay by 1~6 clk; 7~15 reserved.
 #define ENCI_CFILT_CTRL2                           0x1c0a
+#define ENCP_DACSEL_0 				   0x1c0d
+#define ENCP_DACSEL_1 				   0x1c0e
 // Program video control signals from ENCP core to DVI/HDMI interface
 #define ENCP_DVI_HSO_BEGIN                         0x1c40
 #define ENCP_DVI_HSO_END                           0x1c41
@@ -5908,6 +5914,7 @@
 #define VPU_VDIN_MMC_CTRL                          0x270d
 #define VPU_DVIN_MMC_CTRL                          0x270e
 #define VPU_BT656_MMC_CTRL                         0x270f
+#define VPU_VIU_VENC_MUX_CTRL 			   0x271a
 //========================================================================
 //  VLD Registers				    (12'hC00 - 12'hCff)
 //

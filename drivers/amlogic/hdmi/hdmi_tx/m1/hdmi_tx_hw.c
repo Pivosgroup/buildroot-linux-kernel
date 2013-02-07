@@ -693,6 +693,22 @@ void hdmi_tvenc_set(Hdmi_tx_video_para_t *param)
          SOF_LINES           =36;             
          TOTAL_FRAMES        =4;              
     }
+    else if(param->VIC==HDMI_1080p24) {
+         INTERLACE_MODE      =0;
+         PIXEL_REPEAT_VENC   =0;
+         PIXEL_REPEAT_HDMI   =0;
+         ACTIVE_PIXELS       =(1920*(1+PIXEL_REPEAT_HDMI)); // Number of active pixels per line.
+         ACTIVE_LINES        =(1080/(1+INTERLACE_MODE));    // Number of active lines per field.
+         LINES_F0            =1125;
+         LINES_F1            =1125;
+         FRONT_PORCH         =638;
+         HSYNC_PIXELS        =44;
+         BACK_PORCH          =148;
+         EOF_LINES           =4;
+         VSYNC_LINES         =5;
+         SOF_LINES           =36;
+         TOTAL_FRAMES        =4;
+    }
     else{ //HDMI_1080p60, HDMI_1080p30
          INTERLACE_MODE      =0;              
          PIXEL_REPEAT_VENC   =0;              
@@ -950,10 +966,37 @@ static void phy_pll_off(void)
 /**/
 void hdmi_hw_set_powermode( int power_mode, int vic)
 {
+// Default Setting
+
+    switch(vic) {
+        case HDMI_480i60:
+        case HDMI_480i60_16x9:
+        case HDMI_576p50:
+        case HDMI_576p50_16x9:
+        case HDMI_576i50:
+        case HDMI_576i50_16x9:            
+        case HDMI_480p60:
+        case HDMI_480p60_16x9:
+            hdmi_wr_reg(0x016, 0x30);
+            break;
+        case HDMI_720p50:
+        case HDMI_720p60:
+        case HDMI_1080i50:
+        case HDMI_1080i60:
+        case HDMI_1080p24://1080p24 support
+            hdmi_wr_reg(0x016, 0x40);
+            break;
+        case HDMI_1080p50:
+        case HDMI_1080p60:
+            hdmi_wr_reg(0x016, 0x40);
+            break;
+        default:
+            break;
+    }
     switch(power_mode){
         case 1:
-            hdmi_wr_reg(0x016, 0x02);
-            hdmi_wr_reg(0x014, 0x02);  
+//            hdmi_wr_reg(0x016, 0x02);
+//            hdmi_wr_reg(0x014, 0x02);  
 
             hdmi_wr_reg(TX_CORE_CALIB_MODE, 0xc);
             hdmi_wr_reg(TX_CORE_CALIB_VALUE, 0x0);
@@ -984,10 +1027,6 @@ void hdmi_hw_set_powermode( int power_mode, int vic)
                     hdmi_wr_reg(TX_SYS1_BIAS, 0x0);         //0x15
                     break;
             }
-#ifdef MORE_LOW_P
-            hdmi_wr_reg(0x010, 0x0);
-            hdmi_wr_reg(0x01a, 0x3);
-#endif        
             break;
         case 2:
             hdmi_wr_reg(0x017, 0x1f);
@@ -1005,10 +1044,6 @@ void hdmi_hw_set_powermode( int power_mode, int vic)
             hdmi_wr_reg(0x016, 0x03); //hdmi_wr_reg(0x016, 0x04);   // Bit[3:0] is HDMI-PHY's output swing control register
             hdmi_wr_reg(TX_CORE_CALIB_MODE, 0x8);
             hdmi_wr_reg(TX_CORE_CALIB_VALUE, 0xf);
-#ifdef MORE_LOW_P
-            hdmi_wr_reg(0x010, 0x3);
-            hdmi_wr_reg(0x01a, 0xfb);
-#endif            
             break;
     }
 }

@@ -90,6 +90,7 @@ unsigned long READ_APB_REG(unsigned long addr);
 #define TX_SYS1_BANDGAP           TX_BASE_ADDR+0x014 
 #define TX_SYS1_BIAS              TX_BASE_ADDR+0x015 
 #define TX_SYS1_AFE_RESET         TX_BASE_ADDR+0x016 
+
 #define TX_SYS1_AFE_TEST          TX_BASE_ADDR+0x017 
 #define TX_SYS1_PLL               TX_BASE_ADDR+0x018 
 #define TX_SYS1_TUNE              TX_BASE_ADDR+0x019 

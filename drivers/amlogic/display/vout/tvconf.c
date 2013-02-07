@@ -68,7 +68,7 @@ SET_TV_CLASS_ATTR(vdac_setting,parse_vdac_setting)
 static const tvmode_t vmode_tvmode_tab[] =
 {
 	TVMODE_480I, TVMODE_480CVBS,TVMODE_480P, TVMODE_576I,TVMODE_576CVBS, TVMODE_576P, TVMODE_720P, TVMODE_1080I, TVMODE_1080P,
-    TVMODE_720P_50HZ, TVMODE_1080I_50HZ, TVMODE_1080P_50HZ
+    TVMODE_720P_50HZ, TVMODE_1080I_50HZ, TVMODE_1080P_50HZ,TVMODE_1080P_24HZ
 };
 
 
@@ -206,6 +206,17 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 50,
         .sync_duration_den = 1,
     },
+    { /* VMODE_1080P_24HZ */
+        .name              = "1080p24hz",
+        .mode              = VMODE_1080P_24HZ,
+        .width             = 1920,
+        .height            = 1080,
+        .field_height      = 1080,
+        .aspect_ratio_num  = 16,
+        .aspect_ratio_den  = 9,
+        .sync_duration_num = 24,
+        .sync_duration_den = 1,
+    },
 
 };
 
@@ -245,7 +256,7 @@ static const vinfo_t *tv_get_current_info(void)
 static int tv_set_current_vmode(vmode_t mod)
 {
 	vmode_t mode = mod&VMODE_MODE_BIT_MASK;
-	if (mode > VMODE_1080P_50HZ) {
+	if (mode > VMODE_1080P_24HZ) {
 		amlog_mask_level(LOG_MASK_PARA, LOG_LEVEL_HIGH,"Invalid vmode: %d\n", mod);
 		return -EINVAL;
 	}
