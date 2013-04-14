@@ -1400,6 +1400,8 @@ static void stream_switching_do(struct work_struct *work)
         INCPTR(fill_ptr);
 
         spin_unlock_irqrestore(&lock, flags);
+
+        vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
     }
 
     mutex_unlock(&vh264_mutex);
